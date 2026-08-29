@@ -61,6 +61,24 @@ export const registerAttendee = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const subscribeNewsletter = createServerFn({ method: "POST" })
+  .inputValidator((data: { email: string; source?: string | undefined }) => data)
+  .handler(async ({ data }) => {
+    const email = data.email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) {
+      return { ok: false as const, error: "Please enter a valid email address." };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("newsletter_subscribers")
+      .upsert(
+        { email, source: data.source ?? "declined_modal" },
+        { onConflict: "email" },
+      );
+    if (error) return { ok: false as const, error: "Could not save that. Please try once more." };
+    return { ok: true as const };
+  });
+
 export const fetchAdminRegistrations = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string }) => data)
   .handler(async ({ data }) => {

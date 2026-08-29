@@ -1,7 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Linkedin, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import milanHeadshotAsset from "@/assets/milan-headshot.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { registerAttendee } from "@/lib/registration.functions";
+import { registerAttendee, subscribeNewsletter } from "@/lib/registration.functions";
 
 const PROFILE_OPTIONS = [
   "Salaried professional, mid to senior level",
@@ -78,6 +79,10 @@ export function RegistrationModal({
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [declined, setDeclined] = useState(false);
+  const [declinedEmail, setDeclinedEmail] = useState("");
+  const [declinedStatus, setDeclinedStatus] = useState<
+    "idle" | "submitting" | "done" | "error"
+  >("idle");
 
   const [profileType, setProfileType] = useState("");
   const [painPoint, setPainPoint] = useState("");
@@ -156,20 +161,21 @@ export function RegistrationModal({
 
         <div className="p-6">
           {declined ? (
-            <div>
-              <h2 className="text-xl font-bold">Then this is not the right session for you</h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                I will never tell anyone which stock or which fund to buy, so you would leave
-                disappointed and I would rather say that now than take your Saturday evening. If you
-                ever want to learn how to evaluate those decisions yourself, the door is open.
-              </p>
-              <Button
-                className="mt-6 w-full bg-primary text-primary-foreground hover:bg-[var(--highlight)]"
-                onClick={() => setDeclined(false)}
-              >
-                Take me back
-              </Button>
-            </div>
+            <DeclinedPanel
+              email={declinedEmail}
+              onEmailChange={setDeclinedEmail}
+              status={declinedStatus}
+              onSubscribe={() => {
+                void (async () => {
+                  setDeclinedStatus("submitting");
+                  const result = await subscribeNewsletter({
+                    data: { email: declinedEmail, source: "declined_modal" },
+                  });
+                  setDeclinedStatus(result.ok ? "done" : "error");
+                })();
+              }}
+              onBack={() => setDeclined(false)}
+            />
           ) : step === 1 ? (
             <div>
               <h2 className="text-xl font-bold">One question first</h2>
@@ -379,5 +385,97 @@ export function RegistrationModal({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DeclinedPanel({
+  email,
+  onEmailChange,
+  status,
+  onSubscribe,
+  onBack,
+}: {
+  email: string;
+  onEmailChange: (value: string) => void;
+  status: "idle" | "submitting" | "done" | "error";
+  onSubscribe: () => void;
+  onBack: () => void;
+}) {
+  const linkedinUrl = import.meta.env["VITE_LINKEDIN_URL"] as string | undefined;
+
+  return (
+    <div>
+      <div className="flex items-center gap-3">
+        <img
+          src={milanHeadshotAsset.url}
+          alt="Milan Dodhia"
+          className="h-14 w-14 rounded-full border border-border object-cover"
+        />
+        <h2 className="text-xl font-bold">Fair enough — this session is not for you</h2>
+      </div>
+
+      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+        I will never tell anyone which stock or which fund to buy, so you would leave disappointed
+        and I would rather say that now than take your Saturday evening. But you do not have to
+        leave empty handed.
+      </p>
+
+      {linkedinUrl ? (
+        <a href={linkedinUrl} target="_blank" rel="noopener noreferrer" className="mt-5 block">
+          <Button className="w-full bg-primary text-primary-foreground hover:bg-[var(--highlight)]">
+            <Linkedin size={16} className="mr-2" /> Connect with me on LinkedIn
+          </Button>
+        </a>
+      ) : null}
+
+      <div className="mt-5 rounded-lg border border-border bg-card p-4">
+        <p className="text-sm font-semibold">Get my money notes by email</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Short, practical emails on understanding your own money. No tips, no pitches.
+        </p>
+        {status === "done" ? (
+          <p className="mt-3 text-sm font-medium text-primary">
+            You are in. The next note will find you.
+          </p>
+        ) : (
+          <form
+            className="mt-3 flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onSubscribe();
+            }}
+          >
+            <Input
+              type="email"
+              value={email}
+              onChange={(event) => onEmailChange(event.target.value)}
+              placeholder="you@example.com"
+              className="bg-background"
+              autoComplete="email"
+            />
+            <Button
+              type="submit"
+              disabled={status === "submitting"}
+              className="shrink-0 bg-primary text-primary-foreground hover:bg-[var(--highlight)]"
+            >
+              {status === "submitting" ? <Loader2 className="animate-spin" size={16} /> : "Join"}
+            </Button>
+          </form>
+        )}
+        {status === "error" ? (
+          <p className="mt-2 text-xs text-destructive">
+            That did not save. Check the email and try once more.
+          </p>
+        ) : null}
+      </div>
+
+      <button
+        type="button"
+        className="mt-4 w-full text-xs text-muted-foreground underline"
+        onClick={onBack}
+      >
+        Take me back
+      </button>
+    </div>
   );
 }
