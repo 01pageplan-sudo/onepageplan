@@ -307,7 +307,11 @@ export function RegistrationModal({
                   <label className="flex gap-3 text-xs leading-snug text-muted-foreground">
                     <Checkbox
                       checked={whatsappConsent}
-                      onCheckedChange={(value) => setWhatsappConsent(value === true)}
+                      onCheckedChange={(value) => {
+                        const on = value === true;
+                        setWhatsappConsent(on);
+                        setVoiceConsent(on);
+                      }}
                       className="mt-0.5"
                     />
                     <span>
