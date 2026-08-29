@@ -368,9 +368,9 @@ export function RegistrationModal({
                     className="mt-0.5"
                   />
                   <span>
-                    Yes, send me the joining link and session reminders on WhatsApp. I can opt out
-                    any time by replying STOP. You may also call me with a reminder before the
-                    session.
+                    Yes, send me the joining link and session reminders on WhatsApp, and subscribe
+                    me to the email newsletter. I can opt out any time by replying STOP. You may
+                    also call me with a reminder before the session.
                   </span>
                 </label>
               </div>
