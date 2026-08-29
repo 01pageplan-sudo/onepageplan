@@ -34,7 +34,6 @@ export function isRateLimited(ip: string): boolean {
 export function validate(input: RegistrationInput): string | null {
   if (!input.full_name || input.full_name.trim().length < 2) return "Please enter your name.";
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(input.email.trim())) return "Please enter a valid email.";
-  if (!/^\d{10}$/.test(input.phone10)) return "Please enter a 10 digit WhatsApp number.";
   if (input.whatsapp_consent && !/^\d{10}$/.test(input.phone10))
     return "Enter exactly 10 digits so I can send the link on WhatsApp.";
   if (!input.profile_type) return "Please tell us what describes you.";
