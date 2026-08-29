@@ -40,9 +40,6 @@ export function CountdownCard() {
         <Digits value={remaining ? pad(remaining.hours) : "--"} label="Hours" />
         <Digits value={remaining ? pad(remaining.minutes) : "--"} label="Minutes" />
       </div>
-      <p className="mt-4 text-xs text-muted-foreground">
-        Miss it and the next one is seven days away.
-      </p>
     </div>
   );
 }

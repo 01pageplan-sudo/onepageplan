@@ -34,8 +34,8 @@ export function isRateLimited(ip: string): boolean {
 export function validate(input: RegistrationInput): string | null {
   if (!input.full_name || input.full_name.trim().length < 2) return "Please enter your name.";
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(input.email.trim())) return "Please enter a valid email.";
-  if (!/^\d{10}$/.test(input.phone10)) return "Please enter a 10 digit WhatsApp number.";
-  if (input.whatsapp_consent !== true) return "Please allow the joining link on WhatsApp.";
+  if (input.whatsapp_consent && !/^\d{10}$/.test(input.phone10))
+    return "Enter exactly 10 digits so I can send the link on WhatsApp.";
   if (!input.profile_type) return "Please tell us what describes you.";
   if (!input.pain_point) return "Please tell us your situation.";
   return null;
@@ -44,12 +44,13 @@ export function validate(input: RegistrationInput): string | null {
 export function buildRow(input: RegistrationInput) {
   const now = new Date().toISOString();
   const target = getNextSessionIST();
+  const hasPhone = /^\d{10}$/.test(input.phone10);
   return {
     full_name: input.full_name.trim(),
     email: input.email.trim().toLowerCase(),
-    phone_e164: `+91${input.phone10}`,
-    whatsapp_consent: true,
-    consent_at: now,
+    phone_e164: hasPhone ? `+91${input.phone10}` : "",
+    whatsapp_consent: input.whatsapp_consent === true,
+    consent_at: input.whatsapp_consent === true ? now : null,
     voice_consent: input.voice_consent === true,
     voice_consent_at: input.voice_consent === true ? now : null,
     profile_type: input.profile_type,
@@ -85,9 +86,9 @@ export async function upsertRegistration(
       .from("registrations")
       .update({
         full_name: row.full_name,
-        phone_e164: row.phone_e164,
-        whatsapp_consent: true,
-        consent_at: existing.consent_at ?? row.consent_at,
+        ...(row.phone_e164 ? { phone_e164: row.phone_e164 } : {}),
+        whatsapp_consent: row.whatsapp_consent,
+        consent_at: row.whatsapp_consent ? (existing.consent_at ?? row.consent_at) : existing.consent_at,
         voice_consent: voice,
         voice_consent_at: voice ? (existing.voice_consent_at ?? row.voice_consent_at) : null,
         profile_type: row.profile_type,
