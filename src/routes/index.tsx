@@ -403,22 +403,19 @@ function TakeAways() {
 }
 
 function AboutHost() {
-  const hostImage = import.meta.env["VITE_HOST_IMAGE_URL"] as string | undefined;
+  const hostImage =
+    (import.meta.env["VITE_HOST_IMAGE_URL"] as string | undefined) ?? milanHeadshotAsset.url;
 
   return (
     <section className="mx-auto max-w-[900px] px-4 py-14">
       <div className="grid gap-8 md:grid-cols-[280px_1fr]">
         <div>
-          {hostImage ? (
-            <img
-              src={hostImage}
-              alt="Milan Dodhia, Financial Educator"
-              className="w-full rounded-lg border border-border object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="aspect-[4/5] w-full rounded-lg border border-border bg-[var(--muted)]" />
-          )}
+          <img
+            src={hostImage}
+            alt="Milan Dodhia, Financial Educator"
+            className="w-full rounded-lg border border-border object-cover"
+            loading="lazy"
+          />
         </div>
         <div>
           <h2 className="text-2xl font-bold sm:text-3xl">Milan Dodhia</h2>
