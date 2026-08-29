@@ -1,32 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import bmzIcon from "@/assets/bmz-icon.png";
 import { Button } from "@/components/ui/button";
 import { useRegistration } from "./registration-context";
-
-function PageGlyph() {
-  return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      className="text-[var(--brass)]"
-      aria-hidden="true"
-    >
-      <path d="M6 3h8l4 4v14H6z" />
-      <path d="M14 3v4h4" />
-      <path d="M9 12h6M9 16h4" />
-    </svg>
-  );
-}
 
 export function Wordmark({ withByline = true }: { withByline?: boolean }) {
   return (
     <span className="flex items-center gap-2">
-      <PageGlyph />
+      <img src={bmzIcon} alt="" className="h-8 w-8 object-contain" />
       <span className="flex flex-col leading-none">
         <span className="font-display text-base font-semibold">The One Page Plan</span>
         {withByline ? (

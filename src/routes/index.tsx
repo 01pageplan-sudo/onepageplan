@@ -414,7 +414,7 @@ function AboutHost() {
           <img
             src={hostImage}
             alt="Milan Dodhia, Financial Educator"
-            className="w-full rounded-lg border border-border object-cover"
+            className="w-full object-cover"
             loading="lazy"
           />
         </div>
