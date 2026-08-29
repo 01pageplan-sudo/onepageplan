@@ -53,7 +53,7 @@ export const registerAttendee = createServerFn({ method: "POST" })
         id: saved.id,
         phone_e164: row.phone_e164,
         full_name: row.full_name,
-        whatsapp_consent: true,
+        whatsapp_consent: row.whatsapp_consent && row.phone_e164 !== "",
       }),
     ]);
     await Promise.race([delivery, new Promise((resolve) => setTimeout(resolve, 3000))]);
