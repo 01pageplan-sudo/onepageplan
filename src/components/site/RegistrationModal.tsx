@@ -401,7 +401,9 @@ function DeclinedPanel({
   onSubscribe: () => void;
   onBack: () => void;
 }) {
-  const linkedinUrl = import.meta.env["VITE_LINKEDIN_URL"] as string | undefined;
+  const linkedinUrl =
+    (import.meta.env["VITE_LINKEDIN_URL"] as string | undefined) ||
+    "https://www.linkedin.com/in/milanaire-me/";
 
   return (
     <div>
