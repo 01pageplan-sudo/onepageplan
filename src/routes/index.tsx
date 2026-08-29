@@ -405,7 +405,7 @@ function TakeAways() {
 
 function AboutHost() {
   const hostImage =
-    (import.meta.env["VITE_HOST_IMAGE_URL"] as string | undefined) ?? milanHeadshotAsset.url;
+    (import.meta.env["VITE_HOST_IMAGE_URL"] as string | undefined) || milanHeadshotAsset.url;
 
   return (
     <section className="mx-auto max-w-[900px] px-4 py-14">
