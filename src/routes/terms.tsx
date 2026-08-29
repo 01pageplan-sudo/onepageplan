@@ -1,4 +1,4 @@
-{/* REVIEW REQUIRED BEFORE LAUNCH. Standard template, not legal advice. */}
+/* REVIEW REQUIRED BEFORE LAUNCH. Standard template, not legal advice. */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
