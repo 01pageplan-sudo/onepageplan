@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Linkedin, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import milanHeadshotAsset from "@/assets/milan-headshot.png.asset.json";
+import milanHeadshot from "@/assets/milan-headshot-transparent.png";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -409,7 +409,7 @@ function DeclinedPanel({
     <div>
       <div className="flex items-center gap-3">
         <img
-          src={milanHeadshotAsset.url}
+          src={milanHeadshot}
           alt="Milan Dodhia"
           className="h-14 w-14 rounded-full border border-border object-cover"
         />
