@@ -8,7 +8,7 @@ export function Footer() {
 
   return (
     <footer className="border-t border-border bg-background">
-      <div className="mx-auto max-w-3xl space-y-6 px-4 py-12 text-sm text-muted-foreground">
+      <div className="mx-auto max-w-3xl space-y-6 px-4 pt-12 pb-28 text-sm text-muted-foreground sm:pb-12">
         <p>
           The One Page Plan by Milanaire ·{" "}
           <a className="underline" href="mailto:connect@onepageplan.in">
