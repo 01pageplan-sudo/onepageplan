@@ -129,7 +129,7 @@ function Hero() {
       </h1>
 
       <div className="mx-auto mt-6 max-w-[60ch] space-y-4 text-center text-muted-foreground">
-        <p>The Money Reality Masterclass. Free, live, ninety minutes, every Saturday evening.</p>
+        <p>The Money Reality Masterclass. Free, live, ninety minutes, this Saturday evening.</p>
         <p>
           In ninety minutes I will show you how to build your own money picture, how to calculate
           what each thing you hold is actually returning after tax and after inflation, and how to
@@ -457,7 +457,7 @@ const FAQS = [
   },
   {
     q: "Will there be a recording?",
-    a: "No. It runs live every Saturday, and if you miss one you can join the next.",
+    a: "No. The session is live and not recorded.",
   },
   {
     q: "Do I need to prepare anything?",
