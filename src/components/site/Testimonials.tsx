@@ -4,8 +4,6 @@ const SHORTS = [
   { id: "Hng9FIQ8z4A", title: "Attendee testimonial (Short 3)" },
 ];
 
-const FEATURED = { id: "c5lXaVQhqWU", title: "Attendee testimonial" };
-
 export function Testimonials() {
   return (
     <section className="mx-auto max-w-[900px] px-4 py-14">
@@ -26,16 +24,6 @@ export function Testimonials() {
             />
           </div>
         ))}
-      </div>
-      <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <iframe
-          src={`https://www.youtube.com/embed/${FEATURED.id}`}
-          title={FEATURED.title}
-          loading="lazy"
-          className="aspect-video w-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
-          allowFullScreen
-        />
       </div>
     </section>
   );
