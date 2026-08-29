@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Check, Clock, Globe, Timer, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import milanHeadshotAsset from "@/assets/milan-headshot.png.asset.json";
+import milanHeadshot from "@/assets/milan-headshot-transparent.png";
 import {
   Accordion,
   AccordionContent,
@@ -405,7 +405,7 @@ function TakeAways() {
 
 function AboutHost() {
   const hostImage =
-    (import.meta.env["VITE_HOST_IMAGE_URL"] as string | undefined) || milanHeadshotAsset.url;
+    (import.meta.env["VITE_HOST_IMAGE_URL"] as string | undefined) || milanHeadshot;
 
   return (
     <section className="mx-auto max-w-[900px] px-4 py-14">
