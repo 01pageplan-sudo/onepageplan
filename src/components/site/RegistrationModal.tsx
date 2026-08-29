@@ -161,20 +161,21 @@ export function RegistrationModal({
 
         <div className="p-6">
           {declined ? (
-            <div>
-              <h2 className="text-xl font-bold">Then this is not the right session for you</h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                I will never tell anyone which stock or which fund to buy, so you would leave
-                disappointed and I would rather say that now than take your Saturday evening. If you
-                ever want to learn how to evaluate those decisions yourself, the door is open.
-              </p>
-              <Button
-                className="mt-6 w-full bg-primary text-primary-foreground hover:bg-[var(--highlight)]"
-                onClick={() => setDeclined(false)}
-              >
-                Take me back
-              </Button>
-            </div>
+            <DeclinedPanel
+              email={declinedEmail}
+              onEmailChange={setDeclinedEmail}
+              status={declinedStatus}
+              onSubscribe={() => {
+                void (async () => {
+                  setDeclinedStatus("submitting");
+                  const result = await subscribeNewsletter({
+                    data: { email: declinedEmail, source: "declined_modal" },
+                  });
+                  setDeclinedStatus(result.ok ? "done" : "error");
+                })();
+              }}
+              onBack={() => setDeclined(false)}
+            />
           ) : step === 1 ? (
             <div>
               <h2 className="text-xl font-bold">One question first</h2>
