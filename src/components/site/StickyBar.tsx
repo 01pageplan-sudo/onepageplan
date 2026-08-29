@@ -25,7 +25,7 @@ export function StickyBar() {
         visible ? "translate-y-0" : "translate-y-full"
       }`}
     >
-      <div className="mx-auto flex max-w-4xl items-center gap-3 px-3 py-2.5">
+      <div className="mx-auto flex max-w-4xl items-center gap-3 px-3 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <CompactCountdown />
         </div>
