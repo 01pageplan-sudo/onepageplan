@@ -304,25 +304,6 @@ export function RegistrationModal({
                 </div>
 
                 <div>
-                  <label className="flex gap-3 text-xs leading-snug text-muted-foreground">
-                    <Checkbox
-                      checked={whatsappConsent}
-                      onCheckedChange={(value) => {
-                        const on = value === true;
-                        setWhatsappConsent(on);
-                        setVoiceConsent(on);
-                      }}
-                      className="mt-0.5"
-                    />
-                    <span>
-                      Yes, send me the joining link and session reminders on WhatsApp. I can opt out
-                      any time by replying STOP. You may also call me with a reminder before the
-                      session.
-                    </span>
-                  </label>
-                </div>
-
-                <div>
                   <Label htmlFor="phone" className="text-sm">
                     WhatsApp number
                   </Label>
@@ -374,13 +355,25 @@ export function RegistrationModal({
                   "Save my seat →"
                 )}
               </Button>
-              <button
-                type="button"
-                className="mt-3 w-full text-xs text-muted-foreground underline"
-                onClick={() => setStep(2)}
-              >
-                Back
-              </button>
+
+              <div className="mt-4">
+                <label className="flex gap-3 text-xs leading-snug text-muted-foreground">
+                  <Checkbox
+                    checked={whatsappConsent}
+                    onCheckedChange={(value) => {
+                      const on = value === true;
+                      setWhatsappConsent(on);
+                      setVoiceConsent(on);
+                    }}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    Yes, send me the joining link and session reminders on WhatsApp. I can opt out
+                    any time by replying STOP. You may also call me with a reminder before the
+                    session.
+                  </span>
+                </label>
+              </div>
             </form>
           )}
         </div>
