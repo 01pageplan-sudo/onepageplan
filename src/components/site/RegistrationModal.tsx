@@ -1,7 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Linkedin, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import milanHeadshotAsset from "@/assets/milan-headshot.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { registerAttendee } from "@/lib/registration.functions";
+import { registerAttendee, subscribeNewsletter } from "@/lib/registration.functions";
 
 const PROFILE_OPTIONS = [
   "Salaried professional, mid to senior level",
@@ -78,6 +79,10 @@ export function RegistrationModal({
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [declined, setDeclined] = useState(false);
+  const [declinedEmail, setDeclinedEmail] = useState("");
+  const [declinedStatus, setDeclinedStatus] = useState<
+    "idle" | "submitting" | "done" | "error"
+  >("idle");
 
   const [profileType, setProfileType] = useState("");
   const [painPoint, setPainPoint] = useState("");
