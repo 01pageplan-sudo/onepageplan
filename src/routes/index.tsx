@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Check, Clock, Globe, Timer, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import milanHeadshotAsset from "@/assets/milan-headshot.png.asset.json";
 import {
   Accordion,
   AccordionContent,
