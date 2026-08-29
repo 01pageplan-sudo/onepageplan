@@ -84,8 +84,8 @@ export function RegistrationModal({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [whatsappConsent, setWhatsappConsent] = useState(false);
-  const [voiceConsent, setVoiceConsent] = useState(false);
+  const [whatsappConsent, setWhatsappConsent] = useState(true);
+  const [voiceConsent, setVoiceConsent] = useState(true);
   const [company, setCompany] = useState("");
 
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -304,50 +304,29 @@ export function RegistrationModal({
                 </div>
 
                 <div>
-                  <label className="flex gap-3 text-xs leading-snug text-muted-foreground">
-                    <Checkbox
-                      checked={whatsappConsent}
-                      onCheckedChange={(value) => {
-                        const on = value === true;
-                        setWhatsappConsent(on);
-                        setVoiceConsent(on);
-                      }}
-                      className="mt-0.5"
-                    />
-                    <span>
-                      Yes, send me the joining link and session reminders on WhatsApp. I can opt out
-                      any time by replying STOP. You may also call me with a reminder before the
-                      session.
+                  <Label htmlFor="phone" className="text-sm">
+                    WhatsApp number
+                  </Label>
+                  <div className="mt-1.5 flex items-center overflow-hidden rounded-md border border-input bg-card">
+                    <span className="border-r border-input px-3 py-2 text-sm text-muted-foreground">
+                      +91
                     </span>
-                  </label>
-                </div>
-
-                {whatsappConsent ? (
-                  <div>
-                    <Label htmlFor="phone" className="text-sm">
-                      WhatsApp number
-                    </Label>
-                    <div className="mt-1.5 flex items-center overflow-hidden rounded-md border border-input bg-card">
-                      <span className="border-r border-input px-3 py-2 text-sm text-muted-foreground">
-                        +91
-                      </span>
-                      <input
-                        id="phone"
-                        inputMode="numeric"
-                        type="tel"
-                        value={phone}
-                        onChange={(event) =>
-                          setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))
-                        }
-                        className="w-full bg-transparent px-3 py-2 text-sm outline-none"
-                        autoComplete="tel-national"
-                      />
-                    </div>
-                    {errors.phone ? (
-                      <p className="mt-1 text-xs text-destructive">{errors.phone}</p>
-                    ) : null}
+                    <input
+                      id="phone"
+                      inputMode="numeric"
+                      type="tel"
+                      value={phone}
+                      onChange={(event) =>
+                        setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))
+                      }
+                      className="w-full bg-transparent px-3 py-2 text-sm outline-none"
+                      autoComplete="tel-national"
+                    />
                   </div>
-                ) : null}
+                  {errors.phone ? (
+                    <p className="mt-1 text-xs text-destructive">{errors.phone}</p>
+                  ) : null}
+                </div>
 
                 <input
                   type="text"
@@ -376,13 +355,25 @@ export function RegistrationModal({
                   "Save my seat →"
                 )}
               </Button>
-              <button
-                type="button"
-                className="mt-3 w-full text-xs text-muted-foreground underline"
-                onClick={() => setStep(2)}
-              >
-                Back
-              </button>
+
+              <div className="mt-4">
+                <label className="flex gap-3 text-xs leading-snug text-muted-foreground">
+                  <Checkbox
+                    checked={whatsappConsent}
+                    onCheckedChange={(value) => {
+                      const on = value === true;
+                      setWhatsappConsent(on);
+                      setVoiceConsent(on);
+                    }}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    Yes, send me the joining link and session reminders on WhatsApp. I can opt out
+                    any time by replying STOP. You may also call me with a reminder before the
+                    session.
+                  </span>
+                </label>
+              </div>
             </form>
           )}
         </div>
