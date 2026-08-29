@@ -104,8 +104,8 @@ export function RegistrationModal({
     if (fullName.trim().length < 2) next.fullName = "Please enter your name.";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email.trim()))
       next.email = "Please enter a valid email address.";
-    if (!/^\d{10}$/.test(phone)) next.phone = "Enter exactly 10 digits.";
-    if (!whatsappConsent) next.whatsappConsent = "This is needed so I can send you the joining link.";
+    if (whatsappConsent && !/^\d{10}$/.test(phone))
+      next.phone = "Enter exactly 10 digits so I can send the link on WhatsApp.";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -304,32 +304,7 @@ export function RegistrationModal({
                 </div>
 
                 <div>
-                  <Label htmlFor="phone" className="text-sm">
-                    WhatsApp number
-                  </Label>
-                  <div className="mt-1.5 flex items-center overflow-hidden rounded-md border border-input bg-card">
-                    <span className="border-r border-input px-3 py-2 text-sm text-muted-foreground">
-                      +91
-                    </span>
-                    <input
-                      id="phone"
-                      inputMode="numeric"
-                      type="tel"
-                      value={phone}
-                      onChange={(event) =>
-                        setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))
-                      }
-                      className="w-full bg-transparent px-3 py-2 text-sm outline-none"
-                      autoComplete="tel-national"
-                    />
-                  </div>
-                  {errors.phone ? (
-                    <p className="mt-1 text-xs text-destructive">{errors.phone}</p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-3">
-                  <label className="flex gap-3 text-sm leading-snug">
+                  <label className="flex gap-3 text-xs leading-snug text-muted-foreground">
                     <Checkbox
                       checked={whatsappConsent}
                       onCheckedChange={(value) => setWhatsappConsent(value === true)}
@@ -337,22 +312,38 @@ export function RegistrationModal({
                     />
                     <span>
                       Yes, send me the joining link and session reminders on WhatsApp. I can opt out
-                      any time by replying STOP.
+                      any time by replying STOP. You may also call me with a reminder before the
+                      session.
                     </span>
                   </label>
-                  {errors.whatsappConsent ? (
-                    <p className="text-xs text-destructive">{errors.whatsappConsent}</p>
-                  ) : null}
-
-                  <label className="flex gap-3 text-xs leading-snug text-muted-foreground">
-                    <Checkbox
-                      checked={voiceConsent}
-                      onCheckedChange={(value) => setVoiceConsent(value === true)}
-                      className="mt-0.5"
-                    />
-                    <span>You may also call me with a reminder before the session.</span>
-                  </label>
                 </div>
+
+                {whatsappConsent ? (
+                  <div>
+                    <Label htmlFor="phone" className="text-sm">
+                      WhatsApp number
+                    </Label>
+                    <div className="mt-1.5 flex items-center overflow-hidden rounded-md border border-input bg-card">
+                      <span className="border-r border-input px-3 py-2 text-sm text-muted-foreground">
+                        +91
+                      </span>
+                      <input
+                        id="phone"
+                        inputMode="numeric"
+                        type="tel"
+                        value={phone}
+                        onChange={(event) =>
+                          setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))
+                        }
+                        className="w-full bg-transparent px-3 py-2 text-sm outline-none"
+                        autoComplete="tel-national"
+                      />
+                    </div>
+                    {errors.phone ? (
+                      <p className="mt-1 text-xs text-destructive">{errors.phone}</p>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <input
                   type="text"
