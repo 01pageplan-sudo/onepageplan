@@ -370,7 +370,7 @@ export function RegistrationModal({
                   <span>
                     Yes, send me the joining link and session reminders on WhatsApp, and subscribe
                     me to the email newsletter. I can opt out any time by replying STOP. You may
-                    also call me with a reminder before the session.
+                    also call me with a reminder.
                   </span>
                 </label>
               </div>
