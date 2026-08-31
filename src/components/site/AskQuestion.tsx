@@ -63,8 +63,9 @@ export function AskQuestion() {
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <h2 className="text-lg font-bold">Ask me one question</h2>
+    <section className="rounded-lg border-2 border-primary bg-card p-6">
+      <p className="label-caps text-[var(--brass)]">Step 2.</p>
+      <h2 className="mt-2 text-xl font-bold">Ask me one question</h2>
       <p className="mt-2 text-sm text-muted-foreground">
         I answer these live at the end of Saturday&apos;s session. Ask the one thing you have not
         had a straight answer to.
