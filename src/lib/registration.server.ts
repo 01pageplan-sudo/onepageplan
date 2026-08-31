@@ -1,5 +1,6 @@
 import { getNextSessionIST, sessionDateISO, formatSessionDayMonth } from "./session";
 import { DISCLAIMER_TEXT, buildConfirmationEmail } from "./email-template.server";
+import { getSessionCalendar } from "./calendar";
 
 export type RegistrationInput = {
   full_name: string;
@@ -124,7 +125,10 @@ export async function sendConfirmationEmail(
       process.env["WEBINAR_URL"] ||
       "https://onepageplan.in/confirmed";
     const firstName = args.full_name.trim().split(/\s+/)[0] ?? "there";
-    const { html, text } = buildConfirmationEmail(firstName, webinarUrl);
+    // Built from the server side session date that was written to the database,
+    // never from a value passed in by the browser.
+    const calendar = getSessionCalendar(webinarUrl, getNextSessionIST());
+    const { html, text } = buildConfirmationEmail(firstName, webinarUrl, calendar.googleUrl);
     const fromEmail = process.env["FROM_EMAIL"] || "connect@onepageplan.in";
     const fromName = process.env["FROM_NAME"] || "Milan Dodhia";
     const from = `${fromName} <${fromEmail}>`;
