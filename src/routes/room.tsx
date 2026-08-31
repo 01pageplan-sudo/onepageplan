@@ -12,6 +12,7 @@ import {
 } from "@/components/site/registration-context";
 import { track } from "@/lib/analytics";
 import { getJoinToken } from "@/lib/room.functions";
+import { WEBINAR_REGISTER_URL } from "@/lib/calendar";
 
 const TITLE = "Join the session | The Money Reality Masterclass";
 const DESCRIPTION =
@@ -55,7 +56,9 @@ function Card({ children }: { children: React.ReactNode }) {
 function RoomPage() {
   const testMode =
     ((import.meta.env["VITE_ROOM_TEST_MODE"] as string | undefined) ?? "false").trim() === "true";
-  const webinarUrl = (import.meta.env["VITE_WEBINAR_URL"] as string | undefined) ?? "";
+  const webinarUrl =
+    ((import.meta.env["VITE_WEBINAR_URL"] as string | undefined) || "").trim() ||
+    WEBINAR_REGISTER_URL;
   const { open } = useRegistration();
 
   const [email, setEmail] = useState("");
