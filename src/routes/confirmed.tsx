@@ -176,6 +176,8 @@ function ConfirmedPage() {
             </Button>
           </section>
         ) : null}
+
+        <AskQuestion />
       </main>
 
       <Footer />
