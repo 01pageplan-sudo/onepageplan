@@ -110,9 +110,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     a.appendChild(r);
 })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');`,
       },
-      {
-        type: "text/javascript",
-        children: `!function(f,b,e,v,n,t,s)
+      // Meta Pixel base code. See src/lib/analytics.ts for the two counting
+      // caveats (existing URL based custom conversion on /confirmed, and the
+      // webinar platform's own pixel toggle). Nothing loads when the id is
+      // empty, so the site works with analytics entirely absent.
+      ...(META_PIXEL_ID
+        ? [
+            {
+              type: "text/javascript",
+              children: `!function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
 n.callMethod.apply(n,arguments):n.queue.push(arguments)};
 if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
@@ -120,10 +126,13 @@ n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '1670593947760231');
+fbq('init', '${META_PIXEL_ID}');
 fbq('track', 'PageView');`,
-      },
+            },
+          ]
+        : []),
     ],
+
   }),
   shellComponent: RootShell,
   component: RootComponent,
