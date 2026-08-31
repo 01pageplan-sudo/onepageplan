@@ -35,6 +35,38 @@ export type Database = {
         }
         Relationships: []
       }
+      prework_questions: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          question: string
+          registration_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          question: string
+          registration_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          question?: string
+          registration_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prework_questions_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       registrations: {
         Row: {
           consent_at: string | null

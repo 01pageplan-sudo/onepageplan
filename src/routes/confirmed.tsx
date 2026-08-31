@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Check } from "lucide-react";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
+import { AskQuestion } from "@/components/site/AskQuestion";
 import { Footer } from "@/components/site/Footer";
 import { VideoEmbed } from "@/components/site/VideoEmbed";
 import { Wordmark } from "@/components/site/Header";
@@ -57,10 +59,30 @@ function downloadIcs(webinarUrl: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Fire the Meta Pixel Lead event once per registration, never on a refresh. */
+function useTrackLeadOnce() {
+  useEffect(() => {
+    const key = "opp_lead_tracked";
+    try {
+      if (window.sessionStorage.getItem(key) === "1") return;
+      window.sessionStorage.setItem(key, "1");
+    } catch {
+      /* storage blocked, still track once for this page view */
+    }
+    const fbq = (window as unknown as { fbq?: (...args: unknown[]) => void }).fbq;
+    if (typeof fbq === "function") {
+      fbq("track", "Lead", { content_name: "Money Reality Masterclass registration" });
+    }
+  }, []);
+}
+
 function ConfirmedPage() {
   const webinarUrl = (import.meta.env["VITE_WEBINAR_URL"] as string | undefined) ?? "";
   const prepVideo = import.meta.env["VITE_PREP_VIDEO_URL"] as string | undefined;
   const groupUrl = import.meta.env["VITE_WHATSAPP_GROUP_URL"] as string | undefined;
+
+  useTrackLeadOnce();
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -154,6 +176,8 @@ function ConfirmedPage() {
             </Button>
           </section>
         ) : null}
+
+        <AskQuestion />
       </main>
 
       <Footer />
