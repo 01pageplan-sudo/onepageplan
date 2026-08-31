@@ -35,7 +35,9 @@ export const getJoinToken = createServerFn({ method: "POST" })
       }
 
       const apiToken = process.env["WEBINAR_GG_API_TOKEN"];
-      const webinarId = process.env["WEBINAR_GG_WEBINAR_ID"];
+      // Same id in the join-token request and in the iframe src, always.
+      const webinarId =
+        (process.env["WEBINAR_GG_WEBINAR_ID"] || "").trim() || "cmthk6y4001kos60ybxfkbc67";
       if (!apiToken || !webinarId) {
         console.error("getJoinToken: WEBINAR_GG_API_TOKEN / WEBINAR_GG_WEBINAR_ID not set");
         return { ok: false as const, reason: "token_failed" as const };
