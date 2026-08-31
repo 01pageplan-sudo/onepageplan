@@ -344,7 +344,7 @@ export function RegistrationModal({
 
                 <input
                   type="text"
-                  name="company"
+                  name="opp_ref_code"
                   tabIndex={-1}
                   autoComplete="off"
                   aria-hidden="true"
