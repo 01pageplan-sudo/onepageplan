@@ -148,9 +148,17 @@ export const fetchAdminRegistrations = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string }) => data)
   .handler(async ({ data }) => {
     const expected = process.env["ADMIN_PASSWORD"];
-    if (!expected || data.password !== expected) {
+    if (!expected) {
+      return {
+        ok: false as const,
+        error:
+          "This deployment has no admin password configured on the server, so no password will work here. Use the Lovable-hosted site.",
+      };
+    }
+    if (data.password !== expected) {
       return { ok: false as const, error: "Wrong password." };
     }
+
 
     const { sessionDateISO } = await import("./session");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
