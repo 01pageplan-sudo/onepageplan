@@ -183,19 +183,6 @@ function AdminPage() {
               </div>
             </div>
 
-            <section className="rounded-lg border border-border bg-card p-4">
-              <h2 className="label-caps text-[var(--brass)]">Counts by situation</h2>
-              <ul className="mt-3 space-y-1 text-sm">
-                {Object.entries(painCounts)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([key, count]) => (
-                    <li key={key} className="flex justify-between gap-4">
-                      <span className="text-muted-foreground">{key}</span>
-                      <span className="tabular font-semibold">{count}</span>
-                    </li>
-                  ))}
-              </ul>
-            </section>
 
             <div className="overflow-x-auto rounded-lg border border-border bg-card">
               <table className="w-full text-left text-xs">
