@@ -8,6 +8,9 @@ import { getNextSessionIST } from "./session";
 
 export const SESSION_TITLE = "The Money Reality Masterclass";
 
+/** Where the session actually runs. */
+export const ROOM_URL = "https://onepageplan.in/room";
+
 /** YYYYMMDDTHHMMSSZ */
 function compactUtc(date: Date): string {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
