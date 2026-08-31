@@ -25,6 +25,8 @@ See you there.
 Milan Dodhia
 Financial Educator, Milanaire
 
+Calendar link: ${googleCalendarUrl}
+
 ---
 ${DISCLAIMER_TEXT}
 
