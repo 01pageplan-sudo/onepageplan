@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Footer } from "@/components/site/Footer";
-import { Wordmark } from "@/components/site/Header";
+import { BackToHome, Wordmark } from "@/components/site/Header";
 import { formatLongDate } from "@/lib/session";
 
 const TITLE = "Privacy Policy | The One Page Plan";
