@@ -48,19 +48,21 @@ export const registerAttendee = createServerFn({ method: "POST" })
         };
       }
 
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { createPublicServerClient } = await import("./supabase-public.server");
+      const db = createPublicServerClient();
       const row = helpers.buildRow(data);
-      const saved = await helpers.upsertRegistration(supabaseAdmin, row);
+      const saved = await helpers.upsertRegistration(db, row);
+
       if (!saved) return { ok: false as const, error: "Could not save your seat." };
 
       // Delivery must never fail or delay the registration.
       const delivery = Promise.allSettled([
-        helpers.sendConfirmationEmail(supabaseAdmin, {
+        helpers.sendConfirmationEmail(db, {
           id: saved.id,
           email: row.email,
           full_name: row.full_name,
         }),
-        helpers.sendWhatsApp(supabaseAdmin, {
+        helpers.sendWhatsApp(db, {
           id: saved.id,
           phone_e164: row.phone_e164,
           full_name: row.full_name,
@@ -109,11 +111,11 @@ export const submitPreworkQuestion = createServerFn({ method: "POST" })
           ? data.registration_id
           : null;
 
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { error } = await supabaseAdmin.from("prework_questions").insert({
-        question: question.slice(0, 500),
-        email: email === "" ? null : email,
-        registration_id: registrationId,
+      const { createPublicServerClient } = await import("./supabase-public.server");
+      const { error } = await createPublicServerClient().rpc("submit_prework_question", {
+        p_question: question.slice(0, 500),
+        ...(registrationId ? { p_registration_id: registrationId } : {}),
+        ...(email === "" ? {} : { p_email: email }),
       });
       if (error) throw error;
 
@@ -133,13 +135,11 @@ export const subscribeNewsletter = createServerFn({ method: "POST" })
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) {
       return { ok: false as const, error: "Please enter a valid email address." };
     }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("newsletter_subscribers")
-      .upsert(
-        { email, source: data.source ?? "declined_modal" },
-        { onConflict: "email" },
-      );
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const { error } = await createPublicServerClient().rpc("subscribe_newsletter", {
+      p_email: email,
+      p_source: data.source ?? "declined_modal",
+    });
     if (error) return { ok: false as const, error: "Could not save that. Please try once more." };
     return { ok: true as const };
   });
@@ -147,31 +147,28 @@ export const subscribeNewsletter = createServerFn({ method: "POST" })
 export const fetchAdminRegistrations = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string }) => data)
   .handler(async ({ data }) => {
-    const expected = process.env["ADMIN_PASSWORD"];
-    if (!expected) {
-      return {
-        ok: false as const,
-        error:
-          "This deployment has no admin password configured on the server, so no password will work here. Use the Lovable-hosted site.",
-      };
-    }
-    if (data.password !== expected) {
-      return { ok: false as const, error: "Wrong password." };
-    }
-
-
     const { sessionDateISO } = await import("./session");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const sessionDate = sessionDateISO();
 
-    const { data: rows, error } = await supabaseAdmin
-      .from("registrations")
-      .select(
-        "created_at, full_name, email, phone_e164, whatsapp_consent, voice_consent, profile_type, pain_point, status, email_sent_at",
-      )
-      .eq("session_date", sessionDateISO())
-      .order("created_at", { ascending: false });
+    try {
+      const { data: rows, error } = await createPublicServerClient().rpc("admin_registrations", {
+        p_password: data.password,
+        p_session_date: sessionDate,
+      });
 
-    if (error) return { ok: false as const, error: "Could not load registrations." };
+      if (error) {
+        if ((error.message ?? "").includes("unauthorized")) {
+          return { ok: false as const, error: "Wrong password." };
+        }
+        console.error("fetchAdminRegistrations failed:", error.message);
+        return { ok: false as const, error: "Could not load registrations." };
+      }
 
-    return { ok: true as const, sessionDate: sessionDateISO(), rows: rows ?? [] };
+      return { ok: true as const, sessionDate, rows: rows ?? [] };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("fetchAdminRegistrations failed:", message);
+      return { ok: false as const, error: "Could not load registrations." };
+    }
   });

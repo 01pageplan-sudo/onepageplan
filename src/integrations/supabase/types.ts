@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_config: {
+        Row: {
+          created_at: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       newsletter_subscribers: {
         Row: {
           created_at: string
@@ -156,7 +177,52 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_registrations: {
+        Args: { p_password: string; p_session_date: string }
+        Returns: {
+          created_at: string
+          email: string
+          email_sent_at: string
+          full_name: string
+          pain_point: string
+          phone_e164: string
+          profile_type: string
+          status: string
+          voice_consent: boolean
+          whatsapp_consent: boolean
+        }[]
+      }
+      mark_registration_delivery: {
+        Args: {
+          p_channel: string
+          p_error?: string
+          p_id: string
+          p_sent: boolean
+        }
+        Returns: undefined
+      }
+      record_webinar_event: {
+        Args: {
+          p_email: string
+          p_payload: Json
+          p_session_date: string
+          p_status: string
+        }
+        Returns: boolean
+      }
+      register_attendee: { Args: { p: Json }; Returns: string }
+      submit_prework_question: {
+        Args: {
+          p_email?: string
+          p_question: string
+          p_registration_id?: string
+        }
+        Returns: undefined
+      }
+      subscribe_newsletter: {
+        Args: { p_email: string; p_source?: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
