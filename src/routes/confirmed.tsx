@@ -102,22 +102,33 @@ function ConfirmedPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             Your details are with us. The joining link is on its way by email and on WhatsApp.
           </p>
-        </div>
-
-        <div className="rounded-lg border-2 border-primary bg-card p-6">
-          <p className="label-caps text-[var(--brass)]">Step 2. Confirm on the session platform.</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            One more short form, and this is the one that lets you in on the night.
-          </p>
           <Button
-            asChild
-            className="mt-5 h-auto w-full bg-primary py-4 text-base font-semibold text-primary-foreground hover:bg-[var(--highlight)]"
+            variant="outline"
+            className="mt-5 w-full sm:w-auto"
+            onClick={() => downloadIcs(webinarUrl)}
           >
-            <a href={webinarUrl || "#"} target="_blank" rel="noopener noreferrer">
-              Confirm my seat →
-            </a>
+            Download the calendar file
           </Button>
         </div>
+
+        <AskQuestion />
+
+        {groupUrl ? (
+          <section className="rounded-lg border border-border bg-card p-5">
+            <p className="label-caps text-[var(--brass)]">Step 3.</p>
+            <h2 className="mt-2 text-lg font-bold">Join the WhatsApp group</h2>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+              <li>Reminders before the session.</li>
+              <li>The resources sent straight to you.</li>
+              <li>Somewhere to ask a question before Saturday.</li>
+            </ul>
+            <Button asChild variant="outline" className="mt-5">
+              <a href={groupUrl} target="_blank" rel="noopener noreferrer">
+                Join the group →
+              </a>
+            </Button>
+          </section>
+        ) : null}
 
         {prepVideo ? (
           <section>
