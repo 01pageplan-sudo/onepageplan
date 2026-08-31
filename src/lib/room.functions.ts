@@ -1,0 +1,109 @@
+import { createServerFn } from "@tanstack/react-start";
+import { getRequestIP } from "@tanstack/react-start/server";
+
+/** 10 requests per IP per 10 minutes. */
+const roomBuckets = new Map<string, number[]>();
+
+function isRoomRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const windowMs = 10 * 60 * 1000;
+  const hits = (roomBuckets.get(ip) ?? []).filter((t) => now - t < windowMs);
+  hits.push(now);
+  roomBuckets.set(ip, hits);
+  if (roomBuckets.size > 5000) roomBuckets.clear();
+  return hits.length > 10;
+}
+
+function safeRequestIP(): string {
+  try {
+    return getRequestIP({ xForwardedFor: true }) ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+export type JoinTokenResult =
+  | { ok: true; token: string; webinarId: string }
+  | { ok: false; reason: "not_registered" | "token_failed" | "rate_limited" };
+
+export const getJoinToken = createServerFn({ method: "POST" })
+  .inputValidator((data: { email: string }) => data)
+  .handler(async ({ data }): Promise<JoinTokenResult> => {
+    try {
+      if (isRoomRateLimited(safeRequestIP())) {
+        return { ok: false as const, reason: "rate_limited" as const };
+      }
+
+      const apiToken = process.env["WEBINAR_GG_API_TOKEN"];
+      const webinarId = process.env["WEBINAR_GG_WEBINAR_ID"];
+      if (!apiToken || !webinarId) {
+        console.error("getJoinToken: WEBINAR_GG_API_TOKEN / WEBINAR_GG_WEBINAR_ID not set");
+        return { ok: false as const, reason: "token_failed" as const };
+      }
+
+      const testMode =
+        (process.env["VITE_ROOM_TEST_MODE"] ?? process.env["ROOM_TEST_MODE"] ?? "false").trim() ===
+        "true";
+
+      let fullName = "Test Attendee";
+      let email = "test@onepageplan.in";
+
+      if (!testMode) {
+        email = (data.email ?? "").trim().toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) {
+          return { ok: false as const, reason: "not_registered" as const };
+        }
+
+        const { sessionDateISO } = await import("./session");
+        const { createPublicServerClient } = await import("./supabase-public.server");
+        const { data: name, error } = await createPublicServerClient().rpc(
+          "lookup_registration_for_room",
+          { p_email: email, p_session_date: sessionDateISO() },
+        );
+        if (error) {
+          console.error("getJoinToken lookup failed:", error.message);
+          return { ok: false as const, reason: "token_failed" as const };
+        }
+        if (!name) return { ok: false as const, reason: "not_registered" as const };
+        fullName = String(name);
+      }
+
+      const response = await fetch("https://webinar-api.webinar.gg/api/v1/webinar/join-token", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${apiToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ webinarId, name: fullName, email }),
+      });
+
+      const body = await response.text();
+      if (!response.ok) {
+        // Logged in full on purpose: the upstream field names are read from here.
+        console.error("webinar.gg join-token failed", response.status, body);
+        return { ok: false as const, reason: "token_failed" as const };
+      }
+
+      let token = "";
+      try {
+        const parsed = JSON.parse(body) as Record<string, unknown>;
+        const nested = (parsed["data"] ?? {}) as Record<string, unknown>;
+        const candidate =
+          parsed["token"] ?? parsed["joinToken"] ?? nested["token"] ?? nested["joinToken"];
+        if (typeof candidate === "string") token = candidate;
+      } catch {
+        token = body.trim();
+      }
+
+      if (!token) {
+        console.error("webinar.gg join-token: no token in response", response.status, body);
+        return { ok: false as const, reason: "token_failed" as const };
+      }
+
+      return { ok: true as const, token, webinarId };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("getJoinToken failed:", message);
+      return { ok: false as const, reason: "token_failed" as const };
+    }
+  });
