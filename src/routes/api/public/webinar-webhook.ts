@@ -50,7 +50,7 @@ export const Route = createFileRoute("/api/public/webinar-webhook")({
           if (/join|attend|present|live/.test(event)) status = "attended";
           if (/drop|left|early|exit/.test(event)) status = "dropped_off";
 
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { createPublicServerClient } = await import("@/lib/supabase-public.server");
           const { sessionDateISO } = await import("@/lib/session");
 
           if (!email) {
@@ -58,25 +58,21 @@ export const Route = createFileRoute("/api/public/webinar-webhook")({
             return new Response("ok");
           }
 
-          const { data: match } = await supabaseAdmin
-            .from("registrations")
-            .select("id")
-            .eq("email", email.toLowerCase())
-            .eq("session_date", sessionDateISO())
-            .maybeSingle();
+          const { data: matched, error } = await createPublicServerClient().rpc(
+            "record_webinar_event",
+            {
+              p_email: email.toLowerCase(),
+              p_session_date: sessionDateISO(),
+              p_status: status ?? "",
+              p_payload: body as never,
+            },
+          );
 
-          if (!match) {
+          if (error) throw error;
+          if (!matched) {
             console.log("webinar-webhook: no matching registration for", email);
-            return new Response("ok");
           }
 
-          await supabaseAdmin
-            .from("registrations")
-            .update({
-              raw_webhook: body as never,
-              ...(status ? { status } : {}),
-            })
-            .eq("id", match.id);
         } catch (error) {
           console.error("webinar-webhook error", error);
         }

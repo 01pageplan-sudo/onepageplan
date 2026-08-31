@@ -79,104 +79,103 @@ export function buildRow(input: RegistrationInput) {
   };
 }
 
-type Admin = Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"];
+type Db = import("./supabase-public.server").PublicServerClient;
 
-/** Upsert on (lower(email), session_date), never downgrading a true consent. */
+/** Records whether the email / WhatsApp went out, tolerating any failure. */
+async function markDelivery(
+  db: Db,
+  id: string,
+  channel: "email" | "whatsapp",
+  sent: boolean,
+  error?: string,
+) {
+  try {
+    await db.rpc("mark_registration_delivery", {
+      p_id: id,
+      p_channel: channel,
+      p_sent: sent,
+      ...(error ? { p_error: error.slice(0, 500) } : {}),
+    });
+  } catch (markError) {
+    console.error("could not record delivery state:", markError);
+  }
+}
+
+/** Upsert on (email, session_date) through a database function. */
 export async function upsertRegistration(
-  supabaseAdmin: Admin,
+  db: Db,
   row: ReturnType<typeof buildRow>,
 ): Promise<{ id: string } | null> {
-  const { data: existing } = await supabaseAdmin
-    .from("registrations")
-    .select("id, voice_consent, voice_consent_at, consent_at")
-    .eq("email", row.email)
-    .eq("session_date", row.session_date)
-    .maybeSingle();
-
-  if (existing) {
-    const voice = row.voice_consent || existing.voice_consent;
-    const { data, error } = await supabaseAdmin
-      .from("registrations")
-      .update({
-        full_name: row.full_name,
-        ...(row.phone_e164 ? { phone_e164: row.phone_e164 } : {}),
-        whatsapp_consent: row.whatsapp_consent,
-        consent_at: row.whatsapp_consent ? (existing.consent_at ?? row.consent_at) : existing.consent_at,
-        voice_consent: voice,
-        voice_consent_at: voice ? (existing.voice_consent_at ?? row.voice_consent_at) : null,
-        profile_type: row.profile_type,
-        pain_point: row.pain_point,
-      })
-      .eq("id", existing.id)
-      .select("id")
-      .single();
-    if (error) throw error;
-    return data;
-  }
-
-  const { data, error } = await supabaseAdmin
-    .from("registrations")
-    .insert(row)
-    .select("id")
-    .single();
+  const { data, error } = await db.rpc("register_attendee", {
+    p: JSON.parse(JSON.stringify(row)) as never,
+  });
   if (error) throw error;
-  return data;
+  if (!data) return null;
+  return { id: data as unknown as string };
 }
 
 export async function sendConfirmationEmail(
-  supabaseAdmin: Admin,
+  db: Db,
   args: { id: string; email: string; full_name: string },
 ) {
   try {
-    const { sendLovableEmail } = await import("@lovable.dev/email-js");
-    const apiKey = process.env["LOVABLE_API_KEY"];
-    if (!apiKey) throw new Error("Email sending is not configured yet.");
-
-    const webinarUrl = process.env["VITE_WEBINAR_URL"] ?? "https://onepageplan.in/confirmed";
+    const webinarUrl =
+      process.env["VITE_WEBINAR_URL"] ||
+      process.env["WEBINAR_URL"] ||
+      "https://onepageplan.in/confirmed";
     const firstName = args.full_name.trim().split(/\s+/)[0] ?? "there";
     const { html, text } = buildConfirmationEmail(firstName, webinarUrl);
-    const fromEmail = process.env["FROM_EMAIL"] ?? "connect@onepageplan.in";
-    const fromName = process.env["FROM_NAME"] ?? "Milan Dodhia";
+    const fromEmail = process.env["FROM_EMAIL"] || "connect@onepageplan.in";
+    const fromName = process.env["FROM_NAME"] || "Milan Dodhia";
+    const from = `${fromName} <${fromEmail}>`;
+    const subject = "Your seat is saved for this Saturday";
 
-    const result = await sendLovableEmail(
-      {
-        to: args.email,
-        from: `${fromName} <${fromEmail}>`,
-        subject: "Your seat is saved for this Saturday",
-        html,
-        text,
-      },
-      { apiKey },
-    );
+    const resendKey = process.env["RESEND_API_KEY"];
+    const lovableKey = process.env["LOVABLE_API_KEY"];
 
-    if (result && result.success === false) {
-      throw new Error(String(result.status ?? "not sent"));
+    if (resendKey) {
+      // Works on any host, including Vercel.
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${resendKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ from, to: [args.email], subject, html, text }),
+      });
+      if (!response.ok) {
+        throw new Error(`Resend responded ${response.status}: ${(await response.text()).slice(0, 200)}`);
+      }
+    } else if (lovableKey) {
+      const { sendLovableEmail } = await import("@lovable.dev/email-js");
+      const result = await sendLovableEmail(
+        { to: args.email, from, subject, html, text },
+        { apiKey: lovableKey },
+      );
+      if (result && result.success === false) {
+        throw new Error(String(result.status ?? "not sent"));
+      }
+    } else {
+      throw new Error("No email provider configured (set RESEND_API_KEY).");
     }
 
-
-    await supabaseAdmin
-      .from("registrations")
-      .update({ email_sent_at: new Date().toISOString(), email_error: null })
-      .eq("id", args.id);
+    await markDelivery(db, args.id, "email", true);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("confirmation email failed:", message);
-    await supabaseAdmin
-      .from("registrations")
-      .update({ email_error: message.slice(0, 500) })
-      .eq("id", args.id);
+    await markDelivery(db, args.id, "email", false, message);
   }
 }
 
 export async function sendWhatsApp(
-  supabaseAdmin: Admin,
+  db: Db,
   args: { id: string; phone_e164: string; full_name: string; whatsapp_consent: boolean },
 ) {
   try {
     if (!args.whatsapp_consent) return;
 
     const enabled = process.env["WHATSAPP_ENABLED"] === "true";
-    const webinarUrl = process.env["VITE_WEBINAR_URL"] ?? "";
+    const webinarUrl = process.env["VITE_WEBINAR_URL"] || process.env["WEBINAR_URL"] || "";
     const firstName = args.full_name.trim().split(/\s+/)[0] ?? "there";
 
     if (!enabled) {
@@ -204,19 +203,14 @@ export async function sendWhatsApp(
       throw new Error(`AiSensy responded ${response.status}: ${(await response.text()).slice(0, 200)}`);
     }
 
-    await supabaseAdmin
-      .from("registrations")
-      .update({ whatsapp_sent_at: new Date().toISOString(), whatsapp_error: null })
-      .eq("id", args.id);
+    await markDelivery(db, args.id, "whatsapp", true);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("whatsapp send failed:", message);
-    await supabaseAdmin
-      .from("registrations")
-      .update({ whatsapp_error: message.slice(0, 500) })
-      .eq("id", args.id);
+    await markDelivery(db, args.id, "whatsapp", false, message);
   }
 }
+
 
 export function sessionChipDate() {
   return formatSessionDayMonth();
