@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { track } from "@/lib/analytics";
 import { registerAttendee, subscribeNewsletter } from "@/lib/registration.functions";
 
 const PROFILE_OPTIONS = [
@@ -102,6 +103,10 @@ export function RegistrationModal({
     setTracking(readTracking());
   }, []);
 
+  useEffect(() => {
+    if (open) track("PopupOpened");
+  }, [open]);
+
   const progress = declined ? 1 : step;
 
   function validateStep3() {
@@ -142,7 +147,10 @@ export function RegistrationModal({
         } catch {
           /* storage blocked, registration still saved */
         }
-        navigate({ to: "/confirmed" });
+        navigate({
+          to: "/confirmed",
+          state: { registrationId: result.registrationId ?? undefined } as never,
+        });
         return;
       }
       setFormError(result.error ?? "Something went wrong on our side. Please try once more.");
@@ -193,14 +201,20 @@ export function RegistrationModal({
               <div className="mt-5 space-y-3">
                 <button
                   type="button"
-                  onClick={() => setStep(2)}
+                  onClick={() => {
+                    track("Qualified");
+                    setStep(2);
+                  }}
                   className="w-full rounded-lg border border-border bg-card p-4 text-left text-sm leading-snug transition-colors hover:border-[var(--brass)]"
                 >
                   I want to understand my own money and make my own decisions
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDeclined(true)}
+                  onClick={() => {
+                    track("Disqualified");
+                    setDeclined(true);
+                  }}
                   className="w-full rounded-lg border border-border bg-card p-4 text-left text-sm leading-snug transition-colors hover:border-[var(--brass)]"
                 >
                   I want someone to tell me which stock or fund to buy
@@ -261,7 +275,13 @@ export function RegistrationModal({
                   if (!profileType) next.profileType = "Please choose one.";
                   if (!painPoint) next.painPoint = "Please choose one.";
                   setErrors(next);
-                  if (Object.keys(next).length === 0) setStep(3);
+                  if (Object.keys(next).length === 0) {
+                    track("ProfileSubmitted", {
+                      profile_type: profileType,
+                      pain_point: painPoint,
+                    });
+                    setStep(3);
+                  }
                 }}
               >
                 Continue →

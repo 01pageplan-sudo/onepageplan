@@ -1,7 +1,11 @@
 export const DISCLAIMER_TEXT =
   "The One Page Plan is a financial education programme by Milanaire, operated by Mannrs Wellness LLP. Everything on this page and in this session is educational content only. It is not investment advice and it is not a recommendation to buy or sell any security, scheme, policy or product. No returns are promised or implied. For anything tax related please consult a Chartered Accountant. For anything legal please consult a lawyer. Please make your own decisions.";
 
-export function buildConfirmationEmail(firstName: string, webinarUrl: string) {
+export function buildConfirmationEmail(
+  firstName: string,
+  webinarUrl: string,
+  googleCalendarUrl: string,
+) {
   const text = `Hello ${firstName},
 
 Your seat for The Money Reality Masterclass is saved. It runs this Saturday at 7:00 PM IST and takes ninety minutes.
@@ -10,12 +14,18 @@ One thing left to do. Confirm your seat on the session platform using the link b
 
 ${webinarUrl}
 
+Add it to your calendar: ${googleCalendarUrl}
+
 Before Saturday, sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers, not watching mine.
+
+Session details: this Saturday, 7:00 PM to 8:30 PM IST, ninety minutes, online.
 
 See you there.
 
 Milan Dodhia
 Financial Educator, Milanaire
+
+Calendar link: ${googleCalendarUrl}
 
 ---
 ${DISCLAIMER_TEXT}
@@ -51,7 +61,13 @@ To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remo
               </td>
             </tr>
             <tr>
+              <td align="center" style="font-size:14px;line-height:1.6;padding-bottom:22px;">Add it to your calendar: <a href="${googleCalendarUrl}" style="color:#4A5A3A;font-weight:600;">Google Calendar</a></td>
+            </tr>
+            <tr>
               <td style="font-size:15px;line-height:1.6;padding-bottom:14px;">Before Saturday, sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers, not watching mine.</td>
+            </tr>
+            <tr>
+              <td style="font-size:12px;line-height:1.6;color:#6B6A63;padding-bottom:14px;">Session details: this Saturday, 7:00 PM to 8:30 PM IST, ninety minutes, online.</td>
             </tr>
             <tr>
               <td style="font-size:15px;line-height:1.6;padding-bottom:6px;">See you there.</td>

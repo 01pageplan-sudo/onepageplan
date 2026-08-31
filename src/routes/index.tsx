@@ -20,6 +20,7 @@ import {
   RegistrationProvider,
   useRegistration,
 } from "@/components/site/registration-context";
+import { track } from "@/lib/analytics";
 import { formatSessionDayMonth } from "@/lib/session";
 
 const TITLE = "The Money Reality Masterclass | The One Page Plan";
@@ -112,6 +113,10 @@ function Hero() {
 
   useEffect(() => {
     setChipDate(formatSessionDayMonth());
+    track("ViewContent", {
+      content_name: "money_reality_masterclass",
+      content_type: "webinar",
+    });
   }, []);
 
   const vslUrl = import.meta.env["VITE_VSL_URL"] as string | undefined;
