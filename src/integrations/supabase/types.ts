@@ -192,6 +192,10 @@ export type Database = {
           whatsapp_consent: boolean
         }[]
       }
+      lookup_registration_for_room: {
+        Args: { p_email: string; p_session_date: string }
+        Returns: string
+      }
       mark_registration_delivery: {
         Args: {
           p_channel: string
