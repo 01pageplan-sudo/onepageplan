@@ -8,8 +8,14 @@ import { getNextSessionIST } from "./session";
 
 export const SESSION_TITLE = "The Money Reality Masterclass";
 
+/** The webinar platform id. Same value in the join-token call and the iframe. */
+export const WEBINAR_ID = "cmthk6y4001kos60ybxfkbc67";
+
+/** The one public joining link, used everywhere. */
+export const WEBINAR_REGISTER_URL = `https://webinar.gg/register/${WEBINAR_ID}`;
+
 /** Where the session actually runs. */
-export const ROOM_URL = "https://onepageplan.in/room";
+export const ROOM_URL = WEBINAR_REGISTER_URL;
 
 /** YYYYMMDDTHHMMSSZ */
 function compactUtc(date: Date): string {

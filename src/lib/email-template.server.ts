@@ -6,7 +6,7 @@ export function buildConfirmationEmail(
   webinarUrl: string,
   googleCalendarUrl: string,
 ) {
-  const roomUrl = "https://onepageplan.in/room";
+  const roomUrl = webinarUrl || "https://webinar.gg/register/cmthk6y4001kos60ybxfkbc67";
   const text = `Hello ${firstName},
 
 Your seat for The Money Reality Masterclass is saved. It runs this Saturday at 7:00 PM IST and takes ninety minutes.
