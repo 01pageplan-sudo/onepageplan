@@ -32,8 +32,9 @@ export function getSessionCalendar(
   const startUtc = compactUtc(start);
   const endUtc = compactUtc(end);
   const title = SESSION_TITLE;
-  const location = webinarUrl;
-  const description = `Free, live, ninety minutes. Sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers. Joining link: ${webinarUrl}`;
+  // The session runs inside the site's own room, so that is the link people keep.
+  const location = ROOM_URL;
+  const description = `Free, live, ninety minutes. Sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers. Joining link: ${ROOM_URL}`;
 
   const googleUrl =
     "https://calendar.google.com/calendar/render?action=TEMPLATE" +
