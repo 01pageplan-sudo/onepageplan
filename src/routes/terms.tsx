@@ -40,8 +40,9 @@ function TermsPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto max-w-2xl px-4 py-4">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-4">
           <Wordmark />
+          <BackToHome />
         </div>
       </header>
 
