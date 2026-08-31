@@ -28,52 +28,20 @@ export const Route = createFileRoute("/confirmed")({
   component: ConfirmedPage,
 });
 
-function icsStamp(date: Date) {
-  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-}
-
-function downloadIcs(webinarUrl: string) {
-  const start = getNextSessionIST();
-  const end = new Date(start.getTime() + 90 * 60 * 1000);
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//The One Page Plan//Masterclass//EN",
-    "BEGIN:VEVENT",
-    `UID:${start.getTime()}@onepageplan.in`,
-    `DTSTAMP:${icsStamp(new Date())}`,
-    `DTSTART:${icsStamp(start)}`,
-    `DTEND:${icsStamp(end)}`,
-    "SUMMARY:The Money Reality Masterclass",
-    `LOCATION:${webinarUrl}`,
-    "DESCRIPTION:Ninety minutes, live. Sit somewhere quiet with a pen.",
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ];
-  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "money-reality-masterclass.ics";
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-/** Fire the Meta Pixel Lead event once per registration, never on a refresh. */
-function useTrackLeadOnce() {
+/** Fire the conversion events exactly once per registration. */
+function useTrackRegistrationOnce(registrationId: string | undefined) {
   useEffect(() => {
-    const key = "opp_lead_tracked";
+    if (!registrationId) return; // direct visit: page renders, no conversion events
+    const key = `fired_${registrationId}`;
     try {
       if (window.sessionStorage.getItem(key) === "1") return;
       window.sessionStorage.setItem(key, "1");
     } catch {
-      /* storage blocked, still track once for this page view */
+      /* storage blocked, still fire once for this page view */
     }
-    const fbq = (window as unknown as { fbq?: (...args: unknown[]) => void }).fbq;
-    if (typeof fbq === "function") {
-      fbq("track", "Lead", { content_name: "Money Reality Masterclass registration" });
-    }
-  }, []);
+    track("CompleteRegistration", { content_name: "money_reality_masterclass" });
+    track("Lead");
+  }, [registrationId]);
 }
 
 function ConfirmedPage() {
@@ -81,8 +49,26 @@ function ConfirmedPage() {
   const prepVideo = import.meta.env["VITE_PREP_VIDEO_URL"] as string | undefined;
   const groupUrl = import.meta.env["VITE_WHATSAPP_GROUP_URL"] as string | undefined;
 
-  useTrackLeadOnce();
+  const routerState = Route.useRouterState({
+    select: (state) => state.location.state as { registrationId?: string },
+  });
+  const [registrationId, setRegistrationId] = useState<string | undefined>(
+    routerState?.registrationId,
+  );
+  const [googleUrl, setGoogleUrl] = useState("");
 
+  useEffect(() => {
+    setGoogleUrl(getSessionCalendar(webinarUrl).googleUrl);
+    if (registrationId) return;
+    try {
+      const stored = window.sessionStorage.getItem("opp_registration_id");
+      if (stored) setRegistrationId(stored);
+    } catch {
+      /* storage blocked */
+    }
+  }, [webinarUrl, registrationId]);
+
+  useTrackRegistrationOnce(registrationId);
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,14 +88,24 @@ function ConfirmedPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             Your details are with us. The joining link is on its way by email and on WhatsApp.
           </p>
-          <Button
-            variant="outline"
-            className="mt-5 w-full sm:w-auto"
-            onClick={() => downloadIcs(webinarUrl)}
-          >
-            Download the calendar file
-          </Button>
+
+          <div className="mt-5 border-t border-border pt-5">
+            <h2 className="text-base font-bold">Put it in your calendar</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Ninety minutes, this Saturday at 7:00 PM IST.
+            </p>
+            <Button
+              asChild
+              variant="outline"
+              className="mt-4 w-full border-border bg-background text-primary hover:bg-card sm:w-auto"
+            >
+              <a href={googleUrl} target="_blank" rel="noopener noreferrer">
+                Add to Google Calendar
+              </a>
+            </Button>
+          </div>
         </div>
+
 
         <AskQuestion />
 
