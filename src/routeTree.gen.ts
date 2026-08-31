@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ConfirmedRouteImport } from './routes/confirmed'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RoomRouteImport } from './routes/room'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiPublicWebinarWebhookRouteImport } from './routes/api/public/webinar-webhook'
 
@@ -36,6 +37,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RoomRoute = RoomRouteImport.update({
+  id: '/room',
+  path: '/room',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/confirmed': typeof ConfirmedRoute
   '/privacy': typeof PrivacyRoute
+  '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/confirmed': typeof ConfirmedRoute
   '/privacy': typeof PrivacyRoute
+  '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/confirmed': typeof ConfirmedRoute
   '/privacy': typeof PrivacyRoute
+  '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
 }
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/confirmed'
     | '/privacy'
+    | '/room'
     | '/terms'
     | '/api/public/webinar-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/confirmed'
     | '/privacy'
+    | '/room'
     | '/terms'
     | '/api/public/webinar-webhook'
   id:
@@ -95,6 +106,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/confirmed'
     | '/privacy'
+    | '/room'
     | '/terms'
     | '/api/public/webinar-webhook'
   fileRoutesById: FileRoutesById
@@ -104,6 +116,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ConfirmedRoute: typeof ConfirmedRoute
   PrivacyRoute: typeof PrivacyRoute
+  RoomRoute: typeof RoomRoute
   TermsRoute: typeof TermsRoute
   ApiPublicWebinarWebhookRoute: typeof ApiPublicWebinarWebhookRoute
 }
@@ -138,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/room': {
+      id: '/room'
+      path: '/room'
+      fullPath: '/room'
+      preLoaderRoute: typeof RoomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -160,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ConfirmedRoute: ConfirmedRoute,
   PrivacyRoute: PrivacyRoute,
+  RoomRoute: RoomRoute,
   TermsRoute: TermsRoute,
   ApiPublicWebinarWebhookRoute: ApiPublicWebinarWebhookRoute,
 }

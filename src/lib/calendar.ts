@@ -8,6 +8,9 @@ import { getNextSessionIST } from "./session";
 
 export const SESSION_TITLE = "The Money Reality Masterclass";
 
+/** Where the session actually runs. */
+export const ROOM_URL = "https://onepageplan.in/room";
+
 /** YYYYMMDDTHHMMSSZ */
 function compactUtc(date: Date): string {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
@@ -23,7 +26,7 @@ export type SessionCalendar = {
 };
 
 export function getSessionCalendar(
-  webinarUrl: string,
+  _webinarUrl: string,
   target: Date = getNextSessionIST(),
 ): SessionCalendar {
   // getNextSessionIST() already returns the UTC instant of 19:00 IST.
@@ -32,8 +35,9 @@ export function getSessionCalendar(
   const startUtc = compactUtc(start);
   const endUtc = compactUtc(end);
   const title = SESSION_TITLE;
-  const location = webinarUrl;
-  const description = `Free, live, ninety minutes. Sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers. Joining link: ${webinarUrl}`;
+  // The session runs inside the site's own room, so that is the link people keep.
+  const location = ROOM_URL;
+  const description = `Free, live, ninety minutes. Sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers. Joining link: ${ROOM_URL}`;
 
   const googleUrl =
     "https://calendar.google.com/calendar/render?action=TEMPLATE" +

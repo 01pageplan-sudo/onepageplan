@@ -1,4 +1,4 @@
-import { createFileRoute, useRouterState } from "@tanstack/react-router";
+import { Link, createFileRoute, useRouterState } from "@tanstack/react-router";
 
 import { useEffect, useState } from "react";
 
@@ -104,6 +104,15 @@ function ConfirmedPage() {
                 Add to Google Calendar
               </a>
             </Button>
+          </div>
+
+          <div className="mt-5 border-t border-border pt-5">
+            <Button asChild className="w-full sm:w-auto">
+              <Link to="/room">Save this link for Saturday →</Link>
+            </Button>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This is where the session runs. Bookmark it.
+            </p>
           </div>
         </div>
 
