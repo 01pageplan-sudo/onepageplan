@@ -142,53 +142,6 @@ function ConfirmedPage() {
           </section>
         ) : null}
 
-        <section className="rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-bold">Before Saturday</h2>
-          <ul className="mt-4 space-y-4 text-sm">
-            <li className="flex flex-col gap-2">
-              <span className="flex gap-3">
-                <Check size={18} className="mt-0.5 shrink-0 text-[var(--brass)]" />
-                <span>Add it to your calendar.</span>
-              </span>
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-                onClick={() => downloadIcs(webinarUrl)}
-              >
-                Download the calendar file
-              </Button>
-            </li>
-            <li className="flex gap-3">
-              <Check size={18} className="mt-0.5 shrink-0 text-[var(--brass)]" />
-              <span>Sit somewhere quiet with a pen. You will be working on your own numbers.</span>
-            </li>
-            <li className="flex gap-3">
-              <Check size={18} className="mt-0.5 shrink-0 text-[var(--brass)]" />
-              <span>
-                Check your email. If nothing arrives in ten minutes, look in Promotions or Spam and
-                mark it as not spam.
-              </span>
-            </li>
-          </ul>
-        </section>
-
-        {groupUrl ? (
-          <section className="rounded-lg border border-border bg-card p-5">
-            <h2 className="text-lg font-bold">Join the WhatsApp group</h2>
-            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-              <li>Reminders before the session.</li>
-              <li>The resources sent straight to you.</li>
-              <li>Somewhere to ask a question before Saturday.</li>
-            </ul>
-            <Button asChild variant="outline" className="mt-5">
-              <a href={groupUrl} target="_blank" rel="noopener noreferrer">
-                Join the group →
-              </a>
-            </Button>
-          </section>
-        ) : null}
-
-        <AskQuestion />
       </main>
 
       <Footer />
