@@ -1,13 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouterState } from "@tanstack/react-router";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { AskQuestion } from "@/components/site/AskQuestion";
 import { Footer } from "@/components/site/Footer";
 import { VideoEmbed } from "@/components/site/VideoEmbed";
 import { Wordmark } from "@/components/site/Header";
-import { getNextSessionIST } from "@/lib/session";
+import { track } from "@/lib/analytics";
+import { getSessionCalendar } from "@/lib/calendar";
 
 const TITLE = "Your seat is saved | The Money Reality Masterclass";
 const DESCRIPTION =
@@ -49,8 +50,8 @@ function ConfirmedPage() {
   const prepVideo = import.meta.env["VITE_PREP_VIDEO_URL"] as string | undefined;
   const groupUrl = import.meta.env["VITE_WHATSAPP_GROUP_URL"] as string | undefined;
 
-  const routerState = Route.useRouterState({
-    select: (state) => state.location.state as { registrationId?: string },
+  const routerState = useRouterState({
+    select: (state) => state.location.state as unknown as { registrationId?: string },
   });
   const [registrationId, setRegistrationId] = useState<string | undefined>(
     routerState?.registrationId,
