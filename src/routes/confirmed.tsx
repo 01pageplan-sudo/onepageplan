@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Check } from "lucide-react";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
+import { AskQuestion } from "@/components/site/AskQuestion";
 import { Footer } from "@/components/site/Footer";
 import { VideoEmbed } from "@/components/site/VideoEmbed";
 import { Wordmark } from "@/components/site/Header";
