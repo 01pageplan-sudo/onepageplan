@@ -26,7 +26,7 @@ export type SessionCalendar = {
 };
 
 export function getSessionCalendar(
-  webinarUrl: string,
+  _webinarUrl: string,
   target: Date = getNextSessionIST(),
 ): SessionCalendar {
   // getNextSessionIST() already returns the UTC instant of 19:00 IST.
