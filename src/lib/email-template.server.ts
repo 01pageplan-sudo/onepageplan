@@ -6,6 +6,7 @@ export function buildConfirmationEmail(
   webinarUrl: string,
   googleCalendarUrl: string,
 ) {
+  const roomUrl = "https://onepageplan.in/room";
   const text = `Hello ${firstName},
 
 Your seat for The Money Reality Masterclass is saved. It runs this Saturday at 7:00 PM IST and takes ninety minutes.
@@ -57,7 +58,7 @@ To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remo
             </tr>
             <tr>
               <td align="center" style="padding-bottom:22px;">
-                <a href="${webinarUrl}" style="display:inline-block;background-color:#4A5A3A;color:#FAF7F0;text-decoration:none;font-size:15px;font-weight:600;padding:13px 26px;border-radius:8px;">Confirm my seat</a>
+                <a href="${roomUrl}" style="display:inline-block;background-color:#4A5A3A;color:#FAF7F0;text-decoration:none;font-size:15px;font-weight:600;padding:13px 26px;border-radius:8px;">Join on Saturday</a>
               </td>
             </tr>
             <tr>
