@@ -31,6 +31,19 @@ export function isRateLimited(ip: string): boolean {
   return hits.length > 5;
 }
 
+const questionBuckets = new Map<string, number[]>();
+
+/** Allow a handful of questions per IP per hour, so shared networks still work. */
+export function isQuestionRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000;
+  const hits = (questionBuckets.get(ip) ?? []).filter((t) => now - t < windowMs);
+  hits.push(now);
+  questionBuckets.set(ip, hits);
+  if (questionBuckets.size > 5000) questionBuckets.clear();
+  return hits.length > 5;
+}
+
 export function validate(input: RegistrationInput): string | null {
   if (!input.full_name || input.full_name.trim().length < 2) return "Please enter your name.";
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(input.email.trim())) return "Please enter a valid email.";
