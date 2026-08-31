@@ -19,6 +19,17 @@ export function Wordmark({ withByline = true }: { withByline?: boolean }) {
   );
 }
 
+export function BackToHome() {
+  return (
+    <Link
+      to="/"
+      className="inline-flex items-center gap-1 text-sm text-muted-foreground underline hover:text-foreground"
+    >
+      ← Back to home
+    </Link>
+  );
+}
+
 export function Header() {
   const { open } = useRegistration();
   const [scrolled, setScrolled] = useState(false);

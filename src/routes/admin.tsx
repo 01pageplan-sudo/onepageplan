@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wordmark } from "@/components/site/Header";
+import { BackToHome, Wordmark } from "@/components/site/Header";
 import { fetchAdminRegistrations } from "@/lib/registration.functions";
 
 export const Route = createFileRoute("/admin")({
@@ -113,8 +113,9 @@ function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto max-w-6xl px-4 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
           <Wordmark />
+          <BackToHome />
         </div>
       </header>
 
