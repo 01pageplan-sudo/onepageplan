@@ -134,6 +134,14 @@ export function RegistrationModal({
         },
       });
       if (result.ok) {
+        try {
+          if (result.registrationId) {
+            window.sessionStorage.setItem("opp_registration_id", result.registrationId);
+          }
+          window.sessionStorage.setItem("opp_registration_email", email.trim().toLowerCase());
+        } catch {
+          /* storage blocked, registration still saved */
+        }
         navigate({ to: "/confirmed" });
         return;
       }
