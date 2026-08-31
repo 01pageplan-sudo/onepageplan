@@ -36,6 +36,11 @@ Both the Lovable preview and Vercel read and write the same live data.
 Vercel dashboard -> your project -> **Settings** -> **Environment Variables**.
 Add each of these to **Production, Preview and Development** (tick all three).
 
+**Fastest way:** open `vercel.env.txt` in this project, fill in the `<...>`
+placeholders, then in Vercel use **Import .env** (or paste the whole block into
+the bulk editor) to add every variable in one go. Redeploy afterwards. The
+tables below are just the reference for what each value means.
+
 ### Required — the site does not work without these
 
 | Name                             | Value                                                     |
