@@ -15,6 +15,7 @@ import { Route as ConfirmedRouteImport } from './routes/confirmed'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RoomRouteImport } from './routes/room'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ApiGetWebinarMetricsRouteImport } from './routes/api/get-webinar-metrics'
 import { Route as ApiGetWebinarTokenRouteImport } from './routes/api/get-webinar-token'
 import { Route as ApiWebinarTokenRouteImport } from './routes/api/webinar-token'
 import { Route as ApiPublicEmailDispatchRouteImport } from './routes/api/public/email-dispatch'
@@ -51,6 +52,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGetWebinarMetricsRoute = ApiGetWebinarMetricsRouteImport.update({
+  id: '/api/get-webinar-metrics',
+  path: '/api/get-webinar-metrics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGetWebinarTokenRoute = ApiGetWebinarTokenRouteImport.update({
   id: '/api/get-webinar-token',
   path: '/api/get-webinar-token',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
+  '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/webinar-token': typeof ApiWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
+  '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/webinar-token': typeof ApiWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
+  '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/webinar-token': typeof ApiWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/room'
     | '/terms'
+    | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
     | '/api/webinar-token'
     | '/api/public/email-dispatch'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/room'
     | '/terms'
+    | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
     | '/api/webinar-token'
     | '/api/public/email-dispatch'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/room'
     | '/terms'
+    | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
     | '/api/webinar-token'
     | '/api/public/email-dispatch'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   RoomRoute: typeof RoomRoute
   TermsRoute: typeof TermsRoute
+  ApiGetWebinarMetricsRoute: typeof ApiGetWebinarMetricsRoute
   ApiGetWebinarTokenRoute: typeof ApiGetWebinarTokenRoute
   ApiWebinarTokenRoute: typeof ApiWebinarTokenRoute
   ApiPublicEmailDispatchRoute: typeof ApiPublicEmailDispatchRoute
@@ -217,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/get-webinar-metrics': {
+      id: '/api/get-webinar-metrics'
+      path: '/api/get-webinar-metrics'
+      fullPath: '/api/get-webinar-metrics'
+      preLoaderRoute: typeof ApiGetWebinarMetricsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/get-webinar-token': {
       id: '/api/get-webinar-token'
       path: '/api/get-webinar-token'
@@ -262,6 +282,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   RoomRoute: RoomRoute,
   TermsRoute: TermsRoute,
+  ApiGetWebinarMetricsRoute: ApiGetWebinarMetricsRoute,
   ApiGetWebinarTokenRoute: ApiGetWebinarTokenRoute,
   ApiWebinarTokenRoute: ApiWebinarTokenRoute,
   ApiPublicEmailDispatchRoute: ApiPublicEmailDispatchRoute,
