@@ -15,9 +15,11 @@ import {
   adminSaveSettings,
   adminSendEmails,
   adminSetTag,
+  adminWebinarLogs,
   type AdminLead,
   type AdminSend,
   type AdminSettings,
+  type AdminWebinarLog,
 } from "@/lib/admin.functions";
 import { TEMPLATES, templateLabel } from "@/lib/email-templates";
 import { TemplateEditor } from "@/components/site/TemplateEditor";
@@ -146,6 +148,21 @@ function AdminPage() {
   const [templates, setTemplates] = useState<
     Record<string, { subject?: string | null; heading?: string | null; body?: string | null }>
   >({});
+
+  const [webinarLogs, setWebinarLogs] = useState<AdminWebinarLog[]>([]);
+
+  async function loadWebinarLogs() {
+    setLoading(true);
+    try {
+      const result = await adminWebinarLogs({ data: { password } });
+      if (result.ok) setWebinarLogs(result.logs);
+      else setNotice(result.error ?? "Could not load the webinar log.");
+    } catch {
+      setNotice("Could not load the webinar log.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function load(nextRange: RangeKey = range) {
     setLoading(true);
@@ -382,6 +399,7 @@ function AdminPage() {
             <TabsTrigger value="templates">Email copy</TabsTrigger>
             <TabsTrigger value="delivery">Delivery</TabsTrigger>
             <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+            <TabsTrigger value="webinar">Webinar log</TabsTrigger>
           </TabsList>
 
           {/* ------------------------------- LEADS ------------------------------- */}
@@ -657,8 +675,6 @@ function AdminPage() {
                       ["calendar_link", "Add to calendar link (blank = generated)"],
                       ["registration_link", "Registration page"],
                       ["whatsapp_link", "WhatsApp community"],
-                      ["monthly_checkout_link", "Monthly checkout — ₹1,001"],
-                      ["annual_checkout_link", "Annual checkout — ₹5,001"],
                     ] as const
                   ).map(([key, label]) => (
                     <div key={key}>
@@ -793,6 +809,54 @@ function AdminPage() {
           {/* ------------------------------ WHATSAPP ----------------------------- */}
           <TabsContent value="whatsapp" className="pt-5">
             <WhatsAppPanel />
+          </TabsContent>
+
+          {/* ---------------------------- WEBINAR LOG ---------------------------- */}
+          <TabsContent value="webinar" className="space-y-4 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                Every join request sent to the webinar provider, with the exact reply it returned.
+                Newest first, last 100 calls.
+              </p>
+              <Button size="sm" variant="outline" disabled={loading} onClick={() => void loadWebinarLogs()}>
+                Refresh log
+              </Button>
+            </div>
+            {webinarLogs.length === 0 ? (
+              <p className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
+                No calls recorded yet. Open the room page once and refresh this log.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {webinarLogs.map((log) => (
+                  <div key={log.id} className="rounded-lg border border-border bg-card p-4 text-xs">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="font-semibold">{fmt(log.created_at)}</span>
+                      <span
+                        className={
+                          log.outcome === "ok" ? "text-primary" : "text-destructive font-semibold"
+                        }
+                      >
+                        {log.outcome}
+                      </span>
+                      <span className="text-muted-foreground">
+                        HTTP {log.response_status ?? "—"} · {log.email ?? "—"}
+                      </span>
+                    </div>
+                    {log.error ? <p className="mt-2 text-destructive">{log.error}</p> : null}
+                    <p className="mt-2 break-all text-muted-foreground">
+                      POST {log.request_url ?? "—"}
+                    </p>
+                    <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2">
+{JSON.stringify(log.request_body, null, 2)}
+                    </pre>
+                    <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2">
+{log.response_body ?? "(empty response)"}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>

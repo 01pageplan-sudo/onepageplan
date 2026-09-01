@@ -31,8 +31,6 @@ export type TemplateSpec = {
   heading: (ctx: EmailContext) => string;
   body: (ctx: EmailContext) => string[];
   cta?: (ctx: EmailContext) => { label: string; href: string } | null;
-  /** Adds the two checkout links under the body. */
-  offer?: boolean;
 };
 
 const BRASS = "#B8873B";
@@ -135,12 +133,6 @@ export function renderEmail(spec: TemplateSpec, ctx: EmailContext) {
   const paragraphs = spec.body(ctx).filter((line) => line.trim() !== "");
   const cta = spec.cta ? spec.cta(ctx) : null;
   const offers: { label: string; href: string }[] = [];
-  if (spec.offer) {
-    if (ctx.links.monthly_checkout_link)
-      offers.push({ label: "Join monthly — ₹1,001", href: ctx.links.monthly_checkout_link });
-    if (ctx.links.annual_checkout_link)
-      offers.push({ label: "Join annual — ₹5,001", href: ctx.links.annual_checkout_link });
-  }
 
   const text = [
     `Hello ${ctx.firstName},`,
@@ -432,7 +424,6 @@ export const TEMPLATES: TemplateSpec[] = [
       "If you want the full structure — the templates, the order to do things in, and a monthly session to keep you honest — The One Page Plan programme is open.",
       ctx.links.whatsapp_link ? `Community group: ${ctx.links.whatsapp_link}` : "",
     ],
-    offer: true,
   },
   ...nurtureCopy.map((copy, index) => ({
     key: `nurture_${index + 1}`,
@@ -442,7 +433,6 @@ export const TEMPLATES: TemplateSpec[] = [
     subject: () => copy.subject,
     heading: () => copy.heading,
     body: () => copy.body,
-    offer: index >= 5,
   })),
   ...postPurchaseCopy.map((copy, index) => ({
     key: `post_purchase_${index + 1}`,

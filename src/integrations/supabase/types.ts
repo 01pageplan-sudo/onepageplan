@@ -323,6 +323,51 @@ export type Database = {
         }
         Relationships: []
       }
+      webinar_api_logs: {
+        Row: {
+          created_at: string
+          email: string | null
+          error: string | null
+          full_name: string | null
+          id: string
+          kind: string
+          outcome: string
+          request_body: Json | null
+          request_url: string | null
+          response_body: string | null
+          response_status: number | null
+          webinar_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          error?: string | null
+          full_name?: string | null
+          id?: string
+          kind?: string
+          outcome: string
+          request_body?: Json | null
+          request_url?: string | null
+          response_body?: string | null
+          response_status?: number | null
+          webinar_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          error?: string | null
+          full_name?: string | null
+          id?: string
+          kind?: string
+          outcome?: string
+          request_body?: Json | null
+          request_url?: string | null
+          response_body?: string | null
+          response_status?: number | null
+          webinar_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -442,6 +487,23 @@ export type Database = {
           p_tag: string
         }
         Returns: undefined
+      }
+      admin_webinar_logs: {
+        Args: { p_limit?: number; p_password: string }
+        Returns: {
+          created_at: string
+          email: string
+          error: string
+          full_name: string
+          id: string
+          kind: string
+          outcome: string
+          request_body: Json
+          request_url: string
+          response_body: string
+          response_status: number
+          webinar_id: string
+        }[]
       }
       assert_admin: { Args: { p_password: string }; Returns: undefined }
       claim_due_emails: {
