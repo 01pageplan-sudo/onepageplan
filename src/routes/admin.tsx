@@ -24,6 +24,7 @@ import {
 import { TEMPLATES, templateLabel } from "@/lib/email-templates";
 import { TemplateEditor } from "@/components/site/TemplateEditor";
 import { WhatsAppPanel } from "@/components/site/WhatsAppPanel";
+import { WebinarAnalytics } from "@/components/site/WebinarAnalytics";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -399,6 +400,7 @@ function AdminPage() {
             <TabsTrigger value="templates">Email copy</TabsTrigger>
             <TabsTrigger value="delivery">Delivery</TabsTrigger>
             <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+            <TabsTrigger value="analytics">Webinar analytics</TabsTrigger>
             <TabsTrigger value="webinar">Webinar log</TabsTrigger>
           </TabsList>
 
@@ -809,6 +811,11 @@ function AdminPage() {
           {/* ------------------------------ WHATSAPP ----------------------------- */}
           <TabsContent value="whatsapp" className="pt-5">
             <WhatsAppPanel />
+          </TabsContent>
+
+          {/* -------------------------- WEBINAR ANALYTICS ------------------------ */}
+          <TabsContent value="analytics" className="pt-5">
+            <WebinarAnalytics />
           </TabsContent>
 
           {/* ---------------------------- WEBINAR LOG ---------------------------- */}
