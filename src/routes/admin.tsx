@@ -789,6 +789,11 @@ function AdminPage() {
               </table>
             </div>
           </TabsContent>
+
+          {/* ------------------------------ WHATSAPP ----------------------------- */}
+          <TabsContent value="whatsapp" className="pt-5">
+            <WhatsAppPanel />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
