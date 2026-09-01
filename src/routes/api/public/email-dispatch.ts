@@ -15,7 +15,6 @@ export const Route = createFileRoute("/api/public/email-dispatch")({
 });
 
 async function handle(request: Request) {
-  const secret = process.env["WEBHOOK_SHARED_SECRET"] ?? process.env["LOVABLE_CRON_SECRET"];
   const url = new URL(request.url);
   const provided =
     request.headers.get("x-cron-secret") ??
@@ -23,9 +22,22 @@ async function handle(request: Request) {
     url.searchParams.get("secret") ??
     "";
 
-  if (!secret || provided !== secret) {
-    return new Response("Unauthorized", { status: 401 });
+  if (provided === "") return new Response("Unauthorized", { status: 401 });
+
+  const envSecret = process.env["WEBHOOK_SHARED_SECRET"] ?? process.env["LOVABLE_CRON_SECRET"];
+  let allowed = Boolean(envSecret) && provided === envSecret;
+
+  if (!allowed) {
+    // The scheduler inside the database uses its own key.
+    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+    const { data, error } = await createPublicServerClient().rpc("verify_cron_secret", {
+      p_secret: provided,
+    });
+    if (error) console.error("email-dispatch secret check failed", error.message);
+    allowed = data === true;
   }
+
+  if (!allowed) return new Response("Unauthorized", { status: 401 });
 
   try {
     const { runDispatch } = await import("@/lib/email-automation.server");
