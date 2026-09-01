@@ -24,8 +24,6 @@ const PLACEHOLDERS = [
   "{{calendar_link}}",
   "{{registration_link}}",
   "{{whatsapp_link}}",
-  "{{monthly_checkout_link}}",
-  "{{annual_checkout_link}}",
 ];
 
 /** Edit the copy of any email in the sequence. Blank fields use the original copy. */

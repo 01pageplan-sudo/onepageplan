@@ -15,9 +15,11 @@ import {
   adminSaveSettings,
   adminSendEmails,
   adminSetTag,
+  adminWebinarLogs,
   type AdminLead,
   type AdminSend,
   type AdminSettings,
+  type AdminWebinarLog,
 } from "@/lib/admin.functions";
 import { TEMPLATES, templateLabel } from "@/lib/email-templates";
 import { TemplateEditor } from "@/components/site/TemplateEditor";
