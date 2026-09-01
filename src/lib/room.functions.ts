@@ -48,9 +48,17 @@ async function logWebinarCall(entry: {
       p_response_body: entry.response_body,
       p_outcome: entry.outcome,
       p_error: entry.error,
-    } as unknown as Parameters<
-      ReturnType<typeof createPublicServerClient>["rpc"]
-    >[1];
+    } as unknown as {
+      p_email: string;
+      p_full_name: string;
+      p_webinar_id: string;
+      p_request_url: string;
+      p_request_body: null;
+      p_response_status: number;
+      p_response_body: string;
+      p_outcome: string;
+      p_error: string;
+    };
     const { error } = await createPublicServerClient().rpc("log_webinar_call", args);
     if (error) console.error("logWebinarCall rpc failed:", error.message);
   } catch (error) {
