@@ -15,6 +15,7 @@ import { Route as ConfirmedRouteImport } from './routes/confirmed'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RoomRouteImport } from './routes/room'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ApiGetWebinarTokenRouteImport } from './routes/api/get-webinar-token'
 import { Route as ApiWebinarTokenRouteImport } from './routes/api/webinar-token'
 import { Route as ApiPublicEmailDispatchRouteImport } from './routes/api/public/email-dispatch'
 import { Route as ApiPublicResendWebhookRouteImport } from './routes/api/public/resend-webhook'
@@ -50,6 +51,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGetWebinarTokenRoute = ApiGetWebinarTokenRouteImport.update({
+  id: '/api/get-webinar-token',
+  path: '/api/get-webinar-token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebinarTokenRoute = ApiWebinarTokenRouteImport.update({
   id: '/api/webinar-token',
   path: '/api/webinar-token',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
+  '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/webinar-token': typeof ApiWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
+  '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/webinar-token': typeof ApiWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
+  '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/webinar-token': typeof ApiWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/room'
     | '/terms'
+    | '/api/get-webinar-token'
     | '/api/webinar-token'
     | '/api/public/email-dispatch'
     | '/api/public/resend-webhook'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/room'
     | '/terms'
+    | '/api/get-webinar-token'
     | '/api/webinar-token'
     | '/api/public/email-dispatch'
     | '/api/public/resend-webhook'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/room'
     | '/terms'
+    | '/api/get-webinar-token'
     | '/api/webinar-token'
     | '/api/public/email-dispatch'
     | '/api/public/resend-webhook'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   RoomRoute: typeof RoomRoute
   TermsRoute: typeof TermsRoute
+  ApiGetWebinarTokenRoute: typeof ApiGetWebinarTokenRoute
   ApiWebinarTokenRoute: typeof ApiWebinarTokenRoute
   ApiPublicEmailDispatchRoute: typeof ApiPublicEmailDispatchRoute
   ApiPublicResendWebhookRoute: typeof ApiPublicResendWebhookRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/get-webinar-token': {
+      id: '/api/get-webinar-token'
+      path: '/api/get-webinar-token'
+      fullPath: '/api/get-webinar-token'
+      preLoaderRoute: typeof ApiGetWebinarTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webinar-token': {
       id: '/api/webinar-token'
       path: '/api/webinar-token'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   RoomRoute: RoomRoute,
   TermsRoute: TermsRoute,
+  ApiGetWebinarTokenRoute: ApiGetWebinarTokenRoute,
   ApiWebinarTokenRoute: ApiWebinarTokenRoute,
   ApiPublicEmailDispatchRoute: ApiPublicEmailDispatchRoute,
   ApiPublicResendWebhookRoute: ApiPublicResendWebhookRoute,
