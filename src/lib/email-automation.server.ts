@@ -258,10 +258,10 @@ export async function sendDueEmails(
   return { claimed: due.length, sent, failed };
 }
 
-export async function runDispatch(limit = 25) {
+export async function runDispatch(limit = 25, password?: string | undefined) {
   const db = createPublicServerClient();
-  const queued = await scheduleSequence(db);
-  const result = await sendDueEmails(db, limit);
+  const queued = await scheduleSequence(db, password);
+  const result = await sendDueEmails(db, limit, password);
   return { queued, ...result };
 }
 

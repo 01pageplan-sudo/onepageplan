@@ -192,7 +192,7 @@ export const adminSendEmails = createServerFn({ method: "POST" })
           error: unauthorized(error.message) ? "Wrong password." : "Could not queue those emails.",
         };
       }
-      const result = await sendDueEmails(db, Math.min(100, Math.max(1, rows.length)));
+      const result = await sendDueEmails(db, Math.min(100, Math.max(1, rows.length)), data.password);
       return { ok: true as const, queued: Number(queued ?? 0), ...result };
     } catch (error) {
       console.error("adminSendEmails failed:", error);
@@ -215,8 +215,8 @@ export const adminRunDispatch = createServerFn({ method: "POST" })
           error: unauthorized(error.message) ? "Wrong password." : "Could not run the queue.",
         };
       }
-      const queued = await automation.scheduleSequence(db);
-      const result = await automation.sendDueEmails(db, 50);
+      const queued = await automation.scheduleSequence(db, data.password);
+      const result = await automation.sendDueEmails(db, 50, data.password);
       return { ok: true as const, queued, ...result };
     } catch (error) {
       console.error("adminRunDispatch failed:", error);
