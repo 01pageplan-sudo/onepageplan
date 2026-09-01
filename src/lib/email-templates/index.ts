@@ -45,14 +45,89 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;");
 }
 
-/** Turns *bold* into <strong> and leaves everything else as plain text. */
+/** Turns *bold* into <strong> and [label](url) into a link. */
 function inline(value: string) {
-  return escapeHtml(value).replace(/\*([^*]+)\*/g, "<strong>$1</strong>");
+  return escapeHtml(value)
+    .replace(/\*([^*]+)\*/g, "<strong>$1</strong>")
+    .replace(
+      /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+      '<a href="$2" style="color:#4A5A3A;font-weight:600;">$1</a>',
+    );
 }
 
 function plain(value: string) {
-  return value.replace(/\*([^*]+)\*/g, "$1");
+  return value
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, "$1: $2");
 }
+
+/** One editable override row, as stored by the admin console. */
+export type TemplateOverride = {
+  subject?: string | null;
+  heading?: string | null;
+  /** One paragraph per line. */
+  body?: string | null;
+};
+
+export type TemplateOverrides = Record<string, TemplateOverride | undefined>;
+
+/**
+ * Returns the template with any admin edits applied. Placeholders available in
+ * edited copy: {{first_name}}, {{joining_link}}, {{calendar_link}},
+ * {{registration_link}}, {{whatsapp_link}}, {{monthly_checkout_link}},
+ * {{annual_checkout_link}}.
+ */
+export function applyOverride(
+  spec: TemplateSpec,
+  override: TemplateOverride | undefined,
+): TemplateSpec {
+  if (!override) return spec;
+  const fill = (value: string, ctx: EmailContext) =>
+    value
+      .replace(/\{\{\s*first_name\s*\}\}/g, ctx.firstName)
+      .replace(/\{\{\s*(\w+)\s*\}\}/g, (whole, key: string) => {
+        const links = ctx.links as unknown as Record<string, string>;
+        return typeof links[key] === "string" ? links[key] : whole;
+      });
+
+  const next: TemplateSpec = { ...spec };
+  const subject = (override.subject ?? "").trim();
+  const heading = (override.heading ?? "").trim();
+  const body = (override.body ?? "").trim();
+  if (subject) next.subject = (ctx) => fill(subject, ctx);
+  if (heading) next.heading = (ctx) => fill(heading, ctx);
+  if (body)
+    next.body = (ctx) =>
+      body
+        .split(/\r?\n/)
+        .map((line) => fill(line, ctx))
+        .filter((line) => line.trim() !== "");
+  return next;
+}
+
+/** The default copy of a template, as editable plain text for the console. */
+export function templateDraft(spec: TemplateSpec) {
+  const ctx: EmailContext = {
+    firstName: "{{first_name}}",
+    links: {
+      joining_link: "{{joining_link}}",
+      calendar_link: "{{calendar_link}}",
+      registration_link: "{{registration_link}}",
+      whatsapp_link: "{{whatsapp_link}}",
+      monthly_checkout_link: "{{monthly_checkout_link}}",
+      annual_checkout_link: "{{annual_checkout_link}}",
+    },
+  };
+  return {
+    subject: spec.subject(ctx),
+    heading: spec.heading(ctx),
+    body: spec
+      .body(ctx)
+      .filter((line) => line.trim() !== "")
+      .join("\n"),
+  };
+}
+
 
 export function renderEmail(spec: TemplateSpec, ctx: EmailContext) {
   const subject = spec.subject(ctx);
@@ -274,7 +349,7 @@ export const TEMPLATES: TemplateSpec[] = [
     body: (ctx) => [
       "Your seat for The Money Reality Masterclass is saved. It runs this Saturday at 7:00 PM IST and takes ninety minutes.",
       "Keep the link below. That is how you get in on the night.",
-      ctx.links.calendar_link ? `Add it to your calendar: ${ctx.links.calendar_link}` : "",
+      ctx.links.calendar_link ? `[Add it to your calendar](${ctx.links.calendar_link})` : "",
       "Before Saturday, sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers, not watching mine.",
     ],
     cta: joinCta,
@@ -289,7 +364,7 @@ export const TEMPLATES: TemplateSpec[] = [
     body: (ctx) => [
       "The Money Reality Masterclass runs tomorrow at 7:00 PM IST for ninety minutes.",
       "Two things to have ready: a pen and paper, and last month's bank statement. You will be working on your own numbers.",
-      ctx.links.calendar_link ? `Calendar entry: ${ctx.links.calendar_link}` : "",
+      ctx.links.calendar_link ? `[Add it to your calendar](${ctx.links.calendar_link})` : "",
     ],
     cta: joinCta,
   },

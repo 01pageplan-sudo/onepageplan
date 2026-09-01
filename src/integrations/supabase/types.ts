@@ -133,6 +133,30 @@ export type Database = {
         }
         Relationships: []
       }
+      email_template_overrides: {
+        Row: {
+          body: string | null
+          heading: string | null
+          subject: string | null
+          template_key: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          heading?: string | null
+          subject?: string | null
+          template_key: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          heading?: string | null
+          subject?: string | null
+          template_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_tags: {
         Row: {
           created_at: string
@@ -352,6 +376,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_get_templates: { Args: { p_password: string }; Returns: Json }
       admin_leads: {
         Args: { p_from?: string; p_password: string; p_to?: string }
         Returns: {
@@ -391,8 +416,22 @@ export type Database = {
           whatsapp_consent: boolean
         }[]
       }
+      admin_reset_template: {
+        Args: { p_key: string; p_password: string }
+        Returns: undefined
+      }
       admin_save_email_settings: {
         Args: { p: Json; p_password: string }
+        Returns: undefined
+      }
+      admin_save_template: {
+        Args: {
+          p_body: string
+          p_heading: string
+          p_key: string
+          p_password: string
+          p_subject: string
+        }
         Returns: undefined
       }
       admin_set_tag: {

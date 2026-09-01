@@ -20,6 +20,8 @@ import {
   type AdminSettings,
 } from "@/lib/admin.functions";
 import { TEMPLATES, templateLabel } from "@/lib/email-templates";
+import { TemplateEditor } from "@/components/site/TemplateEditor";
+import { WhatsAppPanel } from "@/components/site/WhatsAppPanel";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -141,6 +143,9 @@ function AdminPage() {
   const [newTag, setNewTag] = useState<Record<string, string>>({});
   const [bulkTemplate, setBulkTemplate] = useState("reminder_24h");
   const [dns, setDns] = useState<{ name: string; pass: boolean; value: string }[] | null>(null);
+  const [templates, setTemplates] = useState<
+    Record<string, { subject?: string | null; heading?: string | null; body?: string | null }>
+  >({});
 
   async function load(nextRange: RangeKey = range) {
     setLoading(true);
@@ -157,6 +162,7 @@ function AdminPage() {
       setSends(result.sends);
       setSettings(result.settings);
       setStats(result.stats);
+      setTemplates(result.templates ?? {});
     } catch {
       setError("Could not load the dashboard.");
     } finally {
@@ -373,7 +379,9 @@ function AdminPage() {
           <TabsList>
             <TabsTrigger value="leads">Leads</TabsTrigger>
             <TabsTrigger value="automation">Email automation</TabsTrigger>
+            <TabsTrigger value="templates">Email copy</TabsTrigger>
             <TabsTrigger value="delivery">Delivery</TabsTrigger>
+            <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
           </TabsList>
 
           {/* ------------------------------- LEADS ------------------------------- */}
@@ -732,6 +740,15 @@ function AdminPage() {
           </TabsContent>
 
           {/* ----------------------------- DELIVERY ----------------------------- */}
+          {/* ----------------------------- EMAIL COPY ---------------------------- */}
+          <TabsContent value="templates" className="pt-5">
+            <TemplateEditor
+              password={password}
+              overrides={templates}
+              onSaved={() => void load()}
+            />
+          </TabsContent>
+
           <TabsContent value="delivery" className="space-y-5 pt-5">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <Stat label="Sent" value={number("sent")} />
@@ -771,6 +788,11 @@ function AdminPage() {
                 </tbody>
               </table>
             </div>
+          </TabsContent>
+
+          {/* ------------------------------ WHATSAPP ----------------------------- */}
+          <TabsContent value="whatsapp" className="pt-5">
+            <WhatsAppPanel />
           </TabsContent>
         </Tabs>
       </main>

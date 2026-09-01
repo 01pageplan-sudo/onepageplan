@@ -139,32 +139,37 @@ function RoomPage() {
 
       <main className="mx-auto max-w-5xl px-4 py-12">
         {phase === "form" ? (
-          <Card>
-            <h1 className="text-2xl font-bold">Join the session</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Enter the email you registered with.
-            </p>
-            <form
-              className="mt-6 space-y-3 text-left"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!busy) void requestToken(email);
-              }}
-            >
-              <Input
-                type="email"
-                required={!testMode}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
-              <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? "Checking…" : "Join →"}
-              </Button>
-            </form>
-          </Card>
+          busy ? (
+            <PlayerSkeleton />
+          ) : (
+            <Card>
+              <h1 className="text-2xl font-bold">Join the session</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Enter the email you registered with.
+              </p>
+              <form
+                className="mt-6 space-y-3 text-left"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!busy) void requestToken(email);
+                }}
+              >
+                <Input
+                  type="email"
+                  required={!testMode}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
+                <Button type="submit" className="w-full" disabled={busy}>
+                  Join →
+                </Button>
+              </form>
+            </Card>
+          )
         ) : null}
+
 
         {phase === "not_registered" ? (
           <Card>
@@ -252,5 +257,16 @@ function Fallback({ webinarUrl }: { webinarUrl: string }) {
         </a>
       </Button>
     </Card>
+  );
+}
+
+/** Quiet placeholder while the join token is being fetched. */
+function PlayerSkeleton() {
+  return (
+    <section className="mx-auto w-full max-w-[1100px]">
+      <p className="label-caps text-[var(--brass)]">Getting you in…</p>
+      <div className="mt-3 aspect-video w-full animate-pulse rounded-xl border border-border bg-card" />
+      <div className="mt-3 h-3 w-40 animate-pulse rounded bg-card" />
+    </section>
   );
 }

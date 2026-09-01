@@ -1,6 +1,13 @@
 import { createPublicServerClient, type PublicServerClient } from "./supabase-public.server";
-import { getSessionCalendar } from "./calendar";
-import { TEMPLATE_MAP, renderEmail, type EmailLinks } from "./email-templates";
+import { getSessionCalendar, ROOM_URL } from "./calendar";
+import {
+  TEMPLATE_MAP,
+  applyOverride,
+  renderEmail,
+  type EmailLinks,
+  type TemplateOverrides,
+} from "./email-templates";
+
 
 /**
  * Server-only engine for the whole email sequence.
@@ -42,11 +49,25 @@ export async function loadSettings(
 
 /** Fills in the calendar link automatically when it has not been overridden. */
 export function resolveLinks(settings: EmailSettings, sessionDate?: string | null): EmailLinks {
+  const joining = settings.joining_link || ROOM_URL;
   const calendar =
     settings.calendar_link ||
-    getSessionCalendar(settings.joining_link, sessionStart(sessionDate) ?? undefined).googleUrl;
-  return { ...settings, calendar_link: calendar };
+    getSessionCalendar(joining, sessionStart(sessionDate) ?? undefined).googleUrl;
+  return { ...settings, joining_link: joining, calendar_link: calendar };
 }
+
+/** The admin's edited copy for any template, keyed by template key. */
+export async function loadOverrides(
+  db: PublicServerClient,
+  password?: string | undefined,
+): Promise<TemplateOverrides> {
+  const { data, error } = await db.rpc("admin_get_templates", {
+    p_password: adminPassword(password),
+  });
+  if (error) throw error;
+  return (data ?? {}) as unknown as TemplateOverrides;
+}
+
 
 /** 19:00 IST on the given yyyy-mm-dd, as a UTC instant. */
 export function sessionStart(sessionDate?: string | null): Date | null {
@@ -199,6 +220,8 @@ export async function sendDueEmails(
 ) {
   const password = adminPassword(override);
   const settings = await loadSettings(db, password);
+  const overrides = await loadOverrides(db, password);
+
 
   const { data, error } = await db.rpc("claim_due_emails", {
     p_password: password,
@@ -218,8 +241,8 @@ export async function sendDueEmails(
   let failed = 0;
 
   for (const row of due) {
-    const spec = TEMPLATE_MAP[row.template];
-    if (!spec) {
+    const base = TEMPLATE_MAP[row.template];
+    if (!base) {
       await db.rpc("mark_email_send", {
         p_password: password,
         p_id: row.id,
@@ -229,11 +252,13 @@ export async function sendDueEmails(
       failed += 1;
       continue;
     }
+    const spec = applyOverride(base, overrides[row.template]);
     try {
       const { subject, html, text } = renderEmail(spec, {
         firstName: firstName(row.full_name),
         links: resolveLinks(settings, row.session_date),
       });
+
       const providerId = await sendThroughResend({ to: row.email, subject, html, text });
       await db.rpc("mark_email_send", {
         p_password: password,
