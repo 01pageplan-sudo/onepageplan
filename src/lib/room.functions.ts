@@ -22,6 +22,26 @@ function safeRequestIP(): string {
   }
 }
 
+/** Writes one row into the admin-visible webinar call log. Never throws. */
+async function logWebinarCall(entry: {
+  email: string | null;
+  full_name: string | null;
+  webinar_id: string | null;
+  request_url: string | null;
+  request_body: unknown;
+  response_status: number | null;
+  response_body: string | null;
+  outcome: string;
+  error: string | null;
+}) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("webinar_api_logs").insert({ kind: "join-token", ...entry });
+  } catch (error) {
+    console.error("logWebinarCall failed:", error instanceof Error ? error.message : error);
+  }
+}
+
 export type JoinTokenResult =
   | { ok: true; token: string; webinarId: string }
   | { ok: false; reason: "not_registered" | "token_failed" | "rate_limited" };
@@ -40,6 +60,17 @@ export const getJoinToken = createServerFn({ method: "POST" })
         (process.env["WEBINAR_GG_WEBINAR_ID"] || "").trim() || "cmthk6y4001kos60ybxfkbc67";
       if (!apiToken || !webinarId) {
         console.error("getJoinToken: WEBINAR_GG_API_TOKEN / WEBINAR_GG_WEBINAR_ID not set");
+        await logWebinarCall({
+          email: (data.email ?? "").trim().toLowerCase() || null,
+          full_name: null,
+          webinar_id: webinarId || null,
+          request_url: null,
+          request_body: null,
+          response_status: null,
+          response_body: null,
+          outcome: "config_missing",
+          error: "WEBINAR_GG_API_TOKEN or WEBINAR_GG_WEBINAR_ID is not set on the server.",
+        });
         return { ok: false as const, reason: "token_failed" as const };
       }
 
@@ -70,19 +101,35 @@ export const getJoinToken = createServerFn({ method: "POST" })
         fullName = String(name);
       }
 
-      const response = await fetch("https://webinar-api.webinar.gg/api/v1/webinar/join-token", {
+      const requestUrl = "https://webinar-api.webinar.gg/api/v1/webinar/join-token";
+      const requestBody = { webinarId, name: fullName, email };
+      const response = await fetch(requestUrl, {
         method: "POST",
         headers: {
           authorization: `Bearer ${apiToken}`,
           "content-type": "application/json",
         },
-        body: JSON.stringify({ webinarId, name: fullName, email }),
+        body: JSON.stringify(requestBody),
       });
 
       const body = await response.text();
+      const logBase = {
+        email,
+        full_name: fullName,
+        webinar_id: webinarId,
+        request_url: requestUrl,
+        request_body: requestBody,
+        response_status: response.status,
+        response_body: body.slice(0, 8000),
+      };
       if (!response.ok) {
         // Logged in full on purpose: the upstream field names are read from here.
         console.error("webinar.gg join-token failed", response.status, body);
+        await logWebinarCall({
+          ...logBase,
+          outcome: "http_error",
+          error: `webinar.gg replied ${response.status}`,
+        });
         return { ok: false as const, reason: "token_failed" as const };
       }
 
@@ -99,13 +146,30 @@ export const getJoinToken = createServerFn({ method: "POST" })
 
       if (!token) {
         console.error("webinar.gg join-token: no token in response", response.status, body);
+        await logWebinarCall({
+          ...logBase,
+          outcome: "no_token",
+          error: "The reply contained no token field.",
+        });
         return { ok: false as const, reason: "token_failed" as const };
       }
 
+      await logWebinarCall({ ...logBase, outcome: "ok", error: null });
       return { ok: true as const, token, webinarId };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error("getJoinToken failed:", message);
+      await logWebinarCall({
+        email: (data.email ?? "").trim().toLowerCase() || null,
+        full_name: null,
+        webinar_id: null,
+        request_url: null,
+        request_body: null,
+        response_status: null,
+        response_body: null,
+        outcome: "exception",
+        error: message,
+      });
       return { ok: false as const, reason: "token_failed" as const };
     }
   });
