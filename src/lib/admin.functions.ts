@@ -61,8 +61,8 @@ export const adminDashboard = createServerFn({ method: "POST" })
     const { createPublicServerClient } = await import("./supabase-public.server");
     const db = createPublicServerClient();
     const range = {
-      p_from: data.from ?? null,
-      p_to: data.to ?? null,
+      ...(data.from ? { p_from: data.from } : {}),
+      ...(data.to ? { p_to: data.to } : {}),
     };
 
     try {
