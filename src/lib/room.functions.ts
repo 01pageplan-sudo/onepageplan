@@ -82,9 +82,23 @@ export const getJoinToken = createServerFn({ method: "POST" })
       let fullName = "Test Attendee";
       let email = "test@onepageplan.in";
 
+      const preflightLog = (outcome: string, error: string | null) =>
+        logWebinarCall({
+          email: email || null,
+          full_name: null,
+          webinar_id: webinarId,
+          request_url: null,
+          request_body: null,
+          response_status: null,
+          response_body: null,
+          outcome,
+          error,
+        });
+
       if (!testMode) {
         email = (data.email ?? "").trim().toLowerCase();
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) {
+          await preflightLog("invalid_email", "The email entered is not a valid address.");
           return { ok: false as const, reason: "not_registered" as const };
         }
 
@@ -96,11 +110,19 @@ export const getJoinToken = createServerFn({ method: "POST" })
         );
         if (error) {
           console.error("getJoinToken lookup failed:", error.message);
+          await preflightLog("lookup_failed", error.message);
           return { ok: false as const, reason: "token_failed" as const };
         }
-        if (!name) return { ok: false as const, reason: "not_registered" as const };
+        if (!name) {
+          await preflightLog(
+            "not_registered",
+            `No registration found for this email on ${sessionDateISO()}.`,
+          );
+          return { ok: false as const, reason: "not_registered" as const };
+        }
         fullName = String(name);
       }
+
 
       const requestUrl = "https://webinar-api.webinar.gg/api/v1/webinar/join-token";
       const requestBody = { webinarId, name: fullName, email };
