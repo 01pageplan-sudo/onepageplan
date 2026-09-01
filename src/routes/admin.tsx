@@ -24,6 +24,7 @@ import {
 import { TEMPLATES, templateLabel } from "@/lib/email-templates";
 import { TemplateEditor } from "@/components/site/TemplateEditor";
 import { WhatsAppPanel } from "@/components/site/WhatsAppPanel";
+import { WebinarAnalytics } from "@/components/site/WebinarAnalytics";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
