@@ -389,7 +389,7 @@ export type AdminWebinarLog = {
   full_name: string | null;
   webinar_id: string | null;
   request_url: string | null;
-  request_body: unknown;
+  request_body: Record<string, string> | null;
   response_status: number | null;
   response_body: string | null;
   outcome: string;
