@@ -15,6 +15,8 @@ import { Route as ConfirmedRouteImport } from './routes/confirmed'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RoomRouteImport } from './routes/room'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ApiPublicEmailDispatchRouteImport } from './routes/api/public/email-dispatch'
+import { Route as ApiPublicResendWebhookRouteImport } from './routes/api/public/resend-webhook'
 import { Route as ApiPublicWebinarWebhookRouteImport } from './routes/api/public/webinar-webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -47,6 +49,16 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicEmailDispatchRoute = ApiPublicEmailDispatchRouteImport.update({
+  id: '/api/public/email-dispatch',
+  path: '/api/public/email-dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicResendWebhookRoute = ApiPublicResendWebhookRouteImport.update({
+  id: '/api/public/resend-webhook',
+  path: '/api/public/resend-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicWebinarWebhookRoute = ApiPublicWebinarWebhookRouteImport.update({
   id: '/api/public/webinar-webhook',
   path: '/api/public/webinar-webhook',
@@ -60,6 +72,8 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
+  '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
+  '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +83,8 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
+  '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
+  '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
 }
 export interface FileRoutesById {
@@ -79,6 +95,8 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
+  '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
+  '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +108,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/room'
     | '/terms'
+    | '/api/public/email-dispatch'
+    | '/api/public/resend-webhook'
     | '/api/public/webinar-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +119,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/room'
     | '/terms'
+    | '/api/public/email-dispatch'
+    | '/api/public/resend-webhook'
     | '/api/public/webinar-webhook'
   id:
     | '__root__'
@@ -108,6 +130,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/room'
     | '/terms'
+    | '/api/public/email-dispatch'
+    | '/api/public/resend-webhook'
     | '/api/public/webinar-webhook'
   fileRoutesById: FileRoutesById
 }
@@ -118,6 +142,8 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   RoomRoute: typeof RoomRoute
   TermsRoute: typeof TermsRoute
+  ApiPublicEmailDispatchRoute: typeof ApiPublicEmailDispatchRoute
+  ApiPublicResendWebhookRoute: typeof ApiPublicResendWebhookRoute
   ApiPublicWebinarWebhookRoute: typeof ApiPublicWebinarWebhookRoute
 }
 
@@ -165,6 +191,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/email-dispatch': {
+      id: '/api/public/email-dispatch'
+      path: '/api/public/email-dispatch'
+      fullPath: '/api/public/email-dispatch'
+      preLoaderRoute: typeof ApiPublicEmailDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/resend-webhook': {
+      id: '/api/public/resend-webhook'
+      path: '/api/public/resend-webhook'
+      fullPath: '/api/public/resend-webhook'
+      preLoaderRoute: typeof ApiPublicResendWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webinar-webhook': {
       id: '/api/public/webinar-webhook'
       path: '/api/public/webinar-webhook'
@@ -182,6 +222,8 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   RoomRoute: RoomRoute,
   TermsRoute: TermsRoute,
+  ApiPublicEmailDispatchRoute: ApiPublicEmailDispatchRoute,
+  ApiPublicResendWebhookRoute: ApiPublicResendWebhookRoute,
   ApiPublicWebinarWebhookRoute: ApiPublicWebinarWebhookRoute,
 }
 export const routeTree = rootRouteImport

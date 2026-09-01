@@ -36,8 +36,8 @@ export const Route = createFileRoute("/api/public/resend-webhook")({
           const { error } = await createPublicServerClient().rpc("record_email_provider_event", {
             p_password: adminPassword(),
             p_event: event,
-            ...(providerId ? { p_provider_id: providerId } : {}),
-            ...(to ? { p_email: to } : {}),
+            p_provider_id: providerId as unknown as string,
+            p_email: (to ?? "") as string,
           });
           if (error) throw error;
         } catch (error) {
