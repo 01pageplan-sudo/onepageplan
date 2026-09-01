@@ -813,6 +813,11 @@ function AdminPage() {
             <WhatsAppPanel />
           </TabsContent>
 
+          {/* -------------------------- WEBINAR ANALYTICS ------------------------ */}
+          <TabsContent value="analytics" className="pt-5">
+            <WebinarAnalytics />
+          </TabsContent>
+
           {/* ---------------------------- WEBINAR LOG ---------------------------- */}
           <TabsContent value="webinar" className="space-y-4 pt-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
