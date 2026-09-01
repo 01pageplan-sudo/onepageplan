@@ -35,6 +35,133 @@ export type Database = {
         }
         Relationships: []
       }
+      email_sends: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          email: string
+          error: string | null
+          id: string
+          idempotency_key: string | null
+          opened_at: string | null
+          provider_id: string | null
+          registration_id: string | null
+          scheduled_at: string
+          sent_at: string | null
+          session_date: string | null
+          status: string
+          template: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          email: string
+          error?: string | null
+          id?: string
+          idempotency_key?: string | null
+          opened_at?: string | null
+          provider_id?: string | null
+          registration_id?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          session_date?: string | null
+          status?: string
+          template: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          email?: string
+          error?: string | null
+          id?: string
+          idempotency_key?: string | null
+          opened_at?: string | null
+          provider_id?: string | null
+          registration_id?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          session_date?: string | null
+          status?: string
+          template?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sends_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_settings: {
+        Row: {
+          annual_checkout_link: string
+          calendar_link: string
+          id: number
+          joining_link: string
+          monthly_checkout_link: string
+          nurture_enabled: boolean
+          registration_link: string
+          updated_at: string
+          whatsapp_link: string
+        }
+        Insert: {
+          annual_checkout_link?: string
+          calendar_link?: string
+          id?: number
+          joining_link?: string
+          monthly_checkout_link?: string
+          nurture_enabled?: boolean
+          registration_link?: string
+          updated_at?: string
+          whatsapp_link?: string
+        }
+        Update: {
+          annual_checkout_link?: string
+          calendar_link?: string
+          id?: number
+          joining_link?: string
+          monthly_checkout_link?: string
+          nurture_enabled?: boolean
+          registration_link?: string
+          updated_at?: string
+          whatsapp_link?: string
+        }
+        Relationships: []
+      }
+      lead_tags: {
+        Row: {
+          created_at: string
+          id: string
+          registration_id: string
+          tag: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          registration_id: string
+          tag: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          registration_id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_tags_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       newsletter_subscribers: {
         Row: {
           created_at: string
@@ -177,6 +304,78 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_lead: {
+        Args: { p_password: string; p_registration_id: string }
+        Returns: undefined
+      }
+      admin_email_sends: {
+        Args: {
+          p_from?: string
+          p_limit?: number
+          p_password: string
+          p_registration_id?: string
+          p_to?: string
+        }
+        Returns: {
+          email: string
+          error: string
+          id: string
+          opened_at: string
+          registration_id: string
+          scheduled_at: string
+          sent_at: string
+          status: string
+          template: string
+        }[]
+      }
+      admin_email_stats: {
+        Args: { p_from?: string; p_password: string; p_to?: string }
+        Returns: Json
+      }
+      admin_get_email_settings: {
+        Args: { p_password: string }
+        Returns: {
+          annual_checkout_link: string
+          calendar_link: string
+          id: number
+          joining_link: string
+          monthly_checkout_link: string
+          nurture_enabled: boolean
+          registration_link: string
+          updated_at: string
+          whatsapp_link: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "email_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_leads: {
+        Args: { p_from?: string; p_password: string; p_to?: string }
+        Returns: {
+          created_at: string
+          email: string
+          email_sent_at: string
+          emails_failed: number
+          emails_opened: number
+          emails_sent: number
+          full_name: string
+          id: string
+          landing_path: string
+          pain_point: string
+          phone_e164: string
+          profile_type: string
+          session_date: string
+          status: string
+          tag_dates: Json
+          tags: string[]
+          utm_source: string
+          voice_consent: boolean
+          whatsapp_consent: boolean
+        }[]
+      }
       admin_registrations: {
         Args: { p_password: string; p_session_date: string }
         Returns: {
@@ -192,9 +391,46 @@ export type Database = {
           whatsapp_consent: boolean
         }[]
       }
+      admin_save_email_settings: {
+        Args: { p: Json; p_password: string }
+        Returns: undefined
+      }
+      admin_set_tag: {
+        Args: {
+          p_add: boolean
+          p_password: string
+          p_registration_id: string
+          p_tag: string
+        }
+        Returns: undefined
+      }
+      assert_admin: { Args: { p_password: string }; Returns: undefined }
+      claim_due_emails: {
+        Args: { p_limit?: number; p_password: string }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+          registration_id: string
+          scheduled_at: string
+          session_date: string
+          template: string
+        }[]
+      }
+      dispatch_due_emails: { Args: never; Returns: undefined }
       lookup_registration_for_room: {
         Args: { p_email: string; p_session_date: string }
         Returns: string
+      }
+      mark_email_send: {
+        Args: {
+          p_error?: string
+          p_id: string
+          p_password: string
+          p_provider_id?: string
+          p_status: string
+        }
+        Returns: undefined
       }
       mark_registration_delivery: {
         Args: {
@@ -204,6 +440,19 @@ export type Database = {
           p_sent: boolean
         }
         Returns: undefined
+      }
+      queue_emails: {
+        Args: { p_password: string; p_rows: Json }
+        Returns: number
+      }
+      record_email_provider_event: {
+        Args: {
+          p_email: string
+          p_event: string
+          p_password: string
+          p_provider_id: string
+        }
+        Returns: boolean
       }
       record_webinar_event: {
         Args: {
@@ -227,6 +476,7 @@ export type Database = {
         Args: { p_email: string; p_source?: string }
         Returns: undefined
       }
+      verify_cron_secret: { Args: { p_secret: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

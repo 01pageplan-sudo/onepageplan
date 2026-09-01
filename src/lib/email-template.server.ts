@@ -1,5 +1,6 @@
-export const DISCLAIMER_TEXT =
-  "The One Page Plan is a financial education programme by Milanaire, operated by Mannrs Wellness LLP. Everything on this page and in this session is educational content only. It is not investment advice and it is not a recommendation to buy or sell any security, scheme, policy or product. No returns are promised or implied. For anything tax related please consult a Chartered Accountant. For anything legal please consult a lawyer. Please make your own decisions.";
+import { DISCLAIMER_TEXT } from "./email-templates";
+
+export { DISCLAIMER_TEXT };
 
 export function buildConfirmationEmail(
   firstName: string,
