@@ -424,7 +424,6 @@ export const TEMPLATES: TemplateSpec[] = [
       "If you want the full structure — the templates, the order to do things in, and a monthly session to keep you honest — The One Page Plan programme is open.",
       ctx.links.whatsapp_link ? `Community group: ${ctx.links.whatsapp_link}` : "",
     ],
-    offer: true,
   },
   ...nurtureCopy.map((copy, index) => ({
     key: `nurture_${index + 1}`,
@@ -434,7 +433,6 @@ export const TEMPLATES: TemplateSpec[] = [
     subject: () => copy.subject,
     heading: () => copy.heading,
     body: () => copy.body,
-    offer: index >= 5,
   })),
   ...postPurchaseCopy.map((copy, index) => ({
     key: `post_purchase_${index + 1}`,
