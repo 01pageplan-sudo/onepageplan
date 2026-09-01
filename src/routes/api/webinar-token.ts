@@ -32,13 +32,23 @@ export const Route = createFileRoute("/api/webinar-token")({
           return Response.json({ error: "invalid_email" }, { status: 400 });
         }
 
+        const full = name || "Guest Attendee";
+        const parts = full.trim().split(/\s+/);
         const upstream = await fetch("https://webinar-api.webinar.gg/api/v1/webinar/join-token", {
           method: "POST",
           headers: {
             authorization: `Bearer ${apiKey}`,
             "content-type": "application/json",
           },
-          body: JSON.stringify({ webinarId, name: name || "Guest", email }),
+          body: JSON.stringify({
+            webinarId,
+            firstName: parts[0] || "Guest",
+            lastName: parts.length > 1 ? parts.slice(1).join(" ") : "Attendee",
+            name: full,
+            email,
+            phone: "+910000000000",
+            passcode: (process.env["WEBINAR_GG_PASSCODE"] || "").trim(),
+          }),
         });
 
         const raw = await upstream.text();
