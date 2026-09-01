@@ -49,6 +49,7 @@ export type JoinTokenResult =
 export const getJoinToken = createServerFn({ method: "POST" })
   .inputValidator((data: { email: string }) => data)
   .handler(async ({ data }): Promise<JoinTokenResult> => {
+    console.log("getJoinToken called", data?.email);
     try {
       if (isRoomRateLimited(safeRequestIP())) {
         return { ok: false as const, reason: "rate_limited" as const };
