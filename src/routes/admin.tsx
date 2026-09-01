@@ -463,7 +463,7 @@ function AdminPage() {
                     const timeline = sendsByLead.get(lead.id) ?? [];
                     const isOpen = expanded === lead.id;
                     return (
-                      <>
+                      <Fragment key={lead.id}>
                         <tr key={lead.id} className="border-b border-border/60 align-top">
                           <td className="p-3 font-medium">{lead.full_name}</td>
                           <td className="p-3">{lead.email}</td>
