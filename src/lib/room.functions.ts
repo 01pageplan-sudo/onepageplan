@@ -38,7 +38,7 @@ async function logWebinarCall(entry: {
     // Goes through a security-definer RPC with the publishable key, so the log
     // works on any host without the private service-role key.
     const { createPublicServerClient } = await import("./supabase-public.server");
-    const { error } = await createPublicServerClient().rpc("log_webinar_call", {
+    const args = {
       p_email: entry.email,
       p_full_name: entry.full_name,
       p_webinar_id: entry.webinar_id,
@@ -48,7 +48,10 @@ async function logWebinarCall(entry: {
       p_response_body: entry.response_body,
       p_outcome: entry.outcome,
       p_error: entry.error,
-    });
+    } as unknown as Parameters<
+      ReturnType<typeof createPublicServerClient>["rpc"]
+    >[1];
+    const { error } = await createPublicServerClient().rpc("log_webinar_call", args);
     if (error) console.error("logWebinarCall rpc failed:", error.message);
   } catch (error) {
     console.error("logWebinarCall failed:", error instanceof Error ? error.message : error);
