@@ -35,8 +35,21 @@ async function logWebinarCall(entry: {
   error: string | null;
 }) {
   try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("webinar_api_logs").insert({ kind: "join-token", ...entry });
+    // Goes through a security-definer RPC with the publishable key, so the log
+    // works on any host without the private service-role key.
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const { error } = await createPublicServerClient().rpc("log_webinar_call", {
+      p_email: entry.email,
+      p_full_name: entry.full_name,
+      p_webinar_id: entry.webinar_id,
+      p_request_url: entry.request_url,
+      p_request_body: entry.request_body,
+      p_response_status: entry.response_status,
+      p_response_body: entry.response_body,
+      p_outcome: entry.outcome,
+      p_error: entry.error,
+    });
+    if (error) console.error("logWebinarCall rpc failed:", error.message);
   } catch (error) {
     console.error("logWebinarCall failed:", error instanceof Error ? error.message : error);
   }
