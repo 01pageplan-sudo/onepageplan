@@ -259,3 +259,14 @@ function Fallback({ webinarUrl }: { webinarUrl: string }) {
     </Card>
   );
 }
+
+/** Quiet placeholder while the join token is being fetched. */
+function PlayerSkeleton() {
+  return (
+    <section className="mx-auto w-full max-w-[1100px]">
+      <p className="label-caps text-[var(--brass)]">Getting you in…</p>
+      <div className="mt-3 aspect-video w-full animate-pulse rounded-xl border border-border bg-card" />
+      <div className="mt-3 h-3 w-40 animate-pulse rounded bg-card" />
+    </section>
+  );
+}
