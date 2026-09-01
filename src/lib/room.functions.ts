@@ -105,6 +105,7 @@ export const getJoinToken = createServerFn({ method: "POST" })
 
       let fullName = "Test Attendee";
       let email = "test@onepageplan.in";
+      let phone = "+910000000000";
 
       const preflightLog = (outcome: string, error: string | null) =>
         logWebinarCall({
@@ -128,28 +129,43 @@ export const getJoinToken = createServerFn({ method: "POST" })
 
         const { sessionDateISO } = await import("./session");
         const { createPublicServerClient } = await import("./supabase-public.server");
-        const { data: name, error } = await createPublicServerClient().rpc(
-          "lookup_registration_for_room",
-          { p_email: email, p_session_date: sessionDateISO() },
+        const { data: details, error } = await createPublicServerClient().rpc(
+          "lookup_registration_details_for_room" as never,
+          { p_email: email, p_session_date: sessionDateISO() } as never,
         );
         if (error) {
           console.error("getJoinToken lookup failed:", error.message);
           await preflightLog("lookup_failed", error.message);
           return { ok: false as const, reason: "token_failed" as const };
         }
-        if (!name) {
+        const record = (details ?? null) as { full_name?: string; phone_e164?: string } | null;
+        if (!record?.full_name) {
           await preflightLog(
             "not_registered",
             `No registration found for this email on ${sessionDateISO()}.`,
           );
           return { ok: false as const, reason: "not_registered" as const };
         }
-        fullName = String(name);
+        fullName = String(record.full_name);
+        if (record.phone_e164) phone = record.phone_e164;
       }
 
+      // webinar.gg requires firstName, lastName, email, phone and passcode.
+      const parts = fullName.trim().split(/\s+/);
+      const firstName = parts[0] || "Guest";
+      const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "Attendee";
+      const passcode = (process.env["WEBINAR_GG_PASSCODE"] || "").trim();
 
       const requestUrl = "https://webinar-api.webinar.gg/api/v1/webinar/join-token";
-      const requestBody = { webinarId, name: fullName, email };
+      const requestBody = {
+        webinarId,
+        firstName,
+        lastName,
+        name: fullName,
+        email,
+        phone,
+        passcode,
+      };
       const response = await fetch(requestUrl, {
         method: "POST",
         headers: {

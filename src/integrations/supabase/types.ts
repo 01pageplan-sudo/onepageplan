@@ -533,6 +533,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      lookup_registration_details_for_room: {
+        Args: { p_email: string; p_session_date: string }
+        Returns: Json
+      }
       lookup_registration_for_room: {
         Args: { p_email: string; p_session_date: string }
         Returns: string
