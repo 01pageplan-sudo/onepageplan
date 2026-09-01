@@ -117,8 +117,43 @@ export async function upsertRegistration(
 
 export async function sendConfirmationEmail(
   db: Db,
-  args: { id: string; email: string; full_name: string },
+  args: { id: string; email: string; full_name: string; session_date?: string | undefined },
 ) {
+  // Preferred path: queue it so the admin dashboard records exactly what went
+  // out and can resend it later. Falls back to a direct send if the queue is
+  // not usable on this host.
+  try {
+    const automation = await import("./email-automation.server");
+    const sessionDate = args.session_date ?? sessionDateISO(getNextSessionIST());
+    const { error } = await db.rpc("queue_emails", {
+      p_password: automation.adminPassword(),
+      p_rows: JSON.parse(
+        JSON.stringify([
+          {
+            registration_id: args.id,
+            email: args.email,
+            template: "confirmation",
+            session_date: sessionDate,
+            scheduled_at: new Date().toISOString(),
+            idempotency_key: `${args.id}:confirmation:${sessionDate}`,
+          },
+        ]),
+      ) as never,
+    });
+    if (error) throw error;
+    const result = await automation.sendDueEmails(db, 5);
+    if (result.sent > 0) {
+      await markDelivery(db, args.id, "email", true);
+      return;
+    }
+    if (result.claimed > 0) throw new Error("queued send did not go out");
+  } catch (queueError) {
+    console.error(
+      "queued confirmation unavailable, sending directly:",
+      queueError instanceof Error ? queueError.message : queueError,
+    );
+  }
+
   try {
     const webinarUrl =
       process.env["VITE_WEBINAR_URL"] ||
