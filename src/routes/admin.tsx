@@ -400,6 +400,7 @@ function AdminPage() {
             <TabsTrigger value="templates">Email copy</TabsTrigger>
             <TabsTrigger value="delivery">Delivery</TabsTrigger>
             <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+            <TabsTrigger value="analytics">Webinar analytics</TabsTrigger>
             <TabsTrigger value="webinar">Webinar log</TabsTrigger>
           </TabsList>
 
