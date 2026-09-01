@@ -7,14 +7,14 @@ export function buildConfirmationEmail(
   webinarUrl: string,
   googleCalendarUrl: string,
 ) {
-  const roomUrl = webinarUrl || "https://webinar.gg/register/cmthk6y4001kos60ybxfkbc67";
+  const roomUrl = webinarUrl || "https://www.onepageplan.in/room";
   const text = `Hello ${firstName},
 
 Your seat for The Money Reality Masterclass is saved. It runs this Saturday at 7:00 PM IST and takes ninety minutes.
 
-One thing left to do. Confirm your seat on the session platform using the link below. That is the step that actually lets you in on the night.
+Keep the link below. That is how you get in on the night.
 
-${webinarUrl}
+${roomUrl}
 
 Add it to your calendar: ${googleCalendarUrl}
 
@@ -26,8 +26,6 @@ See you there.
 
 Milan Dodhia
 Financial Educator, Milanaire
-
-Calendar link: ${googleCalendarUrl}
 
 ---
 ${DISCLAIMER_TEXT}
@@ -55,15 +53,15 @@ To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remo
               <td style="font-size:15px;line-height:1.6;padding-bottom:14px;">Your seat for The Money Reality Masterclass is saved. It runs this Saturday at 7:00 PM IST and takes ninety minutes.</td>
             </tr>
             <tr>
-              <td style="font-size:15px;line-height:1.6;padding-bottom:20px;">One thing left to do. Confirm your seat on the session platform using the button below. That is the step that actually lets you in on the night.</td>
+              <td style="font-size:15px;line-height:1.6;padding-bottom:20px;">Keep the button below. That is how you get in on the night.</td>
             </tr>
             <tr>
               <td align="center" style="padding-bottom:22px;">
-                <a href="${roomUrl}" style="display:inline-block;background-color:#4A5A3A;color:#FAF7F0;text-decoration:none;font-size:15px;font-weight:600;padding:13px 26px;border-radius:8px;">Join on Saturday</a>
+                <a href="${roomUrl}" style="display:inline-block;background-color:#4A5A3A;color:#FAF7F0;text-decoration:none;font-size:15px;font-weight:600;padding:13px 26px;border-radius:8px;">Open the session</a>
               </td>
             </tr>
             <tr>
-              <td align="center" style="font-size:14px;line-height:1.6;padding-bottom:22px;">Add it to your calendar: <a href="${googleCalendarUrl}" style="color:#4A5A3A;font-weight:600;">Google Calendar</a></td>
+              <td align="center" style="font-size:14px;line-height:1.6;padding-bottom:22px;"><a href="${googleCalendarUrl}" style="color:#4A5A3A;font-weight:600;">Add it to your calendar</a></td>
             </tr>
             <tr>
               <td style="font-size:15px;line-height:1.6;padding-bottom:14px;">Before Saturday, sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers, not watching mine.</td>

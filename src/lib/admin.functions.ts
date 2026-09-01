@@ -66,14 +66,15 @@ export const adminDashboard = createServerFn({ method: "POST" })
     };
 
     try {
-      const [leads, settings, stats, sends] = await Promise.all([
+      const [leads, settings, stats, sends, templates] = await Promise.all([
         db.rpc("admin_leads", { p_password: data.password, ...range }),
         db.rpc("admin_get_email_settings", { p_password: data.password }),
         db.rpc("admin_email_stats", { p_password: data.password, ...range }),
         db.rpc("admin_email_sends", { p_password: data.password, ...range, p_limit: 400 }),
+        db.rpc("admin_get_templates", { p_password: data.password }),
       ]);
 
-      const failure = [leads, settings, stats, sends].find((result) => result.error);
+      const failure = [leads, settings, stats, sends, templates].find((result) => result.error);
       if (failure?.error) {
         if (unauthorized(failure.error.message)) {
           return { ok: false as const, error: "Wrong password." };
@@ -88,12 +89,107 @@ export const adminDashboard = createServerFn({ method: "POST" })
         settings: (settings.data ?? {}) as unknown as AdminSettings,
         stats: (stats.data ?? {}) as unknown as Record<string, number | Record<string, number>>,
         sends: (sends.data ?? []) as unknown as AdminSend[],
+        templates: (templates.data ?? {}) as unknown as Record<
+          string,
+          { subject?: string | null; heading?: string | null; body?: string | null }
+        >,
       };
     } catch (error) {
       console.error("adminDashboard failed:", error);
       return { ok: false as const, error: "Could not load the dashboard." };
     }
   });
+
+/** Saves edited copy for one email. Blank fields fall back to the default copy. */
+export const adminSaveTemplate = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      key: string;
+      subject: string;
+      heading: string;
+      body: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const { TEMPLATE_MAP } = await import("./email-templates");
+    if (!TEMPLATE_MAP[data.key]) return { ok: false as const, error: "Unknown email." };
+    const { error } = await createPublicServerClient().rpc("admin_save_template", {
+      p_password: data.password,
+      p_key: data.key,
+      p_subject: data.subject,
+      p_heading: data.heading,
+      p_body: data.body,
+    });
+    if (error) {
+      return {
+        ok: false as const,
+        error: unauthorized(error.message) ? "Wrong password." : "Could not save that email.",
+      };
+    }
+    return { ok: true as const };
+  });
+
+/** Puts one email back to its original copy. */
+export const adminResetTemplate = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string; key: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const { error } = await createPublicServerClient().rpc("admin_reset_template", {
+      p_password: data.password,
+      p_key: data.key,
+    });
+    if (error) {
+      return {
+        ok: false as const,
+        error: unauthorized(error.message) ? "Wrong password." : "Could not reset that email.",
+      };
+    }
+    return { ok: true as const };
+  });
+
+/** Renders one email exactly as it will go out, for the preview pane. */
+export const adminPreviewTemplate = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      key: string;
+      subject?: string | undefined;
+      heading?: string | undefined;
+      body?: string | undefined;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const { TEMPLATE_MAP, applyOverride, renderEmail } = await import("./email-templates");
+    const automation = await import("./email-automation.server");
+
+    const base = TEMPLATE_MAP[data.key];
+    if (!base) return { ok: false as const, error: "Unknown email." };
+
+    try {
+      const db = createPublicServerClient();
+      const settings = await automation.loadSettings(db, data.password);
+      const spec = applyOverride(base, {
+        subject: data.subject ?? null,
+        heading: data.heading ?? null,
+        body: data.body ?? null,
+      });
+      const { subject, html } = renderEmail(spec, {
+        firstName: "Milan",
+        links: automation.resolveLinks(settings, null),
+      });
+      return { ok: true as const, subject, html };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        ok: false as const,
+        error: unauthorized(message) ? "Wrong password." : "Could not build the preview.",
+      };
+    }
+  });
+
 
 export const adminSetTag = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string; registrationId: string; tag: string; add: boolean }) => data)

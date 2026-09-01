@@ -1,6 +1,6 @@
 import { getNextSessionIST, sessionDateISO, formatSessionDayMonth } from "./session";
 import { DISCLAIMER_TEXT, buildConfirmationEmail } from "./email-template.server";
-import { getSessionCalendar } from "./calendar";
+import { getSessionCalendar, ROOM_URL } from "./calendar";
 
 export type RegistrationInput = {
   full_name: string;
@@ -155,10 +155,9 @@ export async function sendConfirmationEmail(
   }
 
   try {
-    const webinarUrl =
-      process.env["VITE_WEBINAR_URL"] ||
-      process.env["WEBINAR_URL"] ||
-      "https://onepageplan.in/confirmed";
+    // Always our own room, never the webinar platform's registration page.
+    const webinarUrl = ROOM_URL;
+
     const firstName = args.full_name.trim().split(/\s+/)[0] ?? "there";
     // Built from the server side session date that was written to the database,
     // never from a value passed in by the browser.

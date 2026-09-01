@@ -139,32 +139,37 @@ function RoomPage() {
 
       <main className="mx-auto max-w-5xl px-4 py-12">
         {phase === "form" ? (
-          <Card>
-            <h1 className="text-2xl font-bold">Join the session</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Enter the email you registered with.
-            </p>
-            <form
-              className="mt-6 space-y-3 text-left"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!busy) void requestToken(email);
-              }}
-            >
-              <Input
-                type="email"
-                required={!testMode}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
-              <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? "Checking…" : "Join →"}
-              </Button>
-            </form>
-          </Card>
+          busy ? (
+            <PlayerSkeleton />
+          ) : (
+            <Card>
+              <h1 className="text-2xl font-bold">Join the session</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Enter the email you registered with.
+              </p>
+              <form
+                className="mt-6 space-y-3 text-left"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!busy) void requestToken(email);
+                }}
+              >
+                <Input
+                  type="email"
+                  required={!testMode}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
+                <Button type="submit" className="w-full" disabled={busy}>
+                  Join →
+                </Button>
+              </form>
+            </Card>
+          )
         ) : null}
+
 
         {phase === "not_registered" ? (
           <Card>
