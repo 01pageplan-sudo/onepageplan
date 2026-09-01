@@ -38,7 +38,7 @@ export function TemplateEditor({
   overrides: Overrides;
   onSaved: () => void;
 }) {
-  const [key, setKey] = useState(TEMPLATES[0] ?? "confirmation");
+  const [key, setKey] = useState(TEMPLATES[0]?.key ?? "confirmation");
   const [draft, setDraft] = useState<TemplateOverride | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -130,7 +130,7 @@ export function TemplateEditor({
     <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
       <div className="rounded-lg border border-border bg-card p-2">
         <ul className="max-h-[520px] space-y-1 overflow-y-auto">
-          {TEMPLATES.map((template) => {
+          {TEMPLATES.map(({ key: template }) => {
             const isEdited = Boolean(
               (overrides[template]?.subject ?? "") ||
                 (overrides[template]?.heading ?? "") ||
