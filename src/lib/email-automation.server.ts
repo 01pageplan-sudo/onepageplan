@@ -12,17 +12,20 @@ import { TEMPLATE_MAP, renderEmail, type EmailLinks } from "./email-templates";
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 const HOUR = 60 * 60 * 1000;
 
-export function adminPassword(): string {
-  const password = process.env["ADMIN_PASSWORD"];
+export function adminPassword(override?: string | undefined): string {
+  const password = override || process.env["ADMIN_PASSWORD"];
   if (!password) throw new Error("ADMIN_PASSWORD is not configured on the server.");
   return password;
 }
 
 export type EmailSettings = EmailLinks & { nurture_enabled: boolean };
 
-export async function loadSettings(db: PublicServerClient): Promise<EmailSettings> {
+export async function loadSettings(
+  db: PublicServerClient,
+  password?: string | undefined,
+): Promise<EmailSettings> {
   const { data, error } = await db.rpc("admin_get_email_settings", {
-    p_password: adminPassword(),
+    p_password: adminPassword(password),
   });
   if (error) throw error;
   const row = (data ?? {}) as Partial<EmailSettings>;
@@ -128,9 +131,9 @@ export function plannedRows(lead: LeadRow, nurtureEnabled: boolean): QueueRow[] 
 }
 
 /** Queues every missing row for recent leads. Old slots are never back-filled. */
-export async function scheduleSequence(db: PublicServerClient) {
-  const password = adminPassword();
-  const settings = await loadSettings(db);
+export async function scheduleSequence(db: PublicServerClient, override?: string | undefined) {
+  const password = adminPassword(override);
+  const settings = await loadSettings(db, password);
   const from = new Date(Date.now() - 45 * 24 * HOUR).toISOString();
 
   const { data, error } = await db.rpc("admin_leads", { p_password: password, p_from: from });
@@ -189,9 +192,13 @@ export function firstName(fullName: string) {
 }
 
 /** Sends up to `limit` due emails. Safe to call repeatedly. */
-export async function sendDueEmails(db: PublicServerClient, limit = 25) {
-  const password = adminPassword();
-  const settings = await loadSettings(db);
+export async function sendDueEmails(
+  db: PublicServerClient,
+  limit = 25,
+  override?: string | undefined,
+) {
+  const password = adminPassword(override);
+  const settings = await loadSettings(db, password);
 
   const { data, error } = await db.rpc("claim_due_emails", {
     p_password: password,
