@@ -519,6 +519,20 @@ export type Database = {
         }[]
       }
       dispatch_due_emails: { Args: never; Returns: undefined }
+      log_webinar_call: {
+        Args: {
+          p_email: string
+          p_error: string
+          p_full_name: string
+          p_outcome: string
+          p_request_body: Json
+          p_request_url: string
+          p_response_body: string
+          p_response_status: number
+          p_webinar_id: string
+        }
+        Returns: undefined
+      }
       lookup_registration_for_room: {
         Args: { p_email: string; p_session_date: string }
         Returns: string

@@ -35,8 +35,32 @@ async function logWebinarCall(entry: {
   error: string | null;
 }) {
   try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("webinar_api_logs").insert({ kind: "join-token", ...entry });
+    // Goes through a security-definer RPC with the publishable key, so the log
+    // works on any host without the private service-role key.
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const args = {
+      p_email: entry.email,
+      p_full_name: entry.full_name,
+      p_webinar_id: entry.webinar_id,
+      p_request_url: entry.request_url,
+      p_request_body: entry.request_body,
+      p_response_status: entry.response_status,
+      p_response_body: entry.response_body,
+      p_outcome: entry.outcome,
+      p_error: entry.error,
+    } as unknown as {
+      p_email: string;
+      p_full_name: string;
+      p_webinar_id: string;
+      p_request_url: string;
+      p_request_body: null;
+      p_response_status: number;
+      p_response_body: string;
+      p_outcome: string;
+      p_error: string;
+    };
+    const { error } = await createPublicServerClient().rpc("log_webinar_call", args);
+    if (error) console.error("logWebinarCall rpc failed:", error.message);
   } catch (error) {
     console.error("logWebinarCall failed:", error instanceof Error ? error.message : error);
   }
@@ -54,7 +78,8 @@ export const getJoinToken = createServerFn({ method: "POST" })
         return { ok: false as const, reason: "rate_limited" as const };
       }
 
-      const apiToken = process.env["WEBINAR_GG_API_TOKEN"];
+      const apiToken =
+        process.env["WEBINAR_GG_API_TOKEN"] || process.env["WEBINAR_GG_API_KEY"] || "";
       // Same id in the join-token request and in the iframe src, always.
       const webinarId =
         (process.env["WEBINAR_GG_WEBINAR_ID"] || "").trim() || "cmthk6y4001kos60ybxfkbc67";
@@ -81,9 +106,23 @@ export const getJoinToken = createServerFn({ method: "POST" })
       let fullName = "Test Attendee";
       let email = "test@onepageplan.in";
 
+      const preflightLog = (outcome: string, error: string | null) =>
+        logWebinarCall({
+          email: email || null,
+          full_name: null,
+          webinar_id: webinarId,
+          request_url: null,
+          request_body: null,
+          response_status: null,
+          response_body: null,
+          outcome,
+          error,
+        });
+
       if (!testMode) {
         email = (data.email ?? "").trim().toLowerCase();
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) {
+          await preflightLog("invalid_email", "The email entered is not a valid address.");
           return { ok: false as const, reason: "not_registered" as const };
         }
 
@@ -95,11 +134,19 @@ export const getJoinToken = createServerFn({ method: "POST" })
         );
         if (error) {
           console.error("getJoinToken lookup failed:", error.message);
+          await preflightLog("lookup_failed", error.message);
           return { ok: false as const, reason: "token_failed" as const };
         }
-        if (!name) return { ok: false as const, reason: "not_registered" as const };
+        if (!name) {
+          await preflightLog(
+            "not_registered",
+            `No registration found for this email on ${sessionDateISO()}.`,
+          );
+          return { ok: false as const, reason: "not_registered" as const };
+        }
         fullName = String(name);
       }
+
 
       const requestUrl = "https://webinar-api.webinar.gg/api/v1/webinar/join-token";
       const requestBody = { webinarId, name: fullName, email };
