@@ -380,3 +380,35 @@ export const adminDeliverabilityCheck = createServerFn({ method: "POST" })
       ],
     };
   });
+
+export type AdminWebinarLog = {
+  id: string;
+  created_at: string;
+  kind: string;
+  email: string | null;
+  full_name: string | null;
+  webinar_id: string | null;
+  request_url: string | null;
+  request_body: unknown;
+  response_status: number | null;
+  response_body: string | null;
+  outcome: string;
+  error: string | null;
+};
+
+/** The raw webinar.gg request/response log, newest first. */
+export const adminWebinarLogs = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const { data: rows, error } = await createPublicServerClient().rpc("admin_webinar_logs", {
+      p_password: data.password,
+      p_limit: 100,
+    });
+    if (error) {
+      if (unauthorized(error.message)) return { ok: false as const, error: "Wrong password." };
+      console.error("adminWebinarLogs failed:", error.message);
+      return { ok: false as const, error: "Could not load the webinar log." };
+    }
+    return { ok: true as const, logs: (rows ?? []) as unknown as AdminWebinarLog[] };
+  });
