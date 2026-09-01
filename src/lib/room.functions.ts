@@ -54,7 +54,8 @@ export const getJoinToken = createServerFn({ method: "POST" })
         return { ok: false as const, reason: "rate_limited" as const };
       }
 
-      const apiToken = process.env["WEBINAR_GG_API_TOKEN"];
+      const apiToken =
+        process.env["WEBINAR_GG_API_TOKEN"] || process.env["WEBINAR_GG_API_KEY"] || "";
       // Same id in the join-token request and in the iframe src, always.
       const webinarId =
         (process.env["WEBINAR_GG_WEBINAR_ID"] || "").trim() || "cmthk6y4001kos60ybxfkbc67";
