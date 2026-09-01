@@ -417,6 +417,7 @@ export type Database = {
           template: string
         }[]
       }
+      dispatch_due_emails: { Args: never; Returns: undefined }
       lookup_registration_for_room: {
         Args: { p_email: string; p_session_date: string }
         Returns: string
@@ -475,6 +476,7 @@ export type Database = {
         Args: { p_email: string; p_source?: string }
         Returns: undefined
       }
+      verify_cron_secret: { Args: { p_secret: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
