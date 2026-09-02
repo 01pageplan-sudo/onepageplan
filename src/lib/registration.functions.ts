@@ -56,10 +56,10 @@ export const registerAttendee = createServerFn({ method: "POST" })
       const existing = await helpers.findExistingRegistration(db, row.email, row.session_date);
       if (existing) {
         // Update contact preferences silently without re-sending confirmation email or WhatsApp
-        await helpers.upsertRegistration(db, row);
+        const saved = await helpers.upsertRegistration(db, row);
         return {
           ok: true as const,
-          registrationId: existing.id,
+          registrationId: saved?.id ?? null,
           alreadyRegistered: true as const,
         };
       }

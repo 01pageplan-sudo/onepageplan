@@ -109,13 +109,15 @@ export async function findExistingRegistration(
   sessionDate: string,
 ) {
   try {
-    const { data } = await db
-      .from("registrations")
-      .select("id, email, phone_e164, session_date, email_sent_at, whatsapp_sent_at")
-      .eq("email", email.trim().toLowerCase())
-      .eq("session_date", sessionDate)
-      .maybeSingle();
-    return data;
+    const { data, error } = await db.rpc("lookup_registration_details_for_room", {
+      p_email: email.trim().toLowerCase(),
+      p_session_date: sessionDate,
+    });
+    if (error) {
+      console.error("findExistingRegistration rpc error:", error);
+      return null;
+    }
+    return data as { full_name?: string; phone_e164?: string } | null;
   } catch (err) {
     console.error("findExistingRegistration error:", err);
     return null;
