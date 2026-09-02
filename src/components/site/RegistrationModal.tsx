@@ -80,6 +80,7 @@ export function RegistrationModal({
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [declined, setDeclined] = useState(false);
+  const [declinedName, setDeclinedName] = useState("");
   const [declinedEmail, setDeclinedEmail] = useState("");
   const [declinedStatus, setDeclinedStatus] = useState<
     "idle" | "submitting" | "done" | "error"
@@ -178,14 +179,25 @@ export function RegistrationModal({
         <div className="p-6">
           {declined ? (
             <DeclinedPanel
+              name={declinedName}
+              onNameChange={setDeclinedName}
               email={declinedEmail}
               onEmailChange={setDeclinedEmail}
               status={declinedStatus}
               onSubscribe={() => {
                 void (async () => {
+                  if (!declinedEmail.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(declinedEmail.trim())) {
+                    setDeclinedStatus("error");
+                    return;
+                  }
                   setDeclinedStatus("submitting");
                   const result = await subscribeNewsletter({
-                    data: { email: declinedEmail, source: "declined_modal" },
+                    data: {
+                      email: declinedEmail,
+                      full_name: declinedName,
+                      name: declinedName,
+                      source: "declined_modal",
+                    },
                   });
                   setDeclinedStatus(result.ok ? "done" : "error");
                 })();
@@ -417,12 +429,16 @@ export function RegistrationModal({
 }
 
 function DeclinedPanel({
+  name,
+  onNameChange,
   email,
   onEmailChange,
   status,
   onSubscribe,
   onBack,
 }: {
+  name: string;
+  onNameChange: (value: string) => void;
   email: string;
   onEmailChange: (value: string) => void;
   status: "idle" | "submitting" | "done" | "error";
@@ -469,32 +485,46 @@ function DeclinedPanel({
           </p>
         ) : (
           <form
-            className="mt-3 flex gap-2"
+            className="mt-3 space-y-2.5"
             onSubmit={(event) => {
               event.preventDefault();
               onSubscribe();
             }}
           >
-            <Input
-              type="email"
-              value={email}
-              onChange={(event) => onEmailChange(event.target.value)}
-              placeholder="you@example.com"
-              className="bg-background"
-              autoComplete="email"
-            />
-            <Button
-              type="submit"
-              disabled={status === "submitting"}
-              className="shrink-0 bg-primary text-primary-foreground hover:bg-[var(--highlight)]"
-            >
-              {status === "submitting" ? <Loader2 className="animate-spin" size={16} /> : "Join"}
-            </Button>
+            <div>
+              <Input
+                type="text"
+                value={name}
+                onChange={(event) => onNameChange(event.target.value)}
+                placeholder="First name"
+                className="bg-background text-sm"
+                autoComplete="given-name"
+                required
+              />
+            </div>
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                value={email}
+                onChange={(event) => onEmailChange(event.target.value)}
+                placeholder="you@example.com"
+                className="bg-background text-sm"
+                autoComplete="email"
+                required
+              />
+              <Button
+                type="submit"
+                disabled={status === "submitting"}
+                className="shrink-0 bg-primary text-primary-foreground hover:bg-[var(--highlight)]"
+              >
+                {status === "submitting" ? <Loader2 className="animate-spin" size={16} /> : "Join"}
+              </Button>
+            </div>
           </form>
         )}
         {status === "error" ? (
           <p className="mt-2 text-xs text-destructive">
-            That did not save. Check the email and try once more.
+            That did not save. Check the name and email and try once more.
           </p>
         ) : null}
       </div>

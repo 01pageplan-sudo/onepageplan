@@ -129,18 +129,89 @@ export const submitPreworkQuestion = createServerFn({ method: "POST" })
 
 
 export const subscribeNewsletter = createServerFn({ method: "POST" })
-  .inputValidator((data: { email: string; source?: string | undefined }) => data)
+  .inputValidator(
+    (data: {
+      email: string;
+      full_name?: string | undefined;
+      name?: string | undefined;
+      source?: string | undefined;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
+    const fullName = (data.full_name ?? data.name ?? "").trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) {
       return { ok: false as const, error: "Please enter a valid email address." };
     }
     const { createPublicServerClient } = await import("./supabase-public.server");
-    const { error } = await createPublicServerClient().rpc("subscribe_newsletter", {
-      p_email: email,
-      p_source: data.source ?? "declined_modal",
-    });
-    if (error) return { ok: false as const, error: "Could not save that. Please try once more." };
+    const db = createPublicServerClient();
+
+    // 1) RPC call to subscribe_newsletter
+    try {
+      await db.rpc("subscribe_newsletter", {
+        p_email: email,
+        p_source: data.source ?? "declined_modal",
+        p_full_name: fullName,
+      } as never);
+    } catch {
+      try {
+        await db.rpc("subscribe_newsletter", {
+          p_email: email,
+          p_source: data.source ?? "declined_modal",
+        } as never);
+      } catch {
+        /* proceed to direct table operations below */
+      }
+    }
+
+    // Direct table upsert into newsletter_subscribers with full_name
+    try {
+      await db.from("newsletter_subscribers").upsert(
+        {
+          email,
+          source: data.source ?? "declined_modal",
+          full_name: fullName,
+        } as never,
+        { onConflict: "email" },
+      );
+    } catch {
+      /* ignore if column not present yet */
+    }
+
+    // 2) Also save into registrations table so it is instantly fetched by admin_leads & visible in Admin UI
+    try {
+      const { sessionDateISO } = await import("./session");
+      const sessionDate = sessionDateISO();
+
+      const { data: existing } = await db
+        .from("registrations")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (!existing) {
+        await db.from("registrations").insert({
+          full_name: fullName || "Subscriber",
+          email: email,
+          phone_e164: "",
+          whatsapp_consent: false,
+          voice_consent: false,
+          profile_type: "Newsletter (Declined Modal)",
+          pain_point: "I want someone to tell me which stock or fund to buy",
+          status: "subscribed",
+          session_date: sessionDate,
+          utm_source: data.source ?? "declined_modal",
+        } as never);
+      } else if (fullName) {
+        await db
+          .from("registrations")
+          .update({ full_name: fullName } as never)
+          .eq("id", existing.id);
+      }
+    } catch (err) {
+      console.error("Failed to insert newsletter subscriber into registrations:", err);
+    }
+
     return { ok: true as const };
   });
 

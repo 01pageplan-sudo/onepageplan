@@ -22,6 +22,7 @@ import { Route as ApiPublicEmailDispatchRouteImport } from './routes/api/public/
 import { Route as ApiPublicOppwebinarRouteImport } from './routes/api/public/oppwebinar'
 import { Route as ApiPublicResendWebhookRouteImport } from './routes/api/public/resend-webhook'
 import { Route as ApiPublicWebinarWebhookRouteImport } from './routes/api/public/webinar-webhook'
+import { Route as ApiWebhooksOppwebinarRouteImport } from './routes/api/webhooks/oppwebinar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -88,6 +89,11 @@ const ApiPublicWebinarWebhookRoute = ApiPublicWebinarWebhookRouteImport.update({
   path: '/api/public/webinar-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebhooksOppwebinarRoute = ApiWebhooksOppwebinarRouteImport.update({
+  id: '/api/webhooks/oppwebinar',
+  path: '/api/webhooks/oppwebinar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/api/public/oppwebinar': typeof ApiPublicOppwebinarRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
+  '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/api/public/oppwebinar': typeof ApiPublicOppwebinarRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
+  '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/api/public/oppwebinar': typeof ApiPublicOppwebinarRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
+  '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/api/public/oppwebinar'
     | '/api/public/resend-webhook'
     | '/api/public/webinar-webhook'
+    | '/api/webhooks/oppwebinar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/api/public/oppwebinar'
     | '/api/public/resend-webhook'
     | '/api/public/webinar-webhook'
+    | '/api/webhooks/oppwebinar'
   id:
     | '__root__'
     | '/'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/api/public/oppwebinar'
     | '/api/public/resend-webhook'
     | '/api/public/webinar-webhook'
+    | '/api/webhooks/oppwebinar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -197,6 +209,7 @@ export interface RootRouteChildren {
   ApiPublicOppwebinarRoute: typeof ApiPublicOppwebinarRoute
   ApiPublicResendWebhookRoute: typeof ApiPublicResendWebhookRoute
   ApiPublicWebinarWebhookRoute: typeof ApiPublicWebinarWebhookRoute
+  ApiWebhooksOppwebinarRoute: typeof ApiWebhooksOppwebinarRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -292,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebinarWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhooks/oppwebinar': {
+      id: '/api/webhooks/oppwebinar'
+      path: '/api/webhooks/oppwebinar'
+      fullPath: '/api/webhooks/oppwebinar'
+      preLoaderRoute: typeof ApiWebhooksOppwebinarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -309,6 +329,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicOppwebinarRoute: ApiPublicOppwebinarRoute,
   ApiPublicResendWebhookRoute: ApiPublicResendWebhookRoute,
   ApiPublicWebinarWebhookRoute: ApiPublicWebinarWebhookRoute,
+  ApiWebhooksOppwebinarRoute: ApiWebhooksOppwebinarRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

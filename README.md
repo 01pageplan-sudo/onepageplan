@@ -464,6 +464,201 @@ Write `whatsapp_sent_at` or `whatsapp_error`.
 
 ### 10.4 `webinar-webhook`
 Public POST at `/functions/v1/webinar-webhook`.
+- You own financial products you were sold rather than ones you chose
+- Every answer has a confident opposite, so you have decided nothing in years
+- There is nobody you can ask who is not also selling you something
+
+**THIS IS NOT FOR YOU IF** (muted cross marks, grey column)
+- You want stock tips or fund recommendations. I will never give one
+- You want a guaranteed return. Nobody honest can promise you one
+- You want somebody else to manage it for you. This teaches you to do it
+- You are looking for a get rich scheme. This is arithmetic and it is slow
+- You are not willing to look at your own numbers honestly for ninety minutes
+
+### 6.6 What you take away
+Heading: **Three things you keep**
+
+Three cards. **No rupee values on any of them.**
+
+1. **The Money Audit sheet.** Build your own consolidated picture, in your own file, so the data stays yours and nobody can sell to you off the back of it.
+2. **The Real Return calculator.** Check anything you already hold, post tax and post inflation, using the right measure for it.
+3. **The Nomination and MWP checklist.** Every account and policy, and the one clause most people have never heard of.
+
+### 6.7 About the host
+Two columns on desktop, portrait left, text right. Plain portrait, warm background, no props, driven by `VITE_HOST_IMAGE_URL`.
+
+Heading: **Milan Dodhia**
+Small caps brass subheading: `FINANCIAL EDUCATOR`
+
+Body:
+
+"Seven and a half years in equity research. Thirteen years as a licensed mutual fund distributor, a licence I surrendered in April 2026. Now inside a credit bureau, working across both the bank side and the credit side, which means I know what a lender sees when they look at you. MBA in Finance. Around two hundred families coached, one to one and in groups.
+
+My father ran the same shop in Mumbai for thirty five years, from seven in the morning to one at night. Real income, earned through sheer hard work, with no financial education behind it. The hours were the strategy and there was never a second one. Years later I was able to tell him he could stop, and he did. Our family dinner moved from half past ten at night to half past eight.
+
+I do not sell products, so I do not earn commissions. I teach the frameworks so you decide, and so you can judge whether anyone else's recommendation holds up. Including mine."
+
+### 6.8 Testimonials
+Build the component. Three cards, name, one line of context, a short quote.
+
+**Render it only when `VITE_TESTIMONIALS_ENABLED` equals the string `"true"`. Default the variable to `false` so the section does not appear on launch.** Use neutral placeholder text inside the component. Do not invent realistic sounding testimonials, names or photographs.
+
+### 6.9 FAQ
+Accordion, closed by default.
+
+- **Is this actually free?** Yes. It is a live ninety minute session and there is nothing to pay to attend.
+- **Will there be a recording?** No. It runs live every Saturday, and if you miss one you can join the next.
+- **Do I need to prepare anything?** Sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers.
+- **Will you tell me what to invest in?** No. I teach how to evaluate anything, so you decide for yourself and can check anyone else's recommendation too.
+- **Is this suitable if I already invest regularly?** Most people who attend already do. The question is whether anyone has ever gone back and checked what it is actually returning.
+- **I am not good with numbers. Will I keep up?** Yes. It is addition, subtraction and one division. If you can read a bank statement you can do this.
+- **Is this a sales pitch?** I teach for the first hour and a half and then I tell you what else I do. You are free to take the frameworks and never buy anything.
+- **What happens after I register?** You will get an email and a WhatsApp message with the joining link, and a reminder before the session starts.
+
+### 6.10 Final CTA block
+Full width, deep olive background, cream text, generous padding.
+
+Heading: **Ninety minutes this Saturday. What is your actual number?**
+Sub: `Free, live, and you leave with it on one page.`
+Button: cream background, olive text, `Save my seat for this Saturday →`
+
+### 6.11 Footer
+Cream, top border, small text, three stacked blocks.
+
+**Contact:** `The One Page Plan by Milanaire · connect@onepageplan.in`
+
+**Disclaimer**, in a bordered box so it reads as deliberate rather than buried:
+
+"The One Page Plan is a financial education programme by Milanaire, operated by Mannrs Wellness LLP. Everything on this page and in this session is educational content only. It is not investment advice and it is not a recommendation to buy or sell any security, scheme, policy or product. No returns are promised or implied. For anything tax related please consult a Chartered Accountant. For anything legal please consult a lawyer. Please make your own decisions."
+
+**Links:** `Privacy Policy` to `/privacy`, `Terms of Use` to `/terms`, and `© {computed year} Mannrs Wellness LLP`.
+
+## 7. Thank you page (route `/confirmed`)
+
+Same design system. No countdown. No sticky bar. No new registration CTA.
+
+Heading: **Your seat is saved**
+
+**Step 1. Done.** Your details are with us. The joining link is on its way by email and on WhatsApp.
+
+**Step 2. Confirm on the session platform.** One more short form, and this is the one that lets you in on the night.
+Button: `Confirm my seat →` linking to `VITE_WEBINAR_URL`, opens in a new tab. Style this as the most prominent element on the page.
+
+**Prep video.** Responsive 16:9 slot driven by `VITE_PREP_VIDEO_URL`, with the heading `Two minutes before Saturday` and the line `A short note on how to get the most out of the session.` If the variable is empty, hide the entire block rather than showing a placeholder.
+
+**Card: Before Saturday**
+- Add it to your calendar. Button generating and downloading an `.ics` for the computed next Saturday, 19:00 to 20:30 IST, titled "The Money Reality Masterclass", with `VITE_WEBINAR_URL` in the location field.
+- Sit somewhere quiet with a pen. You will be working on your own numbers.
+- Check your email. If nothing arrives in ten minutes, look in Promotions or Spam and mark it as not spam.
+
+**WhatsApp block.** Render only when `VITE_WHATSAPP_GROUP_URL` is set. Heading `Join the WhatsApp group`, three lines: reminders before the session, the resources sent straight to you, and somewhere to ask a question before Saturday. Button: `Join the group →`.
+
+Footer identical to the main page.
+
+## 8. Privacy and Terms pages
+
+Create `/privacy` and `/terms` as real pages using the same design system, narrow single column, readable.
+
+Generate standard, plain English content appropriate to an Indian financial education business that collects name, email and WhatsApp number through a registration form, runs Meta advertising, sends transactional and marketing email and WhatsApp messages, and uses cookies and Meta Pixel.
+
+Privacy must cover: what is collected, why, lawful basis of consent, how WhatsApp consent works and how to withdraw it by replying STOP, that a separate optional consent covers reminder phone calls and can be withdrawn by emailing the contact address, third parties that process data (email provider, WhatsApp provider, webinar platform, analytics, Meta), retention, the user's rights, and a contact address of connect@onepageplan.in.
+
+Terms must cover: the educational nature of the content, that nothing is investment advice or a recommendation, no guarantee of any outcome or return, intellectual property in the materials, acceptable use, limitation of liability, and governing law of India with jurisdiction in Mumbai.
+
+At the top of each page render a small note in secondary text: `Last updated {computed date}.`
+
+**Add an HTML comment at the top of both files reading: `REVIEW REQUIRED BEFORE LAUNCH. Standard template, not legal advice.`**
+
+## 9. Database schema
+
+Single table `registrations`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | primary key, default gen_random_uuid() |
+| `created_at` | timestamptz | default now() |
+| `full_name` | text | not null |
+| `email` | text | not null |
+| `phone_e164` | text | not null |
+| `whatsapp_consent` | boolean | not null, default false |
+| `consent_at` | timestamptz | set at insert when whatsapp_consent is true |
+| `voice_consent` | boolean | not null, default false |
+| `voice_consent_at` | timestamptz | nullable, set at insert when voice_consent is true |
+| `profile_type` | text | from step 2 dropdown 1 |
+| `pain_point` | text | from step 2 dropdown 2 |
+| `session_date` | date | the computed next Saturday |
+| `status` | text | default 'registered'. Allowed: registered, attended, dropped_off, no_show |
+| `utm_source` | text | nullable |
+| `utm_medium` | text | nullable |
+| `utm_campaign` | text | nullable |
+| `utm_content` | text | nullable |
+| `utm_term` | text | nullable |
+| `referrer` | text | nullable |
+| `email_sent_at` | timestamptz | nullable |
+| `email_error` | text | nullable |
+| `whatsapp_sent_at` | timestamptz | nullable |
+| `whatsapp_error` | text | nullable |
+| `raw_webhook` | jsonb | nullable |
+
+**Indexes:** unique on `(email, session_date)`. On conflict, update name, phone, both consent flags, profile and pain point, and re-send the confirmation. Never downgrade a consent that was previously true unless the new submission explicitly sets it false.
+
+**Row level security:** enabled. No public select, no public insert. All writes go through Edge Functions using the service role key. The browser never talks to the table directly.
+
+## 10. Edge Functions
+
+### 10.1 `register`
+Public endpoint called by step 3 of the popup.
+
+1. Validate: name length, email format, phone exactly 10 digits, `whatsapp_consent` true, honeypot empty, profile and pain point present. **`voice_consent` is optional and must never cause a rejection.** Set `voice_consent_at` only when it is true.
+2. Rate limit: reject more than 5 submissions from one IP within 10 minutes.
+3. Compute `session_date` server side using the same IST rules. Do not trust a date sent from the browser.
+4. Upsert into `registrations`.
+5. Invoke `send-confirmation-email`, then `send-whatsapp`. Return success to the browser as soon as the row is written. Do not block the response past 3 seconds.
+6. Return `{ ok: true }`.
+
+Email and WhatsApp failures must never fail the registration. Write the error to `email_error` or `whatsapp_error` and continue.
+
+### 10.2 `send-confirmation-email`
+Uses SMTP via `denomailer` (`https://deno.land/x/denomailer/mod.ts`). **Do not use Nodemailer. It is Node only and will not run in a Deno Edge Function.**
+
+Env: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `FROM_EMAIL`, `FROM_NAME`.
+
+Table based HTML with inline styles so it renders in Gmail. Cream background, olive heading, one button. Include a plain text alternative part.
+
+Subject: `Your seat is saved for this Saturday`
+
+Body:
+
+"Hello {first name},
+
+Your seat for The Money Reality Masterclass is saved. It runs this Saturday at 7:00 PM IST and takes ninety minutes.
+
+One thing left to do. Confirm your seat on the session platform using the button below. That is the step that actually lets you in on the night.
+
+[Confirm my seat]
+
+Before Saturday, sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers, not watching mine.
+
+See you there.
+
+Milan Dodhia
+Financial Educator, Milanaire"
+
+Every email footer carries the full disclaimer from section 6.11, plus `Mannrs Wellness LLP · connect@onepageplan.in` and an unsubscribe line.
+
+Write `email_sent_at` on success, `email_error` on failure.
+
+### 10.3 `send-whatsapp`
+**Build it now, ship it switched off.**
+
+Read `WHATSAPP_ENABLED`. If it is not the string `"true"`, log the payload that would have been sent and return `{ skipped: true }` without calling anything. Never throw.
+
+When enabled, POST to the AiSensy campaign API using `AISENSY_API_KEY` and `AISENSY_CAMPAIGN_NAME`, with `destination` set to `phone_e164`, `userName` set to `full_name`, and template parameters for first name and the webinar URL. Only send when `whatsapp_consent` is true.
+
+Write `whatsapp_sent_at` or `whatsapp_error`.
+
+### 10.4 `webinar-webhook`
+Public POST at `/functions/v1/webinar-webhook`.
 
 - Verify a shared secret header against `WEBHOOK_SHARED_SECRET`. Reject with 401 on mismatch.
 - Store the entire body into `raw_webhook`.
@@ -486,6 +681,13 @@ Keep it plain. No charts.
 `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `FROM_EMAIL`, `FROM_NAME`, `VITE_WEBINAR_URL`, `VITE_VSL_URL`, `VITE_PREP_VIDEO_URL`, `VITE_HOST_IMAGE_URL`, `VITE_WHATSAPP_GROUP_URL`, `VITE_TESTIMONIALS_ENABLED`, `WHATSAPP_ENABLED`, `AISENSY_API_KEY`, `AISENSY_CAMPAIGN_NAME`, `WEBHOOK_SHARED_SECRET`, `ADMIN_PASSWORD`.
 
 Set `WHATSAPP_ENABLED` to `false` and `VITE_TESTIMONIALS_ENABLED` to `false` for now.
+
+### WhatsApp Activation (AiSensy Integration)
+
+WhatsApp confirmations and reminders use the **AiSensy REST API** (Meta WhatsApp Business API). 
+- By default, `WHATSAPP_ENABLED` is set to `false`. In this mode, the server logs simulated dispatches without sending real WhatsApp messages or failing registrations.
+- To activate live WhatsApp alerts, set `WHATSAPP_ENABLED=true` and configure your `AISENSY_API_KEY` and `AISENSY_CAMPAIGN_NAME` in Vercel.
+- **Detailed Step-by-Step Guide**: For complete instructions on Meta Business verification, template submission, AiSensy campaign setup, environment variable configuration, and Admin Dashboard monitoring, see [`WHATSAPP_SETUP_GUIDE.md`](file:///c:/Projects/One-page-plan-landing-page/plan-one-page/WHATSAPP_SETUP_GUIDE.md).
 
 ## 13. Completeness checklist
 

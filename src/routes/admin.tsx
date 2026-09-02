@@ -25,6 +25,7 @@ import { TEMPLATES, templateLabel } from "@/lib/email-templates";
 import { TemplateEditor } from "@/components/site/TemplateEditor";
 import { WhatsAppPanel } from "@/components/site/WhatsAppPanel";
 import { WebinarAnalytics } from "@/components/site/WebinarAnalytics";
+import { CommunicationsPanel } from "@/components/site/CommunicationsPanel";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-const PRESET_TAGS = ["purchased", "hot", "attended", "no-show", "refunded"];
+const PRESET_TAGS = ["purchased", "hot", "attended", "no-show", "refunded", "newsletter"];
 
 const RANGES = [
   { key: "today", label: "Today" },
@@ -393,14 +394,14 @@ function AdminPage() {
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         {notice ? <p className="text-sm text-[var(--brass)]">{notice}</p> : null}
 
-        <Tabs defaultValue="leads">
-          <TabsList>
+        <Tabs defaultValue="analytics">
+          <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="analytics">Webinar analytics</TabsTrigger>
+            <TabsTrigger value="communications">Communications</TabsTrigger>
             <TabsTrigger value="leads">Leads</TabsTrigger>
             <TabsTrigger value="automation">Email automation</TabsTrigger>
             <TabsTrigger value="templates">Email copy</TabsTrigger>
             <TabsTrigger value="delivery">Delivery</TabsTrigger>
-            <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
-            <TabsTrigger value="analytics">Webinar analytics</TabsTrigger>
             <TabsTrigger value="webinar">Webinar log</TabsTrigger>
           </TabsList>
 
@@ -808,9 +809,9 @@ function AdminPage() {
             </div>
           </TabsContent>
 
-          {/* ------------------------------ WHATSAPP ----------------------------- */}
-          <TabsContent value="whatsapp" className="pt-5">
-            <WhatsAppPanel />
+          {/* --------------------------- COMMUNICATIONS -------------------------- */}
+          <TabsContent value="communications" className="pt-5">
+            <CommunicationsPanel />
           </TabsContent>
 
           {/* -------------------------- WEBINAR ANALYTICS ------------------------ */}

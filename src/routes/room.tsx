@@ -10,6 +10,7 @@ import {
   RegistrationProvider,
   useRegistration,
 } from "@/components/site/registration-context";
+import { WebinarEmbed } from "@/components/site/WebinarEmbed";
 import { track } from "@/lib/analytics";
 import { getJoinToken } from "@/lib/room.functions";
 import { WEBINAR_REGISTER_URL } from "@/lib/calendar";
@@ -215,23 +216,7 @@ function RoomPage() {
         ) : null}
 
         {phase === "player" ? (
-          <section className="mx-auto w-full max-w-[1100px]">
-            <p className="label-caps text-[var(--brass)]">
-              The Money Reality Masterclass · Live
-            </p>
-            <div className="mt-3 aspect-video w-full overflow-hidden rounded-xl border border-border">
-              <iframe
-                src={`${WEBINAR_ORIGIN}/embed/${webinarId}?token=${encodeURIComponent(token)}`}
-                title="The Money Reality Masterclass"
-                width="100%"
-                height="600"
-                style={{ border: 0 }}
-                className="h-full w-full"
-                allow="autoplay; fullscreen; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          </section>
+          <WebinarEmbed email={email} onClose={() => setPhase("form")} />
         ) : null}
 
         <p className="mx-auto mt-4 w-full max-w-[1100px] text-xs text-muted-foreground">

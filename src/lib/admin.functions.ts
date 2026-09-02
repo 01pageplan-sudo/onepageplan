@@ -83,9 +83,48 @@ export const adminDashboard = createServerFn({ method: "POST" })
         return { ok: false as const, error: "Could not load the dashboard." };
       }
 
+      const leadsList = (leads.data ?? []) as unknown as AdminLead[];
+      const existingEmails = new Set(leadsList.map((l) => (l.email ?? "").toLowerCase()));
+
+      let extraNewsletterLeads: AdminLead[] = [];
+      try {
+        const { data: subscribers } = await db.from("newsletter_subscribers").select("*");
+        if (subscribers && Array.isArray(subscribers)) {
+          extraNewsletterLeads = subscribers
+            .filter((sub: { email?: string }) => sub.email && !existingEmails.has(sub.email.toLowerCase()))
+            .map((sub: { id: string; created_at: string; email: string; source?: string; full_name?: string; name?: string }) => ({
+              id: sub.id,
+              created_at: sub.created_at,
+              full_name: sub.full_name || sub.name || "Subscriber",
+              email: sub.email,
+              phone_e164: "",
+              whatsapp_consent: false,
+              voice_consent: false,
+              profile_type: "Newsletter (Declined Modal)",
+              pain_point: "I want someone to tell me which stock or fund to buy",
+              status: "subscribed",
+              session_date: sub.created_at ? sub.created_at.slice(0, 10) : null,
+              utm_source: sub.source || "declined_modal",
+              landing_path: null,
+              email_sent_at: null,
+              tags: ["newsletter"],
+              tag_dates: {},
+              emails_sent: 0,
+              emails_opened: 0,
+              emails_failed: 0,
+            }));
+        }
+      } catch {
+        /* optional fallback */
+      }
+
+      const mergedLeads = [...leadsList, ...extraNewsletterLeads].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+
       return {
         ok: true as const,
-        leads: (leads.data ?? []) as unknown as AdminLead[],
+        leads: mergedLeads,
         settings: (settings.data ?? {}) as unknown as AdminSettings,
         stats: (stats.data ?? {}) as unknown as Record<string, number | Record<string, number>>,
         sends: (sends.data ?? []) as unknown as AdminSend[],
