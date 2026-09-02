@@ -94,3 +94,12 @@ export function remainingToNextSession(now: Date = new Date()): Remaining {
     seconds: totalSeconds % 60,
   };
 }
+
+/** Returns true if current time in IST is Saturday on or after 18:30 (6:30 PM). */
+export function isSaturdayPost630PMIST(now: Date = new Date()): boolean {
+  const ist = new Date(now.getTime() + IST_OFFSET_MS);
+  const weekday = ist.getUTCDay(); // 6 = Saturday
+  const minutesNow = ist.getUTCHours() * 60 + ist.getUTCMinutes();
+  return weekday === 6 && minutesNow >= 1110;
+}
+

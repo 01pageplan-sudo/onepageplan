@@ -180,7 +180,7 @@ export function TemplateEditor({
               />
             </label>
             <label className="block text-xs font-semibold">
-              Body — one paragraph per line
+              Body : one paragraph per line
               <Textarea
                 className="mt-1 min-h-[220px] font-mono text-xs"
                 value={current.body ?? ""}

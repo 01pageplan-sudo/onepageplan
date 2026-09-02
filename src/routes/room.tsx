@@ -19,7 +19,14 @@ const TITLE = "Join the session | The Money Reality Masterclass";
 const DESCRIPTION =
   "This is where The Money Reality Masterclass runs. Enter the email you registered with to join the live session.";
 
+type RoomSearchParams = {
+  email?: string | undefined;
+};
+
 export const Route = createFileRoute("/room")({
+  validateSearch: (search: Record<string, unknown>): RoomSearchParams => ({
+    email: typeof search["email"] === "string" ? search["email"] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: TITLE },
@@ -61,13 +68,15 @@ function RoomPage() {
     ((import.meta.env["VITE_WEBINAR_URL"] as string | undefined) || "").trim() ||
     WEBINAR_REGISTER_URL;
   const { open } = useRegistration();
+  const search = Route.useSearch();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(search.email ?? "");
   const [phase, setPhase] = useState<Phase>("form");
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState("");
   const [webinarId, setWebinarId] = useState("");
   const tracked = useRef(false);
+  const autoLaunched = useRef(false);
 
   const requestToken = useCallback(
     async (value: string) => {
@@ -91,6 +100,15 @@ function RoomPage() {
     },
     [],
   );
+
+  useEffect(() => {
+    const searchEmail = search.email?.trim();
+    if (searchEmail && !autoLaunched.current) {
+      autoLaunched.current = true;
+      setEmail(searchEmail);
+      void requestToken(searchEmail);
+    }
+  }, [search.email, requestToken]);
 
   useEffect(() => {
     if (phase === "player" && !tracked.current) {

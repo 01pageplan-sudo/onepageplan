@@ -12,13 +12,13 @@ export function buildConfirmationEmail(
 
 Your seat for The Money Reality Masterclass is saved. It runs this Saturday at 7:00 PM IST and takes ninety minutes.
 
+Two things to have next to you: a pen and paper, and last month's bank statement. You will be doing arithmetic on your own numbers, not watching mine.
+
 Keep the link below. That is how you get in on the night.
 
 ${roomUrl}
 
 Add it to your calendar: ${googleCalendarUrl}
-
-Before Saturday, sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers, not watching mine.
 
 Session details: this Saturday, 7:00 PM to 8:30 PM IST, ninety minutes, online.
 
@@ -30,7 +30,7 @@ Financial Educator, Milanaire
 ---
 ${DISCLAIMER_TEXT}
 
-Mannrs Wellness LLP · connect@onepageplan.in
+Mannrs Wellness LLP : connect@onepageplan.in
 To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remove you.`;
 
   const html = `<!doctype html>
@@ -44,13 +44,16 @@ To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remo
               <td style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#B8873B;padding-bottom:12px;">The One Page Plan by Milanaire</td>
             </tr>
             <tr>
-              <td style="font-size:22px;font-weight:700;color:#4A5A3A;padding-bottom:16px;line-height:1.25;">Your seat is saved for this Saturday</td>
+              <td style="font-size:22px;font-weight:700;color:#4A5A3A;padding-bottom:16px;line-height:1.25;">Your seat is saved. Here is what to bring.</td>
             </tr>
             <tr>
               <td style="font-size:15px;line-height:1.6;padding-bottom:14px;">Hello ${firstName},</td>
             </tr>
             <tr>
               <td style="font-size:15px;line-height:1.6;padding-bottom:14px;">Your seat for The Money Reality Masterclass is saved. It runs this Saturday at 7:00 PM IST and takes ninety minutes.</td>
+            </tr>
+            <tr>
+              <td style="font-size:15px;line-height:1.6;padding-bottom:14px;">Two things to have next to you: a pen and paper, and last month's bank statement. You will be doing arithmetic on your own numbers, not watching mine.</td>
             </tr>
             <tr>
               <td style="font-size:15px;line-height:1.6;padding-bottom:20px;">Keep the button below. That is how you get in on the night.</td>
@@ -62,9 +65,6 @@ To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remo
             </tr>
             <tr>
               <td align="center" style="font-size:14px;line-height:1.6;padding-bottom:22px;"><a href="${googleCalendarUrl}" style="color:#4A5A3A;font-weight:600;">Add it to your calendar</a></td>
-            </tr>
-            <tr>
-              <td style="font-size:15px;line-height:1.6;padding-bottom:14px;">Before Saturday, sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers, not watching mine.</td>
             </tr>
             <tr>
               <td style="font-size:12px;line-height:1.6;color:#6B6A63;padding-bottom:14px;">Session details: this Saturday, 7:00 PM to 8:30 PM IST, ninety minutes, online.</td>
@@ -79,7 +79,7 @@ To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remo
               <td style="border-top:1px solid #E5DFD3;padding-top:16px;font-size:11px;line-height:1.6;color:#6B6A63;">
                 ${DISCLAIMER_TEXT}
                 <br /><br />
-                Mannrs Wellness LLP · connect@onepageplan.in
+                Mannrs Wellness LLP : connect@onepageplan.in
                 <br />
                 To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remove you.
               </td>

@@ -76,7 +76,7 @@ function rangeBounds(key: RangeKey): { from?: string; to?: string } {
 }
 
 function fmt(value: string | null) {
-  if (!value) return "—";
+  if (!value) return "-";
   const date = new Date(value);
   const ist = new Date(date.getTime() + 5.5 * 3600 * 1000);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -496,11 +496,11 @@ function AdminPage() {
                         <tr key={lead.id} className="border-b border-border/60 align-top">
                           <td className="p-3 font-medium">{lead.full_name}</td>
                           <td className="p-3">{lead.email}</td>
-                          <td className="p-3">{lead.phone_e164 || "—"}</td>
+                          <td className="p-3">{lead.phone_e164 || "-"}</td>
                           <td className="p-3">{lead.utm_source || "direct"}</td>
                           <td className="p-3">{fmt(lead.created_at)}</td>
                           <td className="p-3">
-                            {lead.session_date ?? "—"}
+                            {lead.session_date ?? "-"}
                             <br />
                             <span className="text-muted-foreground">{lead.status}</span>
                           </td>
@@ -800,7 +800,7 @@ function AdminPage() {
                       <td className="p-3">{send.email}</td>
                       <td className="p-3">{templateLabel(send.template)}</td>
                       <td className="p-3">{send.status}</td>
-                      <td className="p-3">{send.opened_at ? fmt(send.opened_at) : "—"}</td>
+                      <td className="p-3">{send.opened_at ? fmt(send.opened_at) : "-"}</td>
                       <td className="p-3 text-destructive">{send.error ?? ""}</td>
                     </tr>
                   ))}
@@ -811,7 +811,7 @@ function AdminPage() {
 
           {/* --------------------------- COMMUNICATIONS -------------------------- */}
           <TabsContent value="communications" className="pt-5">
-            <CommunicationsPanel />
+            <CommunicationsPanel sends={sends} />
           </TabsContent>
 
           {/* -------------------------- WEBINAR ANALYTICS ------------------------ */}
@@ -848,12 +848,12 @@ function AdminPage() {
                         {log.outcome}
                       </span>
                       <span className="text-muted-foreground">
-                        HTTP {log.response_status ?? "—"} · {log.email ?? "—"}
+                        HTTP {log.response_status ?? "-"} · {log.email ?? "-"}
                       </span>
                     </div>
                     {log.error ? <p className="mt-2 text-destructive">{log.error}</p> : null}
                     <p className="mt-2 break-all text-muted-foreground">
-                      POST {log.request_url ?? "—"}
+                      POST {log.request_url ?? "-"}
                     </p>
                     <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2">
 {JSON.stringify(log.request_body, null, 2)}

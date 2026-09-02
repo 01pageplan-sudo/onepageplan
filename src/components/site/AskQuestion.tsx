@@ -63,35 +63,49 @@ export function AskQuestion() {
   }
 
   return (
-    <section className="rounded-lg border-2 border-primary bg-card p-6">
-      <p className="label-caps text-[var(--brass)]">Step 2.</p>
-      <h2 className="mt-2 text-xl font-bold">Ask me one question</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        I answer these live at the end of Saturday&apos;s session. Ask the one thing you have not
-        had a straight answer to.
+    <section className="relative overflow-hidden rounded-xl border-2 border-[var(--brass)] bg-card p-6 shadow-sm sm:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="rounded-full bg-[var(--brass)]/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--brass)]">
+          Attendance Priority : Answered Live
+        </span>
+        <span className="text-xs font-medium text-muted-foreground">
+          This Saturday, 7:00 PM IST
+        </span>
+      </div>
+
+      <h2 className="mt-4 text-2xl font-bold tracking-tight">
+        What is your biggest unanswered money question?
+      </h2>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        Milan reviews every submission before Saturday and answers them live during the session.
+        Submitting your question creates your personal stake in the masterclass: be in the room to
+        hear your exact question unpacked.
       </p>
 
       {sent ? (
-        <div className="mt-5">
-          <p className="text-sm font-semibold">Got it. Your question is on my list for Saturday.</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            I read every one of these before the session. Questions may be read out without any name
-            attached.
+        <div className="mt-6 rounded-lg border border-[var(--brass)]/40 bg-[var(--brass)]/10 p-5">
+          <p className="text-base font-bold text-primary">
+            ✓ Your question is in Milan&apos;s session notes for Saturday.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+            Milan will address it live in the final third of the session. Set your calendar for this Saturday at 7:00 PM IST to make sure you are in the room when it is answered.
+          </p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            All submissions are confidential. Only the scenario and arithmetic are discussed.
           </p>
         </div>
       ) : (
         <form
-          className="mt-5"
+          className="mt-6"
           onSubmit={(event) => {
             event.preventDefault();
             void send();
           }}
         >
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Please do not ask which stock, which fund, or whether a particular policy is the right
-            one. I am a Financial Educator, not an investment adviser, and I do not answer those
-            questions for anyone, including paying members. What I do answer is how to work it out
-            yourself, so ask me the how.
+            Please do not ask which specific stock, mutual fund, or insurance scheme to buy. Milan is a
+            Financial Educator, not an investment adviser, and teaches how to evaluate holdings yourself.
+            Ask the arithmetic, the structure, or the decision rule you have been struggling with.
           </p>
 
           <Textarea
@@ -119,15 +133,15 @@ export function AskQuestion() {
             className="mt-4 h-auto w-full bg-primary py-4 text-base font-semibold text-primary-foreground hover:bg-[var(--highlight)]"
           >
             {status === "submitting"
-              ? "Sending"
+              ? "Sending..."
               : status === "error"
                 ? "Try again"
-                : "Send my question"}
+                : "Submit my question for Saturday's live session →"}
           </Button>
         </form>
       )}
 
-      <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
+      <p className="mt-6 text-xs leading-relaxed text-muted-foreground border-t border-border pt-4">
         Milanaire is financial education only. Milan Dodhia is a Financial Educator and does not
         provide investment advice or recommend products. Nothing here is a recommendation. For tax
         questions speak to a Chartered Accountant, and for legal questions speak to a lawyer.

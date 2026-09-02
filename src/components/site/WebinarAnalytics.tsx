@@ -86,7 +86,7 @@ export function WebinarAnalytics() {
   }, [load]);
 
   const show = (value: number | null | undefined, suffix = "") =>
-    loading ? "…" : value === null || value === undefined ? "—" : `${value}${suffix}`;
+    loading ? "…" : value === null || value === undefined ? "-" : `${value}${suffix}`;
 
   return (
     <div className="space-y-5">

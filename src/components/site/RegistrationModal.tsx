@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Linkedin, Loader2 } from "lucide-react";
+import { Check, Linkedin, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import milanHeadshot from "@/assets/milan-headshot-transparent.png";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { track } from "@/lib/analytics";
 import { registerAttendee, subscribeNewsletter } from "@/lib/registration.functions";
+import { isSaturdayPost630PMIST } from "@/lib/session";
 
 const PROFILE_OPTIONS = [
   "Salaried professional, mid to senior level",
@@ -99,6 +100,7 @@ export function RegistrationModal({
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [tracking, setTracking] = useState<Tracking>({});
+  const [alreadyRegisteredNotice, setAlreadyRegisteredNotice] = useState(false);
 
   useEffect(() => {
     setTracking(readTracking());
@@ -148,6 +150,25 @@ export function RegistrationModal({
         } catch {
           /* storage blocked, registration still saved */
         }
+
+        if (result.alreadyRegistered) {
+          // If already registered and it is Saturday post 6:30 PM IST, jump straight into the live room!
+          if (isSaturdayPost630PMIST()) {
+            navigate({
+              to: "/room",
+              search: { email: email.trim().toLowerCase() } as never,
+            });
+            return;
+          }
+
+          // Otherwise show already registered notification and redirect to milanaire.me blogs
+          setAlreadyRegisteredNotice(true);
+          setTimeout(() => {
+            window.location.href = "https://milanaire.me/blogs";
+          }, 3000);
+          return;
+        }
+
         navigate({
           to: "/confirmed",
           state: { registrationId: result.registrationId ?? undefined } as never,
@@ -177,7 +198,25 @@ export function RegistrationModal({
         </div>
 
         <div className="p-6">
-          {declined ? (
+          {alreadyRegisteredNotice ? (
+            <div className="py-4 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brass)]/15 text-[var(--brass)]">
+                <Check size={24} />
+              </div>
+              <h2 className="text-xl font-bold">You are already registered!</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                You are already registered for this Saturday at 7:00 PM IST. We will send you the joining link on WhatsApp and email before the session.
+              </p>
+              <p className="mt-4 text-xs text-muted-foreground">
+                Redirecting you to our blog in a moment...
+              </p>
+              <div className="mt-5">
+                <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-[var(--highlight)]">
+                  <a href="https://milanaire.me/blogs">Go to blog now →</a>
+                </Button>
+              </div>
+            </div>
+          ) : declined ? (
             <DeclinedPanel
               name={declinedName}
               onNameChange={setDeclinedName}
@@ -457,7 +496,7 @@ function DeclinedPanel({
           alt="Milan Dodhia"
           className="h-14 w-14 rounded-full border border-border object-cover"
         />
-        <h2 className="text-xl font-bold">Fair enough — this session is not for you</h2>
+        <h2 className="text-xl font-bold">Fair enough. This session is not for you.</h2>
       </div>
 
       <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
@@ -466,18 +505,10 @@ function DeclinedPanel({
         leave empty handed.
       </p>
 
-      {linkedinUrl ? (
-        <a href={linkedinUrl} target="_blank" rel="noopener noreferrer" className="mt-5 block">
-          <Button className="w-full bg-primary text-primary-foreground hover:bg-[var(--highlight)]">
-            <Linkedin size={16} className="mr-2" /> Connect with me on LinkedIn
-          </Button>
-        </a>
-      ) : null}
-
       <div className="mt-5 rounded-lg border border-border bg-card p-4">
         <p className="text-sm font-semibold">Get my money notes by email</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Short, practical emails on understanding your own money. No tips, no pitches.
+          Short, practical emails on understanding your own money. No stock tips, and nothing sold to you in them.
         </p>
         {status === "done" ? (
           <p className="mt-3 text-sm font-medium text-primary">
@@ -528,6 +559,14 @@ function DeclinedPanel({
           </p>
         ) : null}
       </div>
+
+      {linkedinUrl ? (
+        <a href={linkedinUrl} target="_blank" rel="noopener noreferrer" className="mt-4 block">
+          <Button variant="outline" className="w-full border-border bg-background text-sm text-muted-foreground hover:text-foreground">
+            <Linkedin size={15} className="mr-2" /> Connect with me on LinkedIn
+          </Button>
+        </a>
+      ) : null}
 
       <button
         type="button"

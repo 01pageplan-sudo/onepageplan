@@ -51,8 +51,20 @@ export const registerAttendee = createServerFn({ method: "POST" })
       const { createPublicServerClient } = await import("./supabase-public.server");
       const db = createPublicServerClient();
       const row = helpers.buildRow(data);
-      const saved = await helpers.upsertRegistration(db, row);
 
+      // Check if prospect is already registered for this session
+      const existing = await helpers.findExistingRegistration(db, row.email, row.session_date);
+      if (existing) {
+        // Update contact preferences silently without re-sending confirmation email or WhatsApp
+        await helpers.upsertRegistration(db, row);
+        return {
+          ok: true as const,
+          registrationId: existing.id,
+          alreadyRegistered: true as const,
+        };
+      }
+
+      const saved = await helpers.upsertRegistration(db, row);
       if (!saved) return { ok: false as const, error: "Could not save your seat." };
 
       // Delivery must never fail or delay the registration.
@@ -71,7 +83,7 @@ export const registerAttendee = createServerFn({ method: "POST" })
       ]);
       await Promise.race([delivery, new Promise((resolve) => setTimeout(resolve, 3000))]);
 
-      return { ok: true as const, registrationId: saved.id };
+      return { ok: true as const, registrationId: saved.id, alreadyRegistered: false as const };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error("registerAttendee failed:", message);
@@ -208,6 +220,14 @@ export const subscribeNewsletter = createServerFn({ method: "POST" })
           .update({ full_name: fullName } as never)
           .eq("id", existing.id);
       }
+
+      // Send S2-01 email ("I said no. Here is what I am saying instead.")
+      const helpers = await import("./registration.server");
+      void helpers.sendOption2WelcomeEmail(db, {
+        id: existing?.id,
+        email,
+        full_name: fullName,
+      });
     } catch (err) {
       console.error("Failed to insert newsletter subscriber into registrations:", err);
     }
