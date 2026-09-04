@@ -40,6 +40,29 @@ export const Route = createFileRoute("/api/get-webinar-token")({
           return Response.json({ error: "invalid_email" }, { status: 400 });
         }
 
+        const testMode =
+          (process.env["VITE_ROOM_TEST_MODE"] ?? process.env["ROOM_TEST_MODE"] ?? "false").trim() ===
+          "true";
+
+        if (!testMode) {
+          const { sessionDateISO } = await import("@/lib/session");
+          const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+          const { data: details, error: lookupError } = await createPublicServerClient().rpc(
+            "lookup_registration_details_for_room" as never,
+            { p_email: email, p_session_date: sessionDateISO() } as never,
+          );
+          if (lookupError) {
+            console.error("get-webinar-token lookup error:", lookupError.message);
+            return Response.json({ error: "lookup_failed" }, { status: 500 });
+          }
+          const record = (details ?? null) as { full_name?: string; phone_e164?: string } | null;
+          if (!record?.full_name) {
+            return Response.json({ error: "not_registered" }, { status: 403 });
+          }
+          if (!name && record.full_name) name = record.full_name;
+          if (!phone && record.phone_e164) phone = record.phone_e164;
+        }
+
         const full = name || "Guest Attendee";
         const parts = full.trim().split(/\s+/);
         const upstream = await fetch("https://webinar-api.webinar.gg/api/v1/webinar/join-token", {

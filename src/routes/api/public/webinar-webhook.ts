@@ -25,9 +25,13 @@ export const Route = createFileRoute("/api/public/webinar-webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const secret = process.env["WEBHOOK_SHARED_SECRET"];
+        const url = new URL(request.url);
+        const secret = (process.env["WEBHOOK_SHARED_SECRET"] || "").trim();
         const provided =
-          request.headers.get("x-webhook-secret") ?? request.headers.get("x-shared-secret") ?? "";
+          request.headers.get("x-webhook-secret") ??
+          request.headers.get("x-shared-secret") ??
+          url.searchParams.get("secret") ??
+          "";
         if (!secret || provided !== secret) {
           return new Response("Unauthorized", { status: 401 });
         }

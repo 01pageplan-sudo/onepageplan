@@ -15,7 +15,7 @@
 - **Webinar Integration (`webinar.gg`)**:
   - Live Room: `/room` route renders full-page iframe embed using token generator `/api/get-webinar-token`.
   - Metrics API: `/api/get-webinar-metrics` fetches live attendance & duration data.
-  - Webhook Catcher: `/api/webhooks/oppwebinar` receives live events (`user.joined`, `user.left`).
+  - Webhook Endpoint: `/api/public/webinar-webhook` receives live events (`user.joined`, `user.left`) and records attendance.
 - **Admin Dashboard (`/admin`)**:
   - Tab A: **Webinar Analytics** (Live metrics & terminal activity feed).
   - Tab B: **Communications** (Email & WhatsApp campaign tracking).

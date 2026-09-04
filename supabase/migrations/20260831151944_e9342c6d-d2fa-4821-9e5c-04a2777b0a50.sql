@@ -12,7 +12,7 @@ CREATE POLICY "service role manages app config"
   ON public.app_config FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 INSERT INTO public.app_config (key, value)
-VALUES ('admin_password', '3Qt@fQMkD6x')
+VALUES ('admin_password', 'CHANGE_IN_DASHBOARD')
 ON CONFLICT (key) DO NOTHING;
 
 -- Save or update a registration for the current session.

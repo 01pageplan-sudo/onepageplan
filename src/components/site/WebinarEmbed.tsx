@@ -8,16 +8,31 @@ const DEFAULT_WEBINAR_ID = "cmthk6y4001kos60ybxfkbc67";
 interface WebinarEmbedProps {
   email?: string;
   name?: string;
+  token?: string;
+  webinarId?: string;
   onClose?: () => void;
 }
 
-export function WebinarEmbed({ email = "", name = "", onClose }: WebinarEmbedProps) {
-  const [token, setToken] = useState<string>("");
-  const [webinarId, setWebinarId] = useState<string>(DEFAULT_WEBINAR_ID);
-  const [loading, setLoading] = useState<boolean>(true);
+export function WebinarEmbed({
+  email = "",
+  name = "",
+  token: initialToken = "",
+  webinarId: initialWebinarId = DEFAULT_WEBINAR_ID,
+  onClose,
+}: WebinarEmbedProps) {
+  const [token, setToken] = useState<string>(initialToken);
+  const [webinarId, setWebinarId] = useState<string>(initialWebinarId);
+  const [loading, setLoading] = useState<boolean>(!initialToken);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initialToken) {
+      setToken(initialToken);
+      if (initialWebinarId) setWebinarId(initialWebinarId);
+      setLoading(false);
+      return;
+    }
+
     let isMounted = true;
     async function fetchToken() {
       setLoading(true);

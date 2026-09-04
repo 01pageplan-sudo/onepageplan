@@ -17,12 +17,9 @@ import { Route as RoomRouteImport } from './routes/room'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiGetWebinarMetricsRouteImport } from './routes/api/get-webinar-metrics'
 import { Route as ApiGetWebinarTokenRouteImport } from './routes/api/get-webinar-token'
-import { Route as ApiWebinarTokenRouteImport } from './routes/api/webinar-token'
 import { Route as ApiPublicEmailDispatchRouteImport } from './routes/api/public/email-dispatch'
-import { Route as ApiPublicOppwebinarRouteImport } from './routes/api/public/oppwebinar'
 import { Route as ApiPublicResendWebhookRouteImport } from './routes/api/public/resend-webhook'
 import { Route as ApiPublicWebinarWebhookRouteImport } from './routes/api/public/webinar-webhook'
-import { Route as ApiWebhooksOppwebinarRouteImport } from './routes/api/webhooks/oppwebinar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -64,19 +61,9 @@ const ApiGetWebinarTokenRoute = ApiGetWebinarTokenRouteImport.update({
   path: '/api/get-webinar-token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiWebinarTokenRoute = ApiWebinarTokenRouteImport.update({
-  id: '/api/webinar-token',
-  path: '/api/webinar-token',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicEmailDispatchRoute = ApiPublicEmailDispatchRouteImport.update({
   id: '/api/public/email-dispatch',
   path: '/api/public/email-dispatch',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicOppwebinarRoute = ApiPublicOppwebinarRouteImport.update({
-  id: '/api/public/oppwebinar',
-  path: '/api/public/oppwebinar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicResendWebhookRoute = ApiPublicResendWebhookRouteImport.update({
@@ -89,11 +76,6 @@ const ApiPublicWebinarWebhookRoute = ApiPublicWebinarWebhookRouteImport.update({
   path: '/api/public/webinar-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiWebhooksOppwebinarRoute = ApiWebhooksOppwebinarRouteImport.update({
-  id: '/api/webhooks/oppwebinar',
-  path: '/api/webhooks/oppwebinar',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -104,12 +86,9 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
-  '/api/webinar-token': typeof ApiWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
-  '/api/public/oppwebinar': typeof ApiPublicOppwebinarRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
-  '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -120,12 +99,9 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
-  '/api/webinar-token': typeof ApiWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
-  '/api/public/oppwebinar': typeof ApiPublicOppwebinarRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
-  '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -137,12 +113,9 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
-  '/api/webinar-token': typeof ApiWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
-  '/api/public/oppwebinar': typeof ApiPublicOppwebinarRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
-  '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -155,12 +128,9 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
-    | '/api/webinar-token'
     | '/api/public/email-dispatch'
-    | '/api/public/oppwebinar'
     | '/api/public/resend-webhook'
     | '/api/public/webinar-webhook'
-    | '/api/webhooks/oppwebinar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -171,12 +141,9 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
-    | '/api/webinar-token'
     | '/api/public/email-dispatch'
-    | '/api/public/oppwebinar'
     | '/api/public/resend-webhook'
     | '/api/public/webinar-webhook'
-    | '/api/webhooks/oppwebinar'
   id:
     | '__root__'
     | '/'
@@ -187,12 +154,9 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
-    | '/api/webinar-token'
     | '/api/public/email-dispatch'
-    | '/api/public/oppwebinar'
     | '/api/public/resend-webhook'
     | '/api/public/webinar-webhook'
-    | '/api/webhooks/oppwebinar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -204,12 +168,9 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiGetWebinarMetricsRoute: typeof ApiGetWebinarMetricsRoute
   ApiGetWebinarTokenRoute: typeof ApiGetWebinarTokenRoute
-  ApiWebinarTokenRoute: typeof ApiWebinarTokenRoute
   ApiPublicEmailDispatchRoute: typeof ApiPublicEmailDispatchRoute
-  ApiPublicOppwebinarRoute: typeof ApiPublicOppwebinarRoute
   ApiPublicResendWebhookRoute: typeof ApiPublicResendWebhookRoute
   ApiPublicWebinarWebhookRoute: typeof ApiPublicWebinarWebhookRoute
-  ApiWebhooksOppwebinarRoute: typeof ApiWebhooksOppwebinarRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -270,25 +231,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGetWebinarTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/webinar-token': {
-      id: '/api/webinar-token'
-      path: '/api/webinar-token'
-      fullPath: '/api/webinar-token'
-      preLoaderRoute: typeof ApiWebinarTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/email-dispatch': {
       id: '/api/public/email-dispatch'
       path: '/api/public/email-dispatch'
       fullPath: '/api/public/email-dispatch'
       preLoaderRoute: typeof ApiPublicEmailDispatchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/oppwebinar': {
-      id: '/api/public/oppwebinar'
-      path: '/api/public/oppwebinar'
-      fullPath: '/api/public/oppwebinar'
-      preLoaderRoute: typeof ApiPublicOppwebinarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/resend-webhook': {
@@ -305,13 +252,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebinarWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/webhooks/oppwebinar': {
-      id: '/api/webhooks/oppwebinar'
-      path: '/api/webhooks/oppwebinar'
-      fullPath: '/api/webhooks/oppwebinar'
-      preLoaderRoute: typeof ApiWebhooksOppwebinarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -324,12 +264,9 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiGetWebinarMetricsRoute: ApiGetWebinarMetricsRoute,
   ApiGetWebinarTokenRoute: ApiGetWebinarTokenRoute,
-  ApiWebinarTokenRoute: ApiWebinarTokenRoute,
   ApiPublicEmailDispatchRoute: ApiPublicEmailDispatchRoute,
-  ApiPublicOppwebinarRoute: ApiPublicOppwebinarRoute,
   ApiPublicResendWebhookRoute: ApiPublicResendWebhookRoute,
   ApiPublicWebinarWebhookRoute: ApiPublicWebinarWebhookRoute,
-  ApiWebhooksOppwebinarRoute: ApiWebhooksOppwebinarRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

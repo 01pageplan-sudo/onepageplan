@@ -234,7 +234,12 @@ function RoomPage() {
         ) : null}
 
         {phase === "player" ? (
-          <WebinarEmbed email={email} onClose={() => setPhase("form")} />
+          <WebinarEmbed
+            email={email}
+            token={token}
+            webinarId={webinarId}
+            onClose={() => setPhase("form")}
+          />
         ) : null}
 
         <p className="mx-auto mt-4 w-full max-w-[1100px] text-xs text-muted-foreground">
