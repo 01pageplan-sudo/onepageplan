@@ -19,8 +19,8 @@ function getSkippedSessionDates(): Set<string> {
   try {
     const envVal =
       (typeof import.meta !== "undefined" &&
-        (import.meta as any).env?.VITE_SKIPPED_SESSIONS) ||
-      (typeof process !== "undefined" && process.env?.VITE_SKIPPED_SESSIONS);
+        (import.meta as any).env?.["VITE_SKIPPED_SESSIONS"]) ||
+      (typeof process !== "undefined" && process.env?.["VITE_SKIPPED_SESSIONS"]);
     if (envVal && typeof envVal === "string") {
       for (const d of envVal.split(",")) {
         const trimmed = d.trim();
