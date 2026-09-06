@@ -335,7 +335,8 @@ export async function sendWhatsApp(
     if (!args.whatsapp_consent) return;
 
     const enabled = process.env["WHATSAPP_ENABLED"] === "true";
-    const webinarUrl = process.env["VITE_WEBINAR_URL"] || process.env["WEBINAR_URL"] || "";
+    const rawUrl = process.env["VITE_WEBINAR_URL"] || process.env["WEBINAR_URL"] || "";
+    const webinarUrl = !rawUrl || rawUrl.includes("webinar.gg") ? ROOM_URL : rawUrl;
     const firstName = args.full_name.trim().split(/\s+/)[0] ?? "there";
 
     if (!enabled) {

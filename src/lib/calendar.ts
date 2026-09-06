@@ -15,7 +15,7 @@ export const WEBINAR_ID = "cmthk6y4001kos60ybxfkbc67";
 export const WEBINAR_REGISTER_URL = `https://webinar.gg/register/${WEBINAR_ID}`;
 
 /** Where the session actually runs. This is the one link we hand out. */
-export const ROOM_URL = "https://www.onepageplan.in/room";
+export const ROOM_URL = "https://onepageplan.in/room";
 
 
 /** YYYYMMDDTHHMMSSZ */

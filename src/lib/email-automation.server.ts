@@ -36,10 +36,14 @@ export async function loadSettings(
   });
   if (error) throw error;
   const row = (data ?? {}) as Partial<EmailSettings>;
+  const rawJoining = (row.joining_link || "").trim();
+  // Ensure the link never goes to webinar.gg; default to onepageplan.in/room
+  const joining =
+    !rawJoining || rawJoining.includes("webinar.gg") ? ROOM_URL : rawJoining;
   return {
-    joining_link: row.joining_link || "",
+    joining_link: joining,
     calendar_link: row.calendar_link || "",
-    registration_link: row.registration_link || "",
+    registration_link: row.registration_link || "https://onepageplan.in",
     whatsapp_link: row.whatsapp_link || "",
     monthly_checkout_link: row.monthly_checkout_link || "",
     annual_checkout_link: row.annual_checkout_link || "",
@@ -48,11 +52,21 @@ export async function loadSettings(
 }
 
 /** Fills in the calendar link automatically when it has not been overridden. */
-export function resolveLinks(settings: EmailSettings, sessionDate?: string | null): EmailLinks {
-  const joining = settings.joining_link || ROOM_URL;
+export function resolveLinks(
+  settings: EmailSettings,
+  sessionDate?: string | null,
+  email?: string | null,
+): EmailLinks {
+  const rawJoining = (settings.joining_link || "").trim();
+  // Ensure the link never goes to webinar.gg; default to onepageplan.in/room
+  const baseJoining =
+    !rawJoining || rawJoining.includes("webinar.gg") ? ROOM_URL : rawJoining;
+  const joining = email
+    ? `${baseJoining}${baseJoining.includes("?") ? "&" : "?"}email=${encodeURIComponent(email)}`
+    : baseJoining;
   const calendar =
     settings.calendar_link ||
-    getSessionCalendar(joining, sessionStart(sessionDate) ?? undefined).googleUrl;
+    getSessionCalendar(baseJoining, sessionStart(sessionDate) ?? undefined).googleUrl;
   return { ...settings, joining_link: joining, calendar_link: calendar };
 }
 
@@ -256,7 +270,7 @@ export async function sendDueEmails(
     try {
       const { subject, html, text } = renderEmail(spec, {
         firstName: firstName(row.full_name),
-        links: resolveLinks(settings, row.session_date),
+        links: resolveLinks(settings, row.session_date, row.email),
       });
 
       const providerId = await sendThroughResend({ to: row.email, subject, html, text });
