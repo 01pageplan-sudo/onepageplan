@@ -36,10 +36,10 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
         if (url.searchParams.has("discover")) {
           const endpointsToTest = [
             `https://graph.facebook.com/${apiVersion}/me`,
+            `https://graph.facebook.com/${apiVersion}/1056179313949979`,
+            `https://graph.facebook.com/${apiVersion}/1056179313949979/phone_numbers`,
             `https://graph.facebook.com/${apiVersion}/1307461289115560?fields=verified_name,display_phone_number,quality_rating,code_verification_status,status,account_mode,is_pin_enabled,name_status`,
             `https://graph.facebook.com/${apiVersion}/122100077451469010/assigned_whatsapp_business_accounts`,
-            `https://graph.facebook.com/${apiVersion}/122100077451469010/assigned_assets`,
-            `https://graph.facebook.com/${apiVersion}/1636917721395046`,
           ];
 
           const discoveryResults: Record<string, unknown> = {};
