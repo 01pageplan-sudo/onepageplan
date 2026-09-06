@@ -335,34 +335,28 @@ export async function sendWhatsApp(
     if (!args.whatsapp_consent) return;
 
     const enabled = process.env["WHATSAPP_ENABLED"] === "true";
-    const rawUrl = process.env["VITE_WEBINAR_URL"] || process.env["WEBINAR_URL"] || "";
-    const webinarUrl = !rawUrl || rawUrl.includes("webinar.gg") ? ROOM_URL : rawUrl;
     const firstName = args.full_name.trim().split(/\s+/)[0] ?? "there";
 
     if (!enabled) {
-      console.log("whatsapp disabled, would have sent:", {
+      console.log("whatsapp disabled, would have sent mrm_reg_confirmed to:", {
         destination: args.phone_e164,
         userName: args.full_name,
-        templateParams: [firstName, webinarUrl],
+        firstName,
       });
       return;
     }
 
-    const response = await fetch("https://backend.aisensy.com/campaign/t1/api/v2", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        apiKey: process.env["AISENSY_API_KEY"],
-        campaignName: process.env["AISENSY_CAMPAIGN_NAME"],
-        destination: args.phone_e164,
-        userName: args.full_name,
-        templateParams: [firstName, webinarUrl],
-      }),
+    const { sendTemplateMessage } = await import("@/services/whatsapp");
+    await sendTemplateMessage(args.phone_e164, {
+      name: "mrm_reg_confirmed",
+      languageCode: "en",
+      components: [
+        {
+          type: "body",
+          parameters: [{ type: "text", text: firstName }],
+        },
+      ],
     });
-
-    if (!response.ok) {
-      throw new Error(`AiSensy responded ${response.status}: ${(await response.text()).slice(0, 200)}`);
-    }
 
     await markDelivery(db, args.id, "whatsapp", true);
   } catch (error) {

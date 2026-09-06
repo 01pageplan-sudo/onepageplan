@@ -248,6 +248,33 @@ export async function sendTemplateMessage(
   });
 }
 
+export type ApprovedSessionTemplateName =
+  | "mrm_reg_confirmed"
+  | "mrm_reminder_friday"
+  | "mrm_reminder_1hr"
+  | "mrm_live_now";
+
+/**
+ * Convenience helper: Send one of the approved Masterclass WhatsApp templates
+ * with {{1}} parameter filled with the recipient's first name.
+ */
+export async function sendSessionWhatsAppTemplate(
+  to: string,
+  templateName: ApprovedSessionTemplateName,
+  firstName: string,
+): Promise<WhatsAppSendResponse> {
+  return sendTemplateMessage(to, {
+    name: templateName,
+    languageCode: "en",
+    components: [
+      {
+        type: "body",
+        parameters: [{ type: "text", text: firstName }],
+      },
+    ],
+  });
+}
+
 /**
  * Marks an inbound message as read.
  * This changes the checkmarks to double blue on the user's phone, signalling
