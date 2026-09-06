@@ -21,6 +21,11 @@ export const Route = createFileRoute("/api/public/test-whatsapp")({
         let phone = (url.searchParams.get("phone") || "").trim();
         let name = (url.searchParams.get("name") || "").trim();
         const email = (url.searchParams.get("email") || "").trim().toLowerCase();
+        const customId = (
+          url.searchParams.get("id") ||
+          url.searchParams.get("phoneNumberId") ||
+          ""
+        ).trim() || undefined;
 
         // If email provided, look up candidate from database
         if (email) {
@@ -70,7 +75,7 @@ export const Route = createFileRoute("/api/public/test-whatsapp")({
 
         for (const template of templates) {
           try {
-            const res = await sendSessionWhatsAppTemplate(phone, template, firstName);
+            const res = await sendSessionWhatsAppTemplate(phone, template, firstName, customId);
             results.push({
               template,
               status: "sent",
@@ -88,6 +93,7 @@ export const Route = createFileRoute("/api/public/test-whatsapp")({
         return Response.json({
           recipient: phone,
           firstName,
+          usedPhoneNumberIdOverride: customId ?? null,
           results,
         });
       },

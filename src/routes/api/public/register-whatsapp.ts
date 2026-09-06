@@ -14,6 +14,11 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const pin = (url.searchParams.get("pin") || "123456").trim();
+        const customId = (
+          url.searchParams.get("id") ||
+          url.searchParams.get("phoneNumberId") ||
+          ""
+        ).trim();
 
         if (!/^\d{6}$/.test(pin)) {
           return Response.json(
@@ -26,18 +31,20 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
         }
 
         const config = getWhatsAppConfig();
-        if (!config.accessToken || !config.phoneNumberId) {
+        const targetPhoneNumberId = customId || config.phoneNumberId;
+
+        if (!config.accessToken || !targetPhoneNumberId) {
           return Response.json(
             {
               error: "missing_credentials",
               message:
-                "WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID is not configured in Vercel.",
+                "WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID is not configured in Vercel, and no ?id= was provided in the URL.",
             },
             { status: 500 },
           );
         }
 
-        const endpoint = `${config.graphBaseUrl}/${config.phoneNumberId}/register`;
+        const endpoint = `${config.graphBaseUrl}/${targetPhoneNumberId}/register`;
 
         try {
           const upstream = await fetch(endpoint, {
@@ -61,11 +68,22 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
           }
 
           if (!upstream.ok) {
-            // Check if this ID is actually a WABA ID by querying its phone_numbers
+            // Check debug_token to inspect token metadata and permissions
+            let tokenDebug: unknown = null;
+            try {
+              const dbgRes = await fetch(
+                `${config.graphBaseUrl}/debug_token?input_token=${config.accessToken}&access_token=${config.accessToken}`,
+              );
+              tokenDebug = await dbgRes.json();
+            } catch {
+              // ignore
+            }
+
+            // Check if this ID is a WABA ID by querying its phone_numbers
             let phoneNumbersList: unknown = null;
             try {
               const pnRes = await fetch(
-                `${config.graphBaseUrl}/${config.phoneNumberId}/phone_numbers`,
+                `${config.graphBaseUrl}/${targetPhoneNumberId}/phone_numbers`,
                 {
                   headers: { Authorization: `Bearer ${config.accessToken}` },
                 },
@@ -80,10 +98,13 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
                 status: "failed",
                 httpStatus: upstream.status,
                 endpoint,
-                currentConfiguredId: config.phoneNumberId,
-                note: "If currentConfiguredId is your WhatsApp Business Account ID, see phoneNumbers below for your real Phone Number ID.",
+                attemptedPhoneNumberId: targetPhoneNumberId,
+                currentConfiguredEnvId: config.phoneNumberId,
+                wasOverriddenByQuery: Boolean(customId),
                 metaResponse: parsed,
                 availablePhoneNumbers: phoneNumbersList,
+                tokenDebug,
+                tip: "Make sure you are using the Phone Number ID (from WhatsApp > API Setup), NOT the WhatsApp Business Account ID.",
               },
               { status: upstream.status },
             );
@@ -92,7 +113,8 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
           return Response.json({
             status: "success",
             message: "Phone number registered successfully with Meta WhatsApp Cloud API!",
-            phoneNumberId: config.phoneNumberId,
+            registeredPhoneNumberId: targetPhoneNumberId,
+            currentConfiguredEnvId: config.phoneNumberId,
             pinUsed: pin,
             metaResponse: parsed,
           });
