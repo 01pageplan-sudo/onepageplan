@@ -61,13 +61,29 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
           }
 
           if (!upstream.ok) {
+            // Check if this ID is actually a WABA ID by querying its phone_numbers
+            let phoneNumbersList: unknown = null;
+            try {
+              const pnRes = await fetch(
+                `${config.graphBaseUrl}/${config.phoneNumberId}/phone_numbers`,
+                {
+                  headers: { Authorization: `Bearer ${config.accessToken}` },
+                },
+              );
+              phoneNumbersList = await pnRes.json();
+            } catch {
+              // ignore
+            }
+
             return Response.json(
               {
                 status: "failed",
                 httpStatus: upstream.status,
                 endpoint,
-                phoneNumberId: config.phoneNumberId,
+                currentConfiguredId: config.phoneNumberId,
+                note: "If currentConfiguredId is your WhatsApp Business Account ID, see phoneNumbers below for your real Phone Number ID.",
                 metaResponse: parsed,
+                availablePhoneNumbers: phoneNumbersList,
               },
               { status: upstream.status },
             );
