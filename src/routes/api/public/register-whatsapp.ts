@@ -31,6 +31,37 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
         }
 
         const config = getWhatsAppConfig();
+
+        if (url.searchParams.has("discover")) {
+          const endpointsToTest = [
+            `https://graph.facebook.com/v19.0/me`,
+            `https://graph.facebook.com/v19.0/me/businesses`,
+            `https://graph.facebook.com/v19.0/1636917721395046`,
+            `https://graph.facebook.com/v19.0/122100077451469010/assigned_whatsapp_business_accounts`,
+            `https://graph.facebook.com/v19.0/1307461289115560`,
+            `https://graph.facebook.com/v19.0/1307461289115560?fields=id,name,phone_numbers`,
+            `https://graph.facebook.com/v19.0/1145144922026735/whatsapp_business_accounts`,
+          ];
+
+          const discoveryResults: Record<string, unknown> = {};
+          for (const ep of endpointsToTest) {
+            try {
+              const res = await fetch(ep, {
+                headers: { Authorization: `Bearer ${config.accessToken}` },
+              });
+              discoveryResults[ep] = await res.json();
+            } catch (err) {
+              discoveryResults[ep] = { error: String(err) };
+            }
+          }
+
+          return Response.json({
+            status: "discovery",
+            configuredEnvId: config.phoneNumberId,
+            discoveryResults,
+          });
+        }
+
         const targetPhoneNumberId = customId || config.phoneNumberId;
 
         if (!config.accessToken || !targetPhoneNumberId) {
