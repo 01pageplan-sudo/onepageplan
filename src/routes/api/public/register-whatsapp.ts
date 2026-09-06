@@ -19,6 +19,11 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
           url.searchParams.get("phoneNumberId") ||
           ""
         ).trim();
+        const customToken = (
+          url.searchParams.get("token") ||
+          url.searchParams.get("accessToken") ||
+          ""
+        ).trim();
 
         if (!/^\d{6}$/.test(pin)) {
           return Response.json(
@@ -32,6 +37,8 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
 
         const config = getWhatsAppConfig();
         const apiVersion = (url.searchParams.get("v") || "v21.0").trim();
+        const targetAccessToken = customToken || config.accessToken;
+        const targetPhoneNumberId = customId || config.phoneNumberId;
 
         if (url.searchParams.has("discover")) {
           const endpointsToTest = [
@@ -46,7 +53,7 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
           for (const ep of endpointsToTest) {
             try {
               const res = await fetch(ep, {
-                headers: { Authorization: `Bearer ${config.accessToken}` },
+                headers: { Authorization: `Bearer ${targetAccessToken}` },
               });
               discoveryResults[ep] = await res.json();
             } catch (err) {
@@ -58,18 +65,17 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
             status: "discovery",
             apiVersion,
             configuredEnvId: config.phoneNumberId,
+            usedTokenOverride: Boolean(customToken),
             discoveryResults,
           });
         }
 
-        const targetPhoneNumberId = customId || config.phoneNumberId;
-
-        if (!config.accessToken || !targetPhoneNumberId) {
+        if (!targetAccessToken || !targetPhoneNumberId) {
           return Response.json(
             {
               error: "missing_credentials",
               message:
-                "WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID is not configured in Vercel, and no ?id= was provided in the URL.",
+                "WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID is not configured in Vercel, and no ?token= or ?id= was provided in the URL.",
             },
             { status: 500 },
           );
@@ -81,7 +87,7 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
           const upstream = await fetch(endpoint, {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${config.accessToken}`,
+              Authorization: `Bearer ${targetAccessToken}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
@@ -103,7 +109,7 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
             let tokenDebug: unknown = null;
             try {
               const dbgRes = await fetch(
-                `${config.graphBaseUrl}/debug_token?input_token=${config.accessToken}&access_token=${config.accessToken}`,
+                `${config.graphBaseUrl}/debug_token?input_token=${targetAccessToken}&access_token=${targetAccessToken}`,
               );
               tokenDebug = await dbgRes.json();
             } catch {
@@ -116,7 +122,7 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
               const pnRes = await fetch(
                 `${config.graphBaseUrl}/${targetPhoneNumberId}/phone_numbers`,
                 {
-                  headers: { Authorization: `Bearer ${config.accessToken}` },
+                  headers: { Authorization: `Bearer ${targetAccessToken}` },
                 },
               );
               phoneNumbersList = await pnRes.json();

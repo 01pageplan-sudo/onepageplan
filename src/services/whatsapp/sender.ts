@@ -73,6 +73,11 @@ export type SendWhatsAppMessageParams = {
   phoneNumberId?: string | undefined;
 
   /**
+   * Optional Access Token override (defaults to WHATSAPP_ACCESS_TOKEN from env)
+   */
+  accessToken?: string | undefined;
+
+  /**
    * Outgoing payload specification (excluding 'messaging_product' and 'to', which are injected automatically)
    */
   message:
@@ -120,8 +125,9 @@ export async function sendWhatsAppMessage(
 ): Promise<WhatsAppSendResponse> {
   const config = getWhatsAppConfig();
   const phoneNumberId = params.phoneNumberId?.trim() || config.phoneNumberId;
+  const accessToken = params.accessToken?.trim() || config.accessToken;
 
-  if (!config.accessToken || !phoneNumberId) {
+  if (!accessToken || !phoneNumberId) {
     throw new Error(
       "WhatsApp Cloud API credentials not configured. Please set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID in your environment.",
     );
@@ -146,7 +152,7 @@ export async function sendWhatsAppMessage(
     response = await fetch(endpoint, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -241,10 +247,12 @@ export async function sendTemplateMessage(
     components?: WhatsAppTemplateComponent[];
   },
   phoneNumberId?: string,
+  accessToken?: string,
 ): Promise<WhatsAppSendResponse> {
   return sendWhatsAppMessage({
     to,
     phoneNumberId,
+    accessToken,
     message: {
       type: "template",
       template: {
@@ -273,6 +281,7 @@ export async function sendSessionWhatsAppTemplate(
   templateName: ApprovedSessionTemplateName,
   firstName: string,
   phoneNumberId?: string,
+  accessToken?: string,
 ): Promise<WhatsAppSendResponse> {
   return sendTemplateMessage(
     to,
@@ -287,6 +296,7 @@ export async function sendSessionWhatsAppTemplate(
       ],
     },
     phoneNumberId,
+    accessToken,
   );
 }
 
