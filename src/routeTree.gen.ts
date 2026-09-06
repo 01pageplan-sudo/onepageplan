@@ -18,6 +18,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiGetWebinarMetricsRouteImport } from './routes/api/get-webinar-metrics'
 import { Route as ApiGetWebinarTokenRouteImport } from './routes/api/get-webinar-token'
 import { Route as ApiPublicEmailDispatchRouteImport } from './routes/api/public/email-dispatch'
+import { Route as ApiPublicRegisterWhatsappRouteImport } from './routes/api/public/register-whatsapp'
 import { Route as ApiPublicResendWebhookRouteImport } from './routes/api/public/resend-webhook'
 import { Route as ApiPublicTestWhatsappRouteImport } from './routes/api/public/test-whatsapp'
 import { Route as ApiPublicWebinarWebhookRouteImport } from './routes/api/public/webinar-webhook'
@@ -68,6 +69,12 @@ const ApiPublicEmailDispatchRoute = ApiPublicEmailDispatchRouteImport.update({
   path: '/api/public/email-dispatch',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRegisterWhatsappRoute =
+  ApiPublicRegisterWhatsappRouteImport.update({
+    id: '/api/public/register-whatsapp',
+    path: '/api/public/register-whatsapp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicResendWebhookRoute = ApiPublicResendWebhookRouteImport.update({
   id: '/api/public/resend-webhook',
   path: '/api/public/resend-webhook',
@@ -100,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
+  '/api/public/register-whatsapp': typeof ApiPublicRegisterWhatsappRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/test-whatsapp': typeof ApiPublicTestWhatsappRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
@@ -115,6 +123,7 @@ export interface FileRoutesByTo {
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
+  '/api/public/register-whatsapp': typeof ApiPublicRegisterWhatsappRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/test-whatsapp': typeof ApiPublicTestWhatsappRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
@@ -131,6 +140,7 @@ export interface FileRoutesById {
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
+  '/api/public/register-whatsapp': typeof ApiPublicRegisterWhatsappRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
   '/api/public/test-whatsapp': typeof ApiPublicTestWhatsappRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
     | '/api/public/email-dispatch'
+    | '/api/public/register-whatsapp'
     | '/api/public/resend-webhook'
     | '/api/public/test-whatsapp'
     | '/api/public/webinar-webhook'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
     | '/api/public/email-dispatch'
+    | '/api/public/register-whatsapp'
     | '/api/public/resend-webhook'
     | '/api/public/test-whatsapp'
     | '/api/public/webinar-webhook'
@@ -178,6 +190,7 @@ export interface FileRouteTypes {
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
     | '/api/public/email-dispatch'
+    | '/api/public/register-whatsapp'
     | '/api/public/resend-webhook'
     | '/api/public/test-whatsapp'
     | '/api/public/webinar-webhook'
@@ -194,6 +207,7 @@ export interface RootRouteChildren {
   ApiGetWebinarMetricsRoute: typeof ApiGetWebinarMetricsRoute
   ApiGetWebinarTokenRoute: typeof ApiGetWebinarTokenRoute
   ApiPublicEmailDispatchRoute: typeof ApiPublicEmailDispatchRoute
+  ApiPublicRegisterWhatsappRoute: typeof ApiPublicRegisterWhatsappRoute
   ApiPublicResendWebhookRoute: typeof ApiPublicResendWebhookRoute
   ApiPublicTestWhatsappRoute: typeof ApiPublicTestWhatsappRoute
   ApiPublicWebinarWebhookRoute: typeof ApiPublicWebinarWebhookRoute
@@ -265,6 +279,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicEmailDispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/register-whatsapp': {
+      id: '/api/public/register-whatsapp'
+      path: '/api/public/register-whatsapp'
+      fullPath: '/api/public/register-whatsapp'
+      preLoaderRoute: typeof ApiPublicRegisterWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/resend-webhook': {
       id: '/api/public/resend-webhook'
       path: '/api/public/resend-webhook'
@@ -306,6 +327,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGetWebinarMetricsRoute: ApiGetWebinarMetricsRoute,
   ApiGetWebinarTokenRoute: ApiGetWebinarTokenRoute,
   ApiPublicEmailDispatchRoute: ApiPublicEmailDispatchRoute,
+  ApiPublicRegisterWhatsappRoute: ApiPublicRegisterWhatsappRoute,
   ApiPublicResendWebhookRoute: ApiPublicResendWebhookRoute,
   ApiPublicTestWhatsappRoute: ApiPublicTestWhatsappRoute,
   ApiPublicWebinarWebhookRoute: ApiPublicWebinarWebhookRoute,
