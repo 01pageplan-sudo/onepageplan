@@ -31,16 +31,15 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
         }
 
         const config = getWhatsAppConfig();
+        const apiVersion = (url.searchParams.get("v") || "v21.0").trim();
 
         if (url.searchParams.has("discover")) {
           const endpointsToTest = [
-            `https://graph.facebook.com/v19.0/me`,
-            `https://graph.facebook.com/v19.0/me/businesses`,
-            `https://graph.facebook.com/v19.0/1636917721395046`,
-            `https://graph.facebook.com/v19.0/122100077451469010/assigned_whatsapp_business_accounts`,
-            `https://graph.facebook.com/v19.0/1307461289115560`,
-            `https://graph.facebook.com/v19.0/1307461289115560?fields=id,name,phone_numbers`,
-            `https://graph.facebook.com/v19.0/1145144922026735/whatsapp_business_accounts`,
+            `https://graph.facebook.com/${apiVersion}/me`,
+            `https://graph.facebook.com/${apiVersion}/1307461289115560?fields=verified_name,display_phone_number,quality_rating,code_verification_status,status,account_mode,is_pin_enabled,name_status`,
+            `https://graph.facebook.com/${apiVersion}/122100077451469010/assigned_whatsapp_business_accounts`,
+            `https://graph.facebook.com/${apiVersion}/122100077451469010/assigned_assets`,
+            `https://graph.facebook.com/${apiVersion}/1636917721395046`,
           ];
 
           const discoveryResults: Record<string, unknown> = {};
@@ -57,6 +56,7 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
 
           return Response.json({
             status: "discovery",
+            apiVersion,
             configuredEnvId: config.phoneNumberId,
             discoveryResults,
           });
@@ -75,7 +75,7 @@ export const Route = createFileRoute("/api/public/register-whatsapp")({
           );
         }
 
-        const endpoint = `${config.graphBaseUrl}/${targetPhoneNumberId}/register`;
+        const endpoint = `https://graph.facebook.com/${apiVersion}/${targetPhoneNumberId}/register`;
 
         try {
           const upstream = await fetch(endpoint, {
