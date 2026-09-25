@@ -8,6 +8,7 @@
 export interface WhatsAppConfig {
   accessToken: string;
   phoneNumberId: string;
+  wabaId?: string | undefined;
   verifyToken: string;
   apiVersion: string;
   appSecret?: string | undefined;
@@ -21,6 +22,11 @@ export interface WhatsAppConfig {
 export function getWhatsAppConfig(): WhatsAppConfig {
   const accessToken = (process.env["WHATSAPP_ACCESS_TOKEN"] ?? "").trim();
   const phoneNumberId = (process.env["WHATSAPP_PHONE_NUMBER_ID"] ?? "").trim();
+  const wabaId = (
+    process.env["WHATSAPP_WABA_ID"] ??
+    process.env["WHATSAPP_BUSINESS_ACCOUNT_ID"] ??
+    ""
+  ).trim() || undefined;
   const verifyToken = (process.env["WHATSAPP_VERIFY_TOKEN"] ?? "").trim();
   const apiVersion = (process.env["WHATSAPP_API_VERSION"] ?? "v19.0").trim();
   const appSecret = process.env["WHATSAPP_APP_SECRET"]
@@ -44,6 +50,7 @@ export function getWhatsAppConfig(): WhatsAppConfig {
   return {
     accessToken,
     phoneNumberId,
+    wabaId,
     verifyToken,
     apiVersion: cleanVersion,
     appSecret,
