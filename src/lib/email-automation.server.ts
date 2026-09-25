@@ -192,34 +192,51 @@ export async function scheduleSequence(db: PublicServerClient, override?: string
   return Number(inserted ?? 0);
 }
 
-async function sendThroughResend(args: {
+async function sendEmailUsingProvider(args: {
   to: string;
   subject: string;
   html: string;
   text: string;
 }): Promise<string | null> {
-  const key = process.env["RESEND_API_KEY"];
-  const fromEmail = process.env["FROM_EMAIL"] || "connect@onepageplan.in";
-  const fromName = process.env["FROM_NAME"] || "Milan Dodhia";
-  if (!key) throw new Error("RESEND_API_KEY is not configured.");
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      from: `${fromName} <${fromEmail}>`,
-      to: [args.to],
+  const zeptoKey = process.env["ZEPTOMAIL_API_KEY"] || process.env["ZEPTOMAIL_SEND_MAIL_TOKEN"];
+  if (zeptoKey) {
+    const { sendZeptoEmail } = await import("./zeptomail.server");
+    const result = await sendZeptoEmail({
+      to: args.to,
       subject: args.subject,
-      html: args.html,
-      text: args.text,
-    }),
-  });
-
-  const payload = (await response.json().catch(() => null)) as { id?: string } | null;
-  if (!response.ok) {
-    throw new Error(`Resend responded ${response.status}: ${JSON.stringify(payload)?.slice(0, 200)}`);
+      htmlBody: args.html,
+      textBody: args.text,
+    });
+    if (!result.ok) {
+      throw new Error(`ZeptoMail failed: ${result.error}`);
+    }
+    return result.messageId ?? "zeptomail_sent";
   }
-  return payload?.id ?? null;
+
+  // Fallback if ZeptoMail is not yet provisioned
+  const resendKey = process.env["RESEND_API_KEY"];
+  if (resendKey) {
+    const fromEmail = process.env["FROM_EMAIL"] || "connect@onepageplan.in";
+    const fromName = process.env["FROM_NAME"] || "Milan Dodhia";
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${resendKey}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        from: `${fromName} <${fromEmail}>`,
+        to: [args.to],
+        subject: args.subject,
+        html: args.html,
+        text: args.text,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as { id?: string } | null;
+    if (!response.ok) {
+      throw new Error(`Resend responded ${response.status}: ${JSON.stringify(payload)?.slice(0, 200)}`);
+    }
+    return payload?.id ?? null;
+  }
+
+  throw new Error("Neither ZEPTOMAIL_API_KEY nor RESEND_API_KEY is configured on the server.");
 }
 
 export function firstName(fullName: string) {
@@ -273,7 +290,7 @@ export async function sendDueEmails(
         links: resolveLinks(settings, row.session_date, row.email),
       });
 
-      const providerId = await sendThroughResend({ to: row.email, subject, html, text });
+      const providerId = await sendEmailUsingProvider({ to: row.email, subject, html, text });
       await db.rpc("mark_email_send", {
         p_password: password,
         p_id: row.id,

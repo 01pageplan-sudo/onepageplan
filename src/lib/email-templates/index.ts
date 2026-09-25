@@ -347,7 +347,7 @@ const s1NurtureCopy = [
     heading: "Doing it yourself, with a structure",
     body: [
       "Nine emails and I have not asked you for anything. This is the one time I will.",
-      "The Calm Money System. ₹6,001, one time, lifetime access. Three days live, then a ninety day structure with nine missions, the full template pack, and the community.",
+      "The Calm Money System. Lifetime access. Three days live, then a ninety day structure with nine missions, the full template pack, and the community.",
       "What it does not do. It does not tell you what to buy. It does not name a fund, a policy or a company. If you want a name handed to you, this is not it, and I would rather you knew that now.",
       "What it does. You build your own consolidated picture, in your own file, including the accounts you have forgotten. You compute real return after tax and after inflation. You find out whether your family is actually covered, and whether the one clause deciding where an insurance payout lands is present in your policy or was never chosen. You rank your loans by real cost. You prepare the conversation about what your work is worth. You write the one page your family could act on.",
       "First ten buyers get fifteen minutes with me, one to one. Limited by my actual hours, not extendable.",
@@ -636,10 +636,18 @@ export const TEMPLATES: TemplateSpec[] = [
     subject: () => copy.subject,
     heading: () => copy.heading,
     body: () => copy.body,
-    cta: (ctx: EmailContext) =>
-      ctx.links.registration_link
+    cta: (ctx: EmailContext) => {
+      if (copy.key === "nurture_10") {
+        const checkoutUrl =
+          ctx.links.annual_checkout_link ||
+          ctx.links.monthly_checkout_link ||
+          "https://onepageplan.in/course";
+        return { label: "Enroll in The Calm Money System →", href: checkoutUrl };
+      }
+      return ctx.links.registration_link
         ? { label: "Come back to this Saturday's session", href: ctx.links.registration_link }
-        : null,
+        : null;
+    },
   })),
 
   // Sequence 2: Option 2 / Stock-tip Drop-off Nurture (S2-01)

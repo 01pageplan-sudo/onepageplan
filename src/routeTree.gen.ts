@@ -12,17 +12,20 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ConfirmedRouteImport } from './routes/confirmed'
+import { Route as CourseRouteImport } from './routes/course'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RoomRouteImport } from './routes/room'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiGetWebinarMetricsRouteImport } from './routes/api/get-webinar-metrics'
 import { Route as ApiGetWebinarTokenRouteImport } from './routes/api/get-webinar-token'
 import { Route as ApiPublicEmailDispatchRouteImport } from './routes/api/public/email-dispatch'
-import { Route as ApiPublicRegisterWhatsappRouteImport } from './routes/api/public/register-whatsapp'
+import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay-webhook'
 import { Route as ApiPublicResendWebhookRouteImport } from './routes/api/public/resend-webhook'
-import { Route as ApiPublicTestWhatsappRouteImport } from './routes/api/public/test-whatsapp'
 import { Route as ApiPublicWebinarWebhookRouteImport } from './routes/api/public/webinar-webhook'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
+import { Route as ApiPublicZeptomailWebhookRouteImport } from './routes/api/public/zeptomail-webhook'
+import { Route as ApiRazorpayCreateOrderRouteImport } from './routes/api/razorpay/create-order'
+import { Route as ApiRazorpayVerifyPaymentRouteImport } from './routes/api/razorpay/verify-payment'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -37,6 +40,11 @@ const AdminRoute = AdminRouteImport.update({
 const ConfirmedRoute = ConfirmedRouteImport.update({
   id: '/confirmed',
   path: '/confirmed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CourseRoute = CourseRouteImport.update({
+  id: '/course',
+  path: '/course',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -69,20 +77,15 @@ const ApiPublicEmailDispatchRoute = ApiPublicEmailDispatchRouteImport.update({
   path: '/api/public/email-dispatch',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicRegisterWhatsappRoute =
-  ApiPublicRegisterWhatsappRouteImport.update({
-    id: '/api/public/register-whatsapp',
-    path: '/api/public/register-whatsapp',
+const ApiPublicRazorpayWebhookRoute =
+  ApiPublicRazorpayWebhookRouteImport.update({
+    id: '/api/public/razorpay-webhook',
+    path: '/api/public/razorpay-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicResendWebhookRoute = ApiPublicResendWebhookRouteImport.update({
   id: '/api/public/resend-webhook',
   path: '/api/public/resend-webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicTestWhatsappRoute = ApiPublicTestWhatsappRouteImport.update({
-  id: '/api/public/test-whatsapp',
-  path: '/api/public/test-whatsapp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicWebinarWebhookRoute = ApiPublicWebinarWebhookRouteImport.update({
@@ -96,55 +99,81 @@ const ApiPublicWhatsappWebhookRoute =
     path: '/api/public/whatsapp-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicZeptomailWebhookRoute =
+  ApiPublicZeptomailWebhookRouteImport.update({
+    id: '/api/public/zeptomail-webhook',
+    path: '/api/public/zeptomail-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiRazorpayCreateOrderRoute = ApiRazorpayCreateOrderRouteImport.update({
+  id: '/api/razorpay/create-order',
+  path: '/api/razorpay/create-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRazorpayVerifyPaymentRoute =
+  ApiRazorpayVerifyPaymentRouteImport.update({
+    id: '/api/razorpay/verify-payment',
+    path: '/api/razorpay/verify-payment',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/confirmed': typeof ConfirmedRoute
+  '/course': typeof CourseRoute
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
-  '/api/public/register-whatsapp': typeof ApiPublicRegisterWhatsappRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
-  '/api/public/test-whatsapp': typeof ApiPublicTestWhatsappRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/api/public/zeptomail-webhook': typeof ApiPublicZeptomailWebhookRoute
+  '/api/razorpay/create-order': typeof ApiRazorpayCreateOrderRoute
+  '/api/razorpay/verify-payment': typeof ApiRazorpayVerifyPaymentRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/confirmed': typeof ConfirmedRoute
+  '/course': typeof CourseRoute
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
-  '/api/public/register-whatsapp': typeof ApiPublicRegisterWhatsappRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
-  '/api/public/test-whatsapp': typeof ApiPublicTestWhatsappRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/api/public/zeptomail-webhook': typeof ApiPublicZeptomailWebhookRoute
+  '/api/razorpay/create-order': typeof ApiRazorpayCreateOrderRoute
+  '/api/razorpay/verify-payment': typeof ApiRazorpayVerifyPaymentRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/confirmed': typeof ConfirmedRoute
+  '/course': typeof CourseRoute
   '/privacy': typeof PrivacyRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
-  '/api/public/register-whatsapp': typeof ApiPublicRegisterWhatsappRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
-  '/api/public/test-whatsapp': typeof ApiPublicTestWhatsappRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/api/public/zeptomail-webhook': typeof ApiPublicZeptomailWebhookRoute
+  '/api/razorpay/create-order': typeof ApiRazorpayCreateOrderRoute
+  '/api/razorpay/verify-payment': typeof ApiRazorpayVerifyPaymentRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -152,66 +181,78 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/confirmed'
+    | '/course'
     | '/privacy'
     | '/room'
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
     | '/api/public/email-dispatch'
-    | '/api/public/register-whatsapp'
+    | '/api/public/razorpay-webhook'
     | '/api/public/resend-webhook'
-    | '/api/public/test-whatsapp'
     | '/api/public/webinar-webhook'
     | '/api/public/whatsapp-webhook'
+    | '/api/public/zeptomail-webhook'
+    | '/api/razorpay/create-order'
+    | '/api/razorpay/verify-payment'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/confirmed'
+    | '/course'
     | '/privacy'
     | '/room'
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
     | '/api/public/email-dispatch'
-    | '/api/public/register-whatsapp'
+    | '/api/public/razorpay-webhook'
     | '/api/public/resend-webhook'
-    | '/api/public/test-whatsapp'
     | '/api/public/webinar-webhook'
     | '/api/public/whatsapp-webhook'
+    | '/api/public/zeptomail-webhook'
+    | '/api/razorpay/create-order'
+    | '/api/razorpay/verify-payment'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/confirmed'
+    | '/course'
     | '/privacy'
     | '/room'
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
     | '/api/public/email-dispatch'
-    | '/api/public/register-whatsapp'
+    | '/api/public/razorpay-webhook'
     | '/api/public/resend-webhook'
-    | '/api/public/test-whatsapp'
     | '/api/public/webinar-webhook'
     | '/api/public/whatsapp-webhook'
+    | '/api/public/zeptomail-webhook'
+    | '/api/razorpay/create-order'
+    | '/api/razorpay/verify-payment'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ConfirmedRoute: typeof ConfirmedRoute
+  CourseRoute: typeof CourseRoute
   PrivacyRoute: typeof PrivacyRoute
   RoomRoute: typeof RoomRoute
   TermsRoute: typeof TermsRoute
   ApiGetWebinarMetricsRoute: typeof ApiGetWebinarMetricsRoute
   ApiGetWebinarTokenRoute: typeof ApiGetWebinarTokenRoute
   ApiPublicEmailDispatchRoute: typeof ApiPublicEmailDispatchRoute
-  ApiPublicRegisterWhatsappRoute: typeof ApiPublicRegisterWhatsappRoute
+  ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
   ApiPublicResendWebhookRoute: typeof ApiPublicResendWebhookRoute
-  ApiPublicTestWhatsappRoute: typeof ApiPublicTestWhatsappRoute
   ApiPublicWebinarWebhookRoute: typeof ApiPublicWebinarWebhookRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
+  ApiPublicZeptomailWebhookRoute: typeof ApiPublicZeptomailWebhookRoute
+  ApiRazorpayCreateOrderRoute: typeof ApiRazorpayCreateOrderRoute
+  ApiRazorpayVerifyPaymentRoute: typeof ApiRazorpayVerifyPaymentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -235,6 +276,13 @@ declare module '@tanstack/react-router' {
       path: '/confirmed'
       fullPath: '/confirmed'
       preLoaderRoute: typeof ConfirmedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/course': {
+      id: '/course'
+      path: '/course'
+      fullPath: '/course'
+      preLoaderRoute: typeof CourseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -279,11 +327,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicEmailDispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/register-whatsapp': {
-      id: '/api/public/register-whatsapp'
-      path: '/api/public/register-whatsapp'
-      fullPath: '/api/public/register-whatsapp'
-      preLoaderRoute: typeof ApiPublicRegisterWhatsappRouteImport
+    '/api/public/razorpay-webhook': {
+      id: '/api/public/razorpay-webhook'
+      path: '/api/public/razorpay-webhook'
+      fullPath: '/api/public/razorpay-webhook'
+      preLoaderRoute: typeof ApiPublicRazorpayWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/resend-webhook': {
@@ -291,13 +339,6 @@ declare module '@tanstack/react-router' {
       path: '/api/public/resend-webhook'
       fullPath: '/api/public/resend-webhook'
       preLoaderRoute: typeof ApiPublicResendWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/test-whatsapp': {
-      id: '/api/public/test-whatsapp'
-      path: '/api/public/test-whatsapp'
-      fullPath: '/api/public/test-whatsapp'
-      preLoaderRoute: typeof ApiPublicTestWhatsappRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/webinar-webhook': {
@@ -314,6 +355,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/zeptomail-webhook': {
+      id: '/api/public/zeptomail-webhook'
+      path: '/api/public/zeptomail-webhook'
+      fullPath: '/api/public/zeptomail-webhook'
+      preLoaderRoute: typeof ApiPublicZeptomailWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/razorpay/create-order': {
+      id: '/api/razorpay/create-order'
+      path: '/api/razorpay/create-order'
+      fullPath: '/api/razorpay/create-order'
+      preLoaderRoute: typeof ApiRazorpayCreateOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/razorpay/verify-payment': {
+      id: '/api/razorpay/verify-payment'
+      path: '/api/razorpay/verify-payment'
+      fullPath: '/api/razorpay/verify-payment'
+      preLoaderRoute: typeof ApiRazorpayVerifyPaymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -321,18 +383,31 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ConfirmedRoute: ConfirmedRoute,
+  CourseRoute: CourseRoute,
   PrivacyRoute: PrivacyRoute,
   RoomRoute: RoomRoute,
   TermsRoute: TermsRoute,
   ApiGetWebinarMetricsRoute: ApiGetWebinarMetricsRoute,
   ApiGetWebinarTokenRoute: ApiGetWebinarTokenRoute,
   ApiPublicEmailDispatchRoute: ApiPublicEmailDispatchRoute,
-  ApiPublicRegisterWhatsappRoute: ApiPublicRegisterWhatsappRoute,
+  ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
   ApiPublicResendWebhookRoute: ApiPublicResendWebhookRoute,
-  ApiPublicTestWhatsappRoute: ApiPublicTestWhatsappRoute,
   ApiPublicWebinarWebhookRoute: ApiPublicWebinarWebhookRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
+  ApiPublicZeptomailWebhookRoute: ApiPublicZeptomailWebhookRoute,
+  ApiRazorpayCreateOrderRoute: ApiRazorpayCreateOrderRoute,
+  ApiRazorpayVerifyPaymentRoute: ApiRazorpayVerifyPaymentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

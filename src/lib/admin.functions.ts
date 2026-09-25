@@ -451,3 +451,181 @@ export const adminWebinarLogs = createServerFn({ method: "POST" })
     }
     return { ok: true as const, logs: (rows ?? []) as unknown as AdminWebinarLog[] };
   });
+
+export type AdminWhatsAppSend = {
+  id: string;
+  phone: string;
+  template_name: string | null;
+  message_key: string;
+  status: string;
+  provider_message_id: string | null;
+  error: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
+  clicked_at: string | null;
+  created_at: string;
+  attendee_name?: string | null;
+};
+
+export type AdminWhatsAppStats = {
+  total: number;
+  sent: number;
+  delivered: number;
+  read: number;
+  clicked: number;
+  failed: number;
+  delivered_rate: number;
+  read_rate: number;
+  clicked_rate: number;
+  recent_sends: AdminWhatsAppSend[];
+};
+
+export const adminWhatsAppDashboard = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const { data: dashboard, error } = await createPublicServerClient().rpc(
+      "admin_get_whatsapp_dashboard" as never,
+      { p_password: data.password } as never,
+    );
+    if (error) {
+      if (unauthorized(error.message)) return { ok: false as const, error: "Wrong password." };
+      console.error("adminWhatsAppDashboard failed:", error.message);
+      return { ok: false as const, error: "Could not load WhatsApp metrics." };
+    }
+    return { ok: true as const, data: (dashboard ?? {}) as unknown as AdminWhatsAppStats };
+  });
+
+export type AdminWebinarHistoricalEvent = {
+  id: string;
+  webinar_id: string;
+  session_date: string;
+  email: string | null;
+  event_type: string;
+  duration_seconds: number;
+  created_at: string;
+};
+
+export type AdminWebinarHistoricalSession = {
+  session_date: string;
+  total_events: number;
+  unique_attendees: number;
+  joins: number;
+  leaves: number;
+};
+
+export const adminHistoricalWebinarLogs = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string; sessionDate?: string | null }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const { data: res, error } = await createPublicServerClient().rpc(
+      "admin_get_historical_webinar_logs" as never,
+      {
+        p_password: data.password,
+        ...(data.sessionDate ? { p_session_date: data.sessionDate } : {}),
+      } as never,
+    );
+    if (error) {
+      if (unauthorized(error.message)) {
+        return {
+          ok: false as const,
+          error: "Wrong password.",
+          sessions: [] as AdminWebinarHistoricalSession[],
+          events: [] as AdminWebinarHistoricalEvent[],
+        };
+      }
+      console.error("adminHistoricalWebinarLogs failed:", error.message);
+      return {
+        ok: false as const,
+        error: "Could not load historical webinar logs.",
+        sessions: [] as AdminWebinarHistoricalSession[],
+        events: [] as AdminWebinarHistoricalEvent[],
+      };
+    }
+    const parsed = (res ?? {}) as {
+      sessions?: AdminWebinarHistoricalSession[];
+      events?: Array<{
+        id: string;
+        webinar_id: string;
+        session_date: string;
+        email: string | null;
+        event_type: string;
+        duration_seconds: number;
+        created_at: string;
+      }>;
+    };
+    const cleanEvents: AdminWebinarHistoricalEvent[] = (parsed.events ?? []).map((e) => ({
+      id: String(e.id),
+      webinar_id: String(e.webinar_id),
+      session_date: String(e.session_date),
+      email: e.email ? String(e.email) : null,
+      event_type: String(e.event_type),
+      duration_seconds: Number(e.duration_seconds || 0),
+      created_at: String(e.created_at),
+    }));
+
+    return {
+      ok: true as const,
+      error: null,
+      sessions: parsed.sessions ?? [],
+      events: cleanEvents,
+    };
+  });
+
+export const adminRegisterWhatsAppNumber = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string; pin: string; token?: string; phoneNumberId?: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    const pin = data.pin?.trim();
+    if (!pin || !/^\d{6}$/.test(pin)) {
+      return { ok: false as const, error: "PIN must be exactly 6 numeric digits." };
+    }
+
+    const phoneNumberId = data.phoneNumberId?.trim() || process.env["WHATSAPP_PHONE_NUMBER_ID"] || "1234920483047663";
+    const token = data.token?.trim() || process.env["WHATSAPP_ACCESS_TOKEN"];
+
+    if (!token) {
+      return { ok: false as const, error: "Meta Access Token is required." };
+    }
+
+    try {
+      const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/register`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          pin: pin,
+        }),
+      });
+
+      const json = (await res.json()) as { success?: boolean; error?: { message?: string; error_user_msg?: string } };
+      if (!res.ok || !json.success) {
+        return {
+          ok: false as const,
+          error: json.error?.message || json.error?.error_user_msg || JSON.stringify(json),
+        };
+      }
+
+      return {
+        ok: true as const,
+        message: "Successfully registered phone number with Meta Cloud API! 2-step verification PIN is active.",
+      };
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      return {
+        ok: false as const,
+        error: errorMsg || "Network error registering phone number",
+      };
+    }
+  });
+

@@ -332,33 +332,32 @@ export async function sendWhatsApp(
   args: { id: string; phone_e164: string; full_name: string; whatsapp_consent: boolean },
 ) {
   try {
-    if (!args.whatsapp_consent) return;
+    if (!args.whatsapp_consent || !args.phone_e164) return;
 
     const enabled = process.env["WHATSAPP_ENABLED"] === "true";
-    const firstName = args.full_name.trim().split(/\s+/)[0] ?? "there";
+    const rawUrl = process.env["VITE_WEBINAR_URL"] || process.env["WEBINAR_URL"] || "";
+    const webinarUrl = !rawUrl || rawUrl.includes("webinar.gg") ? ROOM_URL : rawUrl;
 
     if (!enabled) {
-      console.log("whatsapp disabled, would have sent mrm_reg_confirmed to:", {
-        destination: args.phone_e164,
-        userName: args.full_name,
-        firstName,
-      });
+      console.log("[WhatsApp Meta] disabled, would have sent confirmation to:", args.phone_e164);
       return;
     }
 
-    const { sendTemplateMessage } = await import("@/services/whatsapp");
-    await sendTemplateMessage(args.phone_e164, {
-      name: "mrm_reg_confirmed",
-      languageCode: "en",
-      components: [
-        {
-          type: "body",
-          parameters: [{ type: "text", text: firstName }],
-        },
-      ],
-    });
+    const { sendWhatsAppAutomation } = await import("@/services/whatsapp/whatsapp-nurture.server");
+    const result = await sendWhatsAppAutomation(
+      db,
+      {
+        id: args.id,
+        phone_e164: args.phone_e164,
+        full_name: args.full_name,
+        whatsapp_consent: args.whatsapp_consent,
+      },
+      "confirmation",
+      "registration",
+      webinarUrl,
+    );
 
-    await markDelivery(db, args.id, "whatsapp", true);
+    await markDelivery(db, args.id, "whatsapp", result === "sent");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("whatsapp send failed:", message);

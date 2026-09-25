@@ -68,16 +68,6 @@ export type SendWhatsAppMessageParams = {
   to: string;
 
   /**
-   * Optional Phone Number ID override (defaults to WHATSAPP_PHONE_NUMBER_ID from env)
-   */
-  phoneNumberId?: string | undefined;
-
-  /**
-   * Optional Access Token override (defaults to WHATSAPP_ACCESS_TOKEN from env)
-   */
-  accessToken?: string | undefined;
-
-  /**
    * Outgoing payload specification (excluding 'messaging_product' and 'to', which are injected automatically)
    */
   message:
@@ -124,10 +114,8 @@ export async function sendWhatsAppMessage(
   params: SendWhatsAppMessageParams,
 ): Promise<WhatsAppSendResponse> {
   const config = getWhatsAppConfig();
-  const phoneNumberId = params.phoneNumberId?.trim() || config.phoneNumberId;
-  const accessToken = params.accessToken?.trim() || config.accessToken;
 
-  if (!accessToken || !phoneNumberId) {
+  if (!config.accessToken || !config.phoneNumberId) {
     throw new Error(
       "WhatsApp Cloud API credentials not configured. Please set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID in your environment.",
     );
@@ -138,7 +126,7 @@ export async function sendWhatsAppMessage(
     throw new Error(`Invalid recipient phone number provided: "${params.to}"`);
   }
 
-  const endpoint = `${config.graphBaseUrl}/${phoneNumberId}/messages`;
+  const endpoint = `${config.graphBaseUrl}/${config.phoneNumberId}/messages`;
 
   const payload: WhatsAppOutgoingMessage = {
     messaging_product: "whatsapp",
@@ -152,7 +140,7 @@ export async function sendWhatsAppMessage(
     response = await fetch(endpoint, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${config.accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -203,11 +191,9 @@ export async function sendTextMessage(
   to: string,
   body: string,
   previewUrl = false,
-  phoneNumberId?: string,
 ): Promise<WhatsAppSendResponse> {
   return sendWhatsAppMessage({
     to,
-    phoneNumberId,
     message: {
       type: "text",
       text: {
@@ -246,13 +232,9 @@ export async function sendTemplateMessage(
     languageCode?: string;
     components?: WhatsAppTemplateComponent[];
   },
-  phoneNumberId?: string,
-  accessToken?: string,
 ): Promise<WhatsAppSendResponse> {
   return sendWhatsAppMessage({
     to,
-    phoneNumberId,
-    accessToken,
     message: {
       type: "template",
       template: {
@@ -264,40 +246,6 @@ export async function sendTemplateMessage(
       },
     },
   });
-}
-
-export type ApprovedSessionTemplateName =
-  | "mrm_reg_confirmed"
-  | "mrm_reminder_friday"
-  | "mrm_reminder_1hr"
-  | "mrm_live_now";
-
-/**
- * Convenience helper: Send one of the approved Masterclass WhatsApp templates
- * with {{1}} parameter filled with the recipient's first name.
- */
-export async function sendSessionWhatsAppTemplate(
-  to: string,
-  templateName: ApprovedSessionTemplateName,
-  firstName: string,
-  phoneNumberId?: string,
-  accessToken?: string,
-): Promise<WhatsAppSendResponse> {
-  return sendTemplateMessage(
-    to,
-    {
-      name: templateName,
-      languageCode: "en",
-      components: [
-        {
-          type: "body",
-          parameters: [{ type: "text", text: firstName }],
-        },
-      ],
-    },
-    phoneNumberId,
-    accessToken,
-  );
 }
 
 /**

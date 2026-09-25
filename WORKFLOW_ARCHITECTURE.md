@@ -480,12 +480,12 @@ Before launching Meta Ads or driving live traffic, you **MUST** configure these 
        for onepageplan.in to ensure 100% email inbox delivery.
 
 [ ] 4. SET RESEND WEBHOOK IN RESEND DASHBOARD:
-       Endpoint: https://onepageplan.in/api/public/resend-webhook
+       Endpoint: https://www.onepageplan.in/api/public/resend-webhook (MUST include www. to prevent Vercel 308 redirects)
        Events: email.delivered, email.opened, email.bounced, email.complained
        Copy the signing secret (whsec_...) and paste into Vercel as RESEND_WEBHOOK_SECRET.
 
 [ ] 5. CONFIGURE WEBINAR.GG WEBHOOK:
-       Webinar.gg Dashboard -> Webhooks -> Add: https://onepageplan.in/api/public/webinar-webhook
+       Webinar.gg Dashboard -> Webhooks -> Add: https://www.onepageplan.in/api/public/webinar-webhook
        Header: x-webhook-secret = <your WEBHOOK_SHARED_SECRET>
 
 [ ] 6. (OPTIONAL) ACTIVATE WHATSAPP (AISENSY):

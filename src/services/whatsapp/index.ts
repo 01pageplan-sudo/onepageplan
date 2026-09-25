@@ -14,12 +14,11 @@ export {
   sendWhatsAppMessage,
   sendTextMessage,
   sendTemplateMessage,
-  sendSessionWhatsAppTemplate,
   markMessageAsRead,
   normalizeWhatsAppPhoneNumber,
   WhatsAppApiError,
 } from "./sender.js";
-export type { SendWhatsAppMessageParams, ApprovedSessionTemplateName } from "./sender.js";
+export type { SendWhatsAppMessageParams } from "./sender.js";
 
 // Webhook Processing & Security
 export {

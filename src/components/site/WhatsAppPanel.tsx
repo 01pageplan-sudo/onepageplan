@@ -20,7 +20,7 @@ const MOCK: WaMessage[] = [
   {
     id: "wa_1",
     number: "+91 98204 11223",
-    template: "mrm_reg_confirmed",
+    template: "masterclass_confirmation",
     snippet: "Your seat is saved for this Saturday, 7:00 PM IST.",
     status: "read",
     at: "2026-09-01T09:12:00+05:30",
@@ -28,7 +28,7 @@ const MOCK: WaMessage[] = [
   {
     id: "wa_2",
     number: "+91 99873 55014",
-    template: "mrm_reg_confirmed",
+    template: "masterclass_confirmation",
     snippet: "Your seat is saved for this Saturday, 7:00 PM IST.",
     status: "delivered",
     at: "2026-09-01T09:14:00+05:30",
@@ -36,7 +36,7 @@ const MOCK: WaMessage[] = [
   {
     id: "wa_3",
     number: "+91 90045 77812",
-    template: "mrm_reminder_friday",
+    template: "reminder_24h",
     snippet: "Tomorrow at 7:00 PM. Bring a pen and last month's statement.",
     status: "read",
     at: "2026-08-31T19:02:00+05:30",
@@ -44,7 +44,7 @@ const MOCK: WaMessage[] = [
   {
     id: "wa_4",
     number: "+91 88796 21340",
-    template: "mrm_reminder_1hr",
+    template: "reminder_1h",
     snippet: "We start in one hour. Here is your joining link.",
     status: "sent",
     at: "2026-08-30T18:00:00+05:30",
@@ -52,7 +52,7 @@ const MOCK: WaMessage[] = [
   {
     id: "wa_5",
     number: "+91 70213 98455",
-    template: "mrm_live_now",
+    template: "live_now",
     snippet: "We are live. Come in and take a seat.",
     status: "failed",
     at: "2026-08-30T19:00:00+05:30",

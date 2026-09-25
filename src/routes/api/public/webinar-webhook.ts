@@ -49,34 +49,64 @@ export const Route = createFileRoute("/api/public/webinar-webhook")({
           const rawEvent =
             pick(flat, ["event", "status", "type", "action", "attendee_status", "event_type"]) ?? "";
           const event = rawEvent.toLowerCase();
+          const webinarId =
+            pick(flat, ["webinar_id", "webinarId", "session_id", "sessionId"]) ||
+            process.env["WEBINAR_GG_WEBINAR_ID"] ||
+            "cmthk6y4001kos60ybxfkbc67";
 
           let status: string | null = null;
-          if (/join|attend|present|live/.test(event)) status = "attended";
-          if (/drop|left|early|exit/.test(event)) status = "dropped_off";
+          let eventType = "activity";
+          if (/join|attend|present|live/.test(event)) {
+            status = "attended";
+            eventType = "join";
+          } else if (/drop|left|early|exit/.test(event)) {
+            status = "dropped_off";
+            eventType = "leave";
+          } else if (/chat|message/.test(event)) {
+            eventType = "chat";
+          } else if (/poll/.test(event)) {
+            eventType = "poll";
+          }
+
+          const rawDuration = flat["duration"] ?? flat["duration_seconds"] ?? flat["time_spent"];
+          const durationSeconds = typeof rawDuration === "number" ? rawDuration : 0;
 
           const { createPublicServerClient } = await import("@/lib/supabase-public.server");
           const { sessionDateISO } = await import("@/lib/session");
+          const db = createPublicServerClient();
+          const sessionDate = sessionDateISO();
+
+          // 1. Permanently archive event to webinar_event_logs for historical analysis
+          try {
+            await db.from("webinar_event_logs" as never).insert({
+              webinar_id: webinarId,
+              session_date: sessionDate,
+              email: email ? email.toLowerCase() : null,
+              event_type: eventType,
+              event_data: body,
+              duration_seconds: durationSeconds,
+            } as never);
+          } catch (logErr) {
+            console.warn("Could not insert into webinar_event_logs:", logErr);
+          }
 
           if (!email) {
             console.log("webinar-webhook: no email in payload", JSON.stringify(body)?.slice(0, 500));
             return new Response("ok");
           }
 
-          const { data: matched, error } = await createPublicServerClient().rpc(
-            "record_webinar_event",
-            {
-              p_email: email.toLowerCase(),
-              p_session_date: sessionDateISO(),
-              p_status: status ?? "",
-              p_payload: body as never,
-            },
-          );
+          // 2. Update current attendee status in registrations
+          const { data: matched, error } = await db.rpc("record_webinar_event", {
+            p_email: email.toLowerCase(),
+            p_session_date: sessionDate,
+            p_status: status ?? "",
+            p_payload: body as never,
+          });
 
           if (error) throw error;
           if (!matched) {
             console.log("webinar-webhook: no matching registration for", email);
           }
-
         } catch (error) {
           console.error("webinar-webhook error", error);
         }

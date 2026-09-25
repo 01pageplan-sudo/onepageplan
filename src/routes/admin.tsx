@@ -23,7 +23,6 @@ import {
 } from "@/lib/admin.functions";
 import { TEMPLATES, templateLabel } from "@/lib/email-templates";
 import { TemplateEditor } from "@/components/site/TemplateEditor";
-import { WhatsAppPanel } from "@/components/site/WhatsAppPanel";
 import { WebinarAnalytics } from "@/components/site/WebinarAnalytics";
 import { CommunicationsPanel } from "@/components/site/CommunicationsPanel";
 
@@ -811,12 +810,12 @@ function AdminPage() {
 
           {/* --------------------------- COMMUNICATIONS -------------------------- */}
           <TabsContent value="communications" className="pt-5">
-            <CommunicationsPanel sends={sends} />
+            <CommunicationsPanel sends={sends} password={password} />
           </TabsContent>
 
           {/* -------------------------- WEBINAR ANALYTICS ------------------------ */}
           <TabsContent value="analytics" className="pt-5">
-            <WebinarAnalytics />
+            <WebinarAnalytics password={password} />
           </TabsContent>
 
           {/* ---------------------------- WEBINAR LOG ---------------------------- */}

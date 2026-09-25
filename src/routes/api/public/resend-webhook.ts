@@ -9,8 +9,23 @@ import { createHmac, timingSafeEqual } from "crypto";
 export const Route = createFileRoute("/api/public/resend-webhook")({
   server: {
     handlers: {
+      GET: async () => {
+        return new Response(
+          JSON.stringify({
+            status: "active",
+            endpoint: "/api/public/resend-webhook",
+            message: "Resend webhook endpoint is active and listening for Svix events.",
+            timestamp: new Date().toISOString(),
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      },
       POST: async ({ request }) => {
-        const secret = process.env["RESEND_WEBHOOK_SECRET"];
+        const rawSecret = process.env["RESEND_WEBHOOK_SECRET"];
+        const secret = rawSecret?.trim().replace(/^["']|["']$/g, "");
         const body = await request.text();
 
         if (!secret) {
@@ -18,6 +33,7 @@ export const Route = createFileRoute("/api/public/resend-webhook")({
           return new Response("Not configured", { status: 500 });
         }
         if (!verify(request, body, secret)) {
+          console.warn("resend-webhook: Invalid signature received");
           return new Response("Invalid signature", { status: 401 });
         }
 
@@ -30,6 +46,8 @@ export const Route = createFileRoute("/api/public/resend-webhook")({
           const providerId = payload.data?.email_id ?? null;
           const to = Array.isArray(payload.data?.to) ? payload.data?.to?.[0] : payload.data?.to;
 
+          console.log(`resend-webhook: processing "${event}" event for ${providerId ?? to}`);
+
           const { createPublicServerClient } = await import("@/lib/supabase-public.server");
           const { adminPassword } = await import("@/lib/email-automation.server");
 
@@ -39,12 +57,14 @@ export const Route = createFileRoute("/api/public/resend-webhook")({
             p_provider_id: providerId as unknown as string,
             p_email: (to ?? "") as string,
           });
-          if (error) throw error;
+          if (error) {
+            console.error("resend-webhook database error:", error);
+          }
         } catch (error) {
           console.error("resend-webhook error", error);
         }
 
-        return new Response("ok");
+        return new Response("ok", { status: 200 });
       },
     },
   },
