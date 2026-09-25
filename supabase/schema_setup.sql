@@ -6,7 +6,7 @@
 -- --------------------------------------------------------
 -- Migration: 20260829033405_27e2eb07-b97f-433e-886d-f388f39555c2.sql
 -- --------------------------------------------------------
-CREATE TABLE public.registrations (
+CREATE TABLE IF NOT EXISTS public.registrations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at timestamptz NOT NULL DEFAULT now(),
   full_name text NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE public.registrations (
   profile_type text,
   pain_point text,
   session_date date NOT NULL,
-  status text NOT NULL DEFAULT 'registered' CHECK (status IN ('registered','attended','dropped_off','no_show')),
+  status text NOT NULL DEFAULT 'registered' CHECK (status IN ('registered','attended','dropped_off','no_show','subscribed')),
   utm_source text,
   utm_medium text,
   utm_campaign text,
@@ -31,8 +31,18 @@ CREATE TABLE public.registrations (
   email_error text,
   whatsapp_sent_at timestamptz,
   whatsapp_error text,
-  raw_webhook jsonb
+  raw_webhook jsonb,
+  CONSTRAINT registrations_email_session_date_unique UNIQUE (email, session_date)
 );
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'registrations_email_session_date_unique'
+  ) THEN
+    ALTER TABLE public.registrations ADD CONSTRAINT registrations_email_session_date_unique UNIQUE (email, session_date);
+  END IF;
+END $$;
 
 CREATE UNIQUE INDEX registrations_email_session_idx ON public.registrations (lower(email), session_date);
 CREATE INDEX registrations_session_date_idx ON public.registrations (session_date);
@@ -44,7 +54,7 @@ ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;
 -- --------------------------------------------------------
 -- Migration: 20260829062515_f3a69f37-7c0d-4721-8d0d-48e3c2f361e7.sql
 -- --------------------------------------------------------
-CREATE TABLE public.newsletter_subscribers (
+CREATE TABLE IF NOT EXISTS public.newsletter_subscribers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text NOT NULL UNIQUE,
   source text NOT NULL DEFAULT 'declined_modal',
@@ -56,6 +66,7 @@ GRANT ALL ON public.newsletter_subscribers TO service_role;
 
 ALTER TABLE public.newsletter_subscribers ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can subscribe" ON public.newsletter_subscribers;
 CREATE POLICY "Anyone can subscribe" ON public.newsletter_subscribers
   FOR INSERT TO anon
   WITH CHECK (true);
@@ -63,7 +74,7 @@ CREATE POLICY "Anyone can subscribe" ON public.newsletter_subscribers
 -- --------------------------------------------------------
 -- Migration: 20260831134723_ea476e77-f2be-4d8b-b609-2f8bcc949612.sql
 -- --------------------------------------------------------
-CREATE TABLE public.prework_questions (
+CREATE TABLE IF NOT EXISTS public.prework_questions (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   registration_id uuid REFERENCES public.registrations(id) ON DELETE SET NULL,
   email text,
@@ -91,8 +102,8 @@ CREATE TABLE IF NOT EXISTS public.app_config (
 GRANT ALL ON public.app_config TO service_role;
 ALTER TABLE public.app_config ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "service role manages app config"
-  ON public.app_config FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "service role manages app config" ON public.app_config;
+CREATE POLICY "service role manages app config" ON public.app_config FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 INSERT INTO public.app_config (key, value)
 VALUES ('admin_password', 'CHANGE_IN_DASHBOARD')
@@ -386,8 +397,8 @@ REVOKE ALL ON TABLE public.prework_questions FROM PUBLIC, anon, authenticated;
 GRANT ALL ON TABLE public.prework_questions TO service_role;
 
 DROP POLICY IF EXISTS "No direct access to prework questions" ON public.prework_questions;
-CREATE POLICY "No direct access to prework questions"
-  ON public.prework_questions
+DROP POLICY IF EXISTS "No direct access to prework questions" ON public.prework_questions;
+CREATE POLICY "No direct access to prework questions" ON public.prework_questions
   FOR ALL
   TO anon, authenticated
   USING (false)
@@ -420,7 +431,7 @@ GRANT EXECUTE ON FUNCTION public.lookup_registration_for_room(text, date) TO ser
 -- Migration: 20260901114356_b07e243b-c561-4897-8e0c-f3ab0a6bdbc4.sql
 -- --------------------------------------------------------
 -- ============ settings ============
-CREATE TABLE public.email_settings (
+CREATE TABLE IF NOT EXISTS public.email_settings (
   id smallint PRIMARY KEY DEFAULT 1,
   joining_link text NOT NULL DEFAULT '',
   calendar_link text NOT NULL DEFAULT '',
@@ -434,6 +445,7 @@ CREATE TABLE public.email_settings (
 );
 GRANT ALL ON public.email_settings TO service_role;
 ALTER TABLE public.email_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service role manages email settings" ON public.email_settings;
 CREATE POLICY "service role manages email settings" ON public.email_settings
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
@@ -441,7 +453,7 @@ INSERT INTO public.email_settings (id, joining_link, registration_link)
 VALUES (1, 'https://webinar.gg/register/cmthk6y4001kos60ybxfkbc67', 'https://onepageplan.in');
 
 -- ============ tags ============
-CREATE TABLE public.lead_tags (
+CREATE TABLE IF NOT EXISTS public.lead_tags (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   registration_id uuid NOT NULL REFERENCES public.registrations(id) ON DELETE CASCADE,
   tag text NOT NULL,
@@ -450,11 +462,12 @@ CREATE TABLE public.lead_tags (
 );
 GRANT ALL ON public.lead_tags TO service_role;
 ALTER TABLE public.lead_tags ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service role manages lead tags" ON public.lead_tags;
 CREATE POLICY "service role manages lead tags" ON public.lead_tags
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- ============ email send log / queue ============
-CREATE TABLE public.email_sends (
+CREATE TABLE IF NOT EXISTS public.email_sends (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   registration_id uuid REFERENCES public.registrations(id) ON DELETE CASCADE,
   email text NOT NULL,
@@ -476,6 +489,7 @@ CREATE INDEX email_sends_registration_idx ON public.email_sends (registration_id
 CREATE INDEX email_sends_provider_idx ON public.email_sends (provider_id);
 GRANT ALL ON public.email_sends TO service_role;
 ALTER TABLE public.email_sends ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service role manages email sends" ON public.email_sends;
 CREATE POLICY "service role manages email sends" ON public.email_sends
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
@@ -984,7 +998,7 @@ grant execute on function public.admin_reset_template(text, text) to anon, authe
 -- --------------------------------------------------------
 -- Migration: 20260901141531_469d45aa-95a3-4d6c-87bd-129b50cfbfa3.sql
 -- --------------------------------------------------------
-CREATE TABLE public.webinar_api_logs (
+CREATE TABLE IF NOT EXISTS public.webinar_api_logs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at timestamptz NOT NULL DEFAULT now(),
   kind text NOT NULL DEFAULT 'join-token',
@@ -1001,6 +1015,7 @@ CREATE TABLE public.webinar_api_logs (
 CREATE INDEX webinar_api_logs_created_idx ON public.webinar_api_logs (created_at DESC);
 GRANT ALL ON public.webinar_api_logs TO service_role;
 ALTER TABLE public.webinar_api_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service role manages webinar api logs" ON public.webinar_api_logs;
 CREATE POLICY "service role manages webinar api logs" ON public.webinar_api_logs
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
@@ -1196,8 +1211,8 @@ CREATE INDEX IF NOT EXISTS idx_payments_status ON public.payments (status);
 
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Service role full access on payments"
-  ON public.payments FOR ALL TO service_role
+DROP POLICY IF EXISTS "Service role full access on payments" ON public.payments;
+CREATE POLICY "Service role full access on payments" ON public.payments FOR ALL TO service_role
   USING (true) WITH CHECK (true);
 
 -- ==============================================================================
@@ -1242,8 +1257,8 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_sends_wamid ON public.whatsapp_sends(pro
 
 ALTER TABLE public.whatsapp_sends ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Service role full access on whatsapp_sends"
-  ON public.whatsapp_sends FOR ALL TO service_role
+DROP POLICY IF EXISTS "Service role full access on whatsapp_sends" ON public.whatsapp_sends;
+CREATE POLICY "Service role full access on whatsapp_sends" ON public.whatsapp_sends FOR ALL TO service_role
   USING (true) WITH CHECK (true);
 
 -- ==============================================================================
@@ -1266,8 +1281,8 @@ CREATE INDEX IF NOT EXISTS idx_webinar_event_logs_webinar_id ON public.webinar_e
 
 ALTER TABLE public.webinar_event_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Service role full access on webinar_event_logs"
-  ON public.webinar_event_logs FOR ALL TO service_role
+DROP POLICY IF EXISTS "Service role full access on webinar_event_logs" ON public.webinar_event_logs;
+CREATE POLICY "Service role full access on webinar_event_logs" ON public.webinar_event_logs FOR ALL TO service_role
   USING (true) WITH CHECK (true);
 
 CREATE TABLE IF NOT EXISTS public.webinar_session_history (
@@ -1284,8 +1299,8 @@ CREATE TABLE IF NOT EXISTS public.webinar_session_history (
 
 ALTER TABLE public.webinar_session_history ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Service role full access on webinar_session_history"
-  ON public.webinar_session_history FOR ALL TO service_role
+DROP POLICY IF EXISTS "Service role full access on webinar_session_history" ON public.webinar_session_history;
+CREATE POLICY "Service role full access on webinar_session_history" ON public.webinar_session_history FOR ALL TO service_role
   USING (true) WITH CHECK (true);
 
 -- ==============================================================================
@@ -1339,9 +1354,7 @@ BEGIN
     WHERE id = v_reg_id;
 
     -- Add purchased tag
-    INSERT INTO public.lead_tags (registration_id, tag)
-    VALUES (v_reg_id, 'purchased')
-    ON CONFLICT DO NOTHING;
+    INSERT INTO public.lead_tags (registration_id, tag) VALUES (v_reg_id, 'purchased') ON CONFLICT (registration_id, tag) DO NOTHING;
 
     -- Remove any pending nurture emails (stops sales pitch immediately)
     DELETE FROM public.email_sends
@@ -1546,14 +1559,14 @@ CREATE INDEX IF NOT EXISTS idx_course_comments_created ON public.course_comments
 ALTER TABLE public.course_comments ENABLE ROW LEVEL SECURITY;
 
 -- Allow reading comments for public/authenticated users
-CREATE POLICY "Public read course comments"
-  ON public.course_comments FOR SELECT
+DROP POLICY IF EXISTS "Public read course comments" ON public.course_comments;
+CREATE POLICY "Public read course comments" ON public.course_comments FOR SELECT
   TO anon, authenticated, service_role
   USING (true);
 
 -- Allow inserting comments for anon and service_role
-CREATE POLICY "Public insert course comments"
-  ON public.course_comments FOR INSERT
+DROP POLICY IF EXISTS "Public insert course comments" ON public.course_comments;
+CREATE POLICY "Public insert course comments" ON public.course_comments FOR INSERT
   TO anon, authenticated, service_role
   WITH CHECK (true);
 

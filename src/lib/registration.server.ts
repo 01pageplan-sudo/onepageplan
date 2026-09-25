@@ -196,10 +196,19 @@ export async function sendOption2WelcomeEmail(
   const fromEmail = process.env["FROM_EMAIL"] || "connect@onepageplan.in";
   const fromName = process.env["FROM_NAME"] || "Milan Dodhia";
   const from = `${fromName} <${fromEmail}>`;
+  const zeptoKey = process.env["ZEPTOMAIL_API_KEY"] || process.env["ZEPTOMAIL_SEND_MAIL_TOKEN"];
   const resendKey = process.env["RESEND_API_KEY"];
 
   try {
-    if (resendKey) {
+    if (zeptoKey) {
+      const { sendZeptoEmail } = await import("./zeptomail.server");
+      await sendZeptoEmail({
+        to: args.email,
+        subject,
+        htmlBody: html,
+        textBody: text,
+      });
+    } else if (resendKey) {
       await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -290,10 +299,23 @@ export async function sendConfirmationEmail(
     const from = `${fromName} <${fromEmail}>`;
     const subject = "Your seat is saved for this Saturday";
 
+    const zeptoKey = process.env["ZEPTOMAIL_API_KEY"] || process.env["ZEPTOMAIL_SEND_MAIL_TOKEN"];
     const resendKey = process.env["RESEND_API_KEY"];
     const lovableKey = process.env["LOVABLE_API_KEY"];
 
-    if (resendKey) {
+    if (zeptoKey) {
+      const { sendZeptoEmail } = await import("./zeptomail.server");
+      const result = await sendZeptoEmail({
+        to: args.email,
+        toName: firstName,
+        subject,
+        htmlBody: html,
+        textBody: text,
+      });
+      if (!result.ok) {
+        throw new Error(`ZeptoMail failed: ${result.error}`);
+      }
+    } else if (resendKey) {
       // Works on any host, including Vercel.
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -316,7 +338,7 @@ export async function sendConfirmationEmail(
         throw new Error(String(result.status ?? "not sent"));
       }
     } else {
-      throw new Error("No email provider configured (set RESEND_API_KEY).");
+      throw new Error("No email provider configured (set ZEPTOMAIL_API_KEY).");
     }
 
     await markDelivery(db, args.id, "email", true);
