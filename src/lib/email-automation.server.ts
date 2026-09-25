@@ -198,22 +198,6 @@ async function sendEmailUsingProvider(args: {
   html: string;
   text: string;
 }): Promise<string | null> {
-  const zeptoKey = process.env["ZEPTOMAIL_API_KEY"] || process.env["ZEPTOMAIL_SEND_MAIL_TOKEN"];
-  if (zeptoKey) {
-    const { sendZeptoEmail } = await import("./zeptomail.server");
-    const result = await sendZeptoEmail({
-      to: args.to,
-      subject: args.subject,
-      htmlBody: args.html,
-      textBody: args.text,
-    });
-    if (!result.ok) {
-      throw new Error(`ZeptoMail failed: ${result.error}`);
-    }
-    return result.messageId ?? "zeptomail_sent";
-  }
-
-  // Fallback if ZeptoMail is not yet provisioned
   const resendKey = process.env["RESEND_API_KEY"];
   if (resendKey) {
     const fromEmail = process.env["FROM_EMAIL"] || "connect@onepageplan.in";
@@ -236,7 +220,22 @@ async function sendEmailUsingProvider(args: {
     return payload?.id ?? null;
   }
 
-  throw new Error("Neither ZEPTOMAIL_API_KEY nor RESEND_API_KEY is configured on the server.");
+  const zeptoKey = process.env["ZEPTOMAIL_API_KEY"] || process.env["ZEPTOMAIL_SEND_MAIL_TOKEN"];
+  if (zeptoKey) {
+    const { sendZeptoEmail } = await import("./zeptomail.server");
+    const result = await sendZeptoEmail({
+      to: args.to,
+      subject: args.subject,
+      htmlBody: args.html,
+      textBody: args.text,
+    });
+    if (!result.ok) {
+      throw new Error(`ZeptoMail failed: ${result.error}`);
+    }
+    return result.messageId ?? "zeptomail_sent";
+  }
+
+  throw new Error("Neither RESEND_API_KEY nor ZEPTOMAIL_API_KEY is configured on the server.");
 }
 
 export function firstName(fullName: string) {

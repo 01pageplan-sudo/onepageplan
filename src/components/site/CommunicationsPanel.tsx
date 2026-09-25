@@ -191,7 +191,7 @@ export function CommunicationsPanel({
               className="flex items-center gap-2 text-xs font-medium px-4"
             >
               <Mail className="h-3.5 w-3.5" />
-              Email (Zoho ZeptoMail)
+              Email (Resend)
             </TabsTrigger>
             <TabsTrigger
               value="whatsapp"

@@ -200,15 +200,7 @@ export async function sendOption2WelcomeEmail(
   const resendKey = process.env["RESEND_API_KEY"];
 
   try {
-    if (zeptoKey) {
-      const { sendZeptoEmail } = await import("./zeptomail.server");
-      await sendZeptoEmail({
-        to: args.email,
-        subject,
-        htmlBody: html,
-        textBody: text,
-      });
-    } else if (resendKey) {
+    if (resendKey) {
       await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -216,6 +208,14 @@ export async function sendOption2WelcomeEmail(
           "content-type": "application/json",
         },
         body: JSON.stringify({ from, to: [args.email], subject, html, text }),
+      });
+    } else if (zeptoKey) {
+      const { sendZeptoEmail } = await import("./zeptomail.server");
+      await sendZeptoEmail({
+        to: args.email,
+        subject,
+        htmlBody: html,
+        textBody: text,
       });
     }
   } catch (err) {
@@ -303,19 +303,7 @@ export async function sendConfirmationEmail(
     const resendKey = process.env["RESEND_API_KEY"];
     const lovableKey = process.env["LOVABLE_API_KEY"];
 
-    if (zeptoKey) {
-      const { sendZeptoEmail } = await import("./zeptomail.server");
-      const result = await sendZeptoEmail({
-        to: args.email,
-        toName: firstName,
-        subject,
-        htmlBody: html,
-        textBody: text,
-      });
-      if (!result.ok) {
-        throw new Error(`ZeptoMail failed: ${result.error}`);
-      }
-    } else if (resendKey) {
+    if (resendKey) {
       // Works on any host, including Vercel.
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -328,6 +316,18 @@ export async function sendConfirmationEmail(
       if (!response.ok) {
         throw new Error(`Resend responded ${response.status}: ${(await response.text()).slice(0, 200)}`);
       }
+    } else if (zeptoKey) {
+      const { sendZeptoEmail } = await import("./zeptomail.server");
+      const result = await sendZeptoEmail({
+        to: args.email,
+        toName: firstName,
+        subject,
+        htmlBody: html,
+        textBody: text,
+      });
+      if (!result.ok) {
+        throw new Error(`ZeptoMail failed: ${result.error}`);
+      }
     } else if (lovableKey) {
       const { sendLovableEmail } = await import("@lovable.dev/email-js");
       const result = await sendLovableEmail(
@@ -338,7 +338,7 @@ export async function sendConfirmationEmail(
         throw new Error(String(result.status ?? "not sent"));
       }
     } else {
-      throw new Error("No email provider configured (set ZEPTOMAIL_API_KEY).");
+      throw new Error("No email provider configured (set RESEND_API_KEY).");
     }
 
     await markDelivery(db, args.id, "email", true);
