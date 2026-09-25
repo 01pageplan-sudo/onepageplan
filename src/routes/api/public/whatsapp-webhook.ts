@@ -82,25 +82,135 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
                 }
               }
 
-              // 2. Process Inbound Messages & Button / CTA Clicks
+              // 2. Process Inbound Messages & Customer Replies
               const messages = (value["messages"] as Array<Record<string, unknown>>) || [];
-              for (const msg of messages) {
-                const from = (msg["from"] as string) || "";
-                const msgType = (msg["type"] as string) || "";
-                const context = (msg["context"] as Record<string, unknown>) || {};
-                const repliedWamid = (context["id"] as string) || "";
+              const contacts = (value["contacts"] as Array<Record<string, unknown>>) || [];
 
-                console.log(`[WhatsApp Inbound] From ${from} (${msgType})`);
+              for (const msg of messages) {
+                const wamid = ((msg["id"] as string) || "").trim();
+                const fromRaw = ((msg["from"] as string) || "").trim();
+                if (!fromRaw) continue;
+
+                const cleanPhone = fromRaw.replace(/\D/g, "");
+                const last10 = cleanPhone.slice(-10);
+                const msgType = ((msg["type"] as string) || "text").toLowerCase();
+
+                // Extract message body text across all WhatsApp message types
+                let messageBody = "";
+                if (msgType === "text") {
+                  messageBody = ((msg["text"] as Record<string, unknown>)?.[ "body"] as string) || "";
+                } else if (msgType === "button") {
+                  const btn = (msg["button"] as Record<string, unknown>) || {};
+                  messageBody = (btn["text"] as string) || (btn["payload"] as string) || "[Button selected]";
+                } else if (msgType === "interactive") {
+                  const interactive = (msg["interactive"] as Record<string, unknown>) || {};
+                  const btnReply = (interactive["button_reply"] as Record<string, unknown>) || {};
+                  const listReply = (interactive["list_reply"] as Record<string, unknown>) || {};
+                  messageBody = (btnReply["title"] as string) || (listReply["title"] as string) || (listReply["description"] as string) || "[Interactive selection]";
+                } else if (msgType === "image") {
+                  const img = (msg["image"] as Record<string, unknown>) || {};
+                  messageBody = img["caption"] ? `[Photo]: ${img["caption"]}` : "[Photo]";
+                } else if (msgType === "audio" || msgType === "voice") {
+                  messageBody = "[Voice Note / Audio]";
+                } else if (msgType === "video") {
+                  const vid = (msg["video"] as Record<string, unknown>) || {};
+                  messageBody = vid["caption"] ? `[Video]: ${vid["caption"]}` : "[Video]";
+                } else if (msgType === "document") {
+                  const doc = (msg["document"] as Record<string, unknown>) || {};
+                  messageBody = doc["filename"] ? `[Document: ${doc["filename"]}]` : "[Document]";
+                } else if (msgType === "location") {
+                  messageBody = "[Shared Location]";
+                } else if (msgType === "reaction") {
+                  const react = (msg["reaction"] as Record<string, unknown>) || {};
+                  messageBody = react["emoji"] ? `Reacted ${react["emoji"]}` : "[Reaction]";
+                } else {
+                  messageBody = "[Message]";
+                }
+
+                // Extract sender profile name from Meta contacts payload
+                const matchingContact = contacts.find((c) => (c["wa_id"] as string) === fromRaw);
+                const profile = (matchingContact?.["profile"] as Record<string, unknown>) || {};
+                let senderName = (profile["name"] as string) || null;
+
+                // Extract context if this was a direct reply to a previous template/message
+                const context = (msg["context"] as Record<string, unknown>) || {};
+                const repliedWamid = ((context["id"] as string) || "").trim() || null;
+                let repliedToMessageKey: string | null = null;
+                let registrationId: string | null = null;
+
+                if (repliedWamid) {
+                  try {
+                    const cleanReplyWamid = repliedWamid.replace(/^wamid\./, "");
+                    const withReplyPrefix = `wamid.${cleanReplyWamid}`;
+                    const { data: previousSend } = await (db as any)
+                      .from("whatsapp_sends")
+                      .select("registration_id, template_name, phone")
+                      .or(`provider_message_id.eq.${repliedWamid},provider_message_id.eq.${withReplyPrefix},provider_message_id.eq.${cleanReplyWamid}`)
+                      .limit(1)
+                      .maybeSingle();
+
+                    if (previousSend) {
+                      repliedToMessageKey = previousSend.template_name || null;
+                      if (previousSend.registration_id) {
+                        registrationId = previousSend.registration_id;
+                      }
+                    }
+                  } catch (ctxErr) {
+                    console.warn("[WhatsApp Webhook] Could not resolve replied-to context:", ctxErr);
+                  }
+                }
+
+                // Match with registrant in database by phone number
+                if (!registrationId && last10) {
+                  try {
+                    const { data: regMatch } = await (db.from("registrations") as any)
+                      .select("id, full_name")
+                      .or(`phone_e164.ilike.%${last10}`)
+                      .order("created_at", { ascending: false })
+                      .limit(1)
+                      .maybeSingle();
+
+                    if (regMatch) {
+                      registrationId = regMatch.id;
+                      if (!senderName && regMatch.full_name) {
+                        senderName = regMatch.full_name;
+                      }
+                    }
+                  } catch (regErr) {
+                    console.warn("[WhatsApp Webhook] Could not match lead for phone:", cleanPhone, regErr);
+                  }
+                }
+
+                console.log(
+                  `[WhatsApp Inbound] 📩 From ${cleanPhone} (${senderName || "Unknown"}): "${messageBody.slice(0, 50)}"` +
+                  (repliedToMessageKey ? ` [repliedTo=${repliedToMessageKey}]` : "")
+                );
+
+                // Insert into whatsapp_inbound_messages
+                try {
+                  await (db as any).from("whatsapp_inbound_messages").insert({
+                    registration_id: registrationId,
+                    phone: cleanPhone,
+                    sender_name: senderName,
+                    message_body: messageBody,
+                    message_type: msgType,
+                    provider_message_id: wamid || null,
+                    replied_to_wamid: repliedWamid,
+                    replied_to_message_key: repliedToMessageKey,
+                    raw_payload: msg,
+                    is_read: false,
+                  });
+                } catch (insertErr) {
+                  console.error("[WhatsApp Webhook] Failed to insert inbound message:", insertErr);
+                }
 
                 // If user clicked a Quick Reply button or interactive list
-                if (msgType === "button" || msgType === "interactive") {
-                  if (repliedWamid) {
-                    await (db.rpc as any)("record_whatsapp_event", {
-                      p_wamid: repliedWamid,
-                      p_status: "clicked",
-                      p_timestamp: new Date().toISOString(),
-                    });
-                  }
+                if ((msgType === "button" || msgType === "interactive") && repliedWamid) {
+                  await (db.rpc as any)("record_whatsapp_event", {
+                    p_wamid: repliedWamid,
+                    p_status: "clicked",
+                    p_timestamp: new Date().toISOString(),
+                  });
                 }
               }
             }

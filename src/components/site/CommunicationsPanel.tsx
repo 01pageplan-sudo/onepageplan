@@ -19,6 +19,7 @@ import {
   type AdminWhatsAppStats,
 } from "@/lib/admin.functions";
 import { templateLabel } from "@/lib/email-templates";
+import { WhatsAppInboxPanel } from "./WhatsAppInboxPanel";
 
 function formatTimestamp(value: string | null | undefined) {
   if (!value) return "-";
@@ -128,7 +129,7 @@ export function CommunicationsPanel({
   sends?: AdminSend[];
   password?: string;
 }) {
-  const [subTab, setSubTab] = useState<"email" | "whatsapp">("email");
+  const [subTab, setSubTab] = useState<"email" | "whatsapp" | "inbox">("email");
   const [waData, setWaData] = useState<AdminWhatsAppStats | null>(null);
   const [waLoading, setWaLoading] = useState(false);
 
@@ -180,7 +181,7 @@ export function CommunicationsPanel({
       {/* Sub Tab Navigation */}
       <Tabs
         value={subTab}
-        onValueChange={(val) => setSubTab(val as "email" | "whatsapp")}
+        onValueChange={(val) => setSubTab(val as "email" | "whatsapp" | "inbox")}
         className="w-full"
       >
         <div className="flex items-center justify-between border-b border-border pb-3">
@@ -196,8 +197,15 @@ export function CommunicationsPanel({
               value="whatsapp"
               className="flex items-center gap-2 text-xs font-medium px-4"
             >
+              <Send className="h-3.5 w-3.5 text-blue-500" />
+              WhatsApp Broadcasts
+            </TabsTrigger>
+            <TabsTrigger
+              value="inbox"
+              className="flex items-center gap-2 text-xs font-medium px-4"
+            >
               <MessageSquare className="h-3.5 w-3.5 text-emerald-500" />
-              WhatsApp (Direct Meta Cloud)
+              WhatsApp Replies & Inbox
             </TabsTrigger>
           </TabsList>
 
@@ -380,6 +388,11 @@ export function CommunicationsPanel({
               </table>
             )}
           </div>
+        </TabsContent>
+
+        {/* WHATSAPP REPLIES & INBOX TAB */}
+        <TabsContent value="inbox" className="space-y-5 pt-4">
+          <WhatsAppInboxPanel password={password} />
         </TabsContent>
       </Tabs>
     </div>

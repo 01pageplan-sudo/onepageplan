@@ -629,3 +629,300 @@ export const adminRegisterWhatsAppNumber = createServerFn({ method: "POST" })
     }
   });
 
+export type WhatsAppInboxMessage = {
+  id: string;
+  direction: "inbound" | "outbound";
+  body: string;
+  createdAt: string;
+  status?: string;
+  senderName?: string;
+  messageType?: string;
+  repliedToMessageKey?: string | null;
+};
+
+export type WhatsAppConversationThread = {
+  phone: string;
+  contactName: string;
+  email: string | null;
+  registrationId: string | null;
+  status: string;
+  sessionDate: string | null;
+  unreadCount: number;
+  lastMessage: WhatsAppInboxMessage;
+  lastInboundAt: string | null;
+  isCareWindowActive: boolean;
+  careWindowHoursLeft: number;
+  messages: WhatsAppInboxMessage[];
+};
+
+export type WhatsAppInboxData = {
+  threads: WhatsAppConversationThread[];
+  summary: {
+    totalInbound: number;
+    totalContacts: number;
+    totalUnread: number;
+    activeCareWindows: number;
+  };
+};
+
+export const adminGetWhatsAppInbox = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      // 1. Fetch inbound messages
+      const { data: inboundRows } = await (db as any)
+        .from("whatsapp_inbound_messages")
+        .select("*")
+        .order("created_at", { ascending: true })
+        .limit(1000);
+
+      // 2. Fetch outbound sends
+      const { data: outboundRows } = await (db as any)
+        .from("whatsapp_sends")
+        .select("*")
+        .order("created_at", { ascending: true })
+        .limit(1000);
+
+      // 3. Fetch registrations to enrich contact info
+      const { data: regRows } = await (db.from("registrations") as any)
+        .select("id, full_name, email, phone_e164, status, session_date")
+        .limit(2000);
+
+      const regByPhone = new Map<string, any>();
+      const regById = new Map<string, any>();
+      for (const r of regRows || []) {
+        regById.set(r.id, r);
+        const clean = (r.phone_e164 || "").replace(/\D/g, "");
+        if (clean) {
+          regByPhone.set(clean, r);
+          regByPhone.set(clean.slice(-10), r);
+        }
+      }
+
+      // Group by phone number
+      const threadMap = new Map<string, {
+        phone: string;
+        contactName: string;
+        email: string | null;
+        registrationId: string | null;
+        status: string;
+        sessionDate: string | null;
+        unreadCount: number;
+        lastInboundAt: string | null;
+        messages: WhatsAppInboxMessage[];
+      }>();
+
+      const getOrCreateThread = (phoneRaw: string, initialName?: string | null, regId?: string | null) => {
+        const clean = phoneRaw.replace(/\D/g, "");
+        const key = clean.slice(-10) || clean;
+        let thread = threadMap.get(key);
+        if (!thread) {
+          const reg = (regId ? regById.get(regId) : null) || regByPhone.get(key) || regByPhone.get(clean);
+          thread = {
+            phone: clean.startsWith("91") ? `+${clean}` : `+91${clean}`,
+            contactName: initialName || reg?.full_name || `+${clean}`,
+            email: reg?.email || null,
+            registrationId: reg?.id || regId || null,
+            status: reg?.status || "registered",
+            sessionDate: reg?.session_date || null,
+            unreadCount: 0,
+            lastInboundAt: null,
+            messages: [],
+          };
+          threadMap.set(key, thread);
+        } else {
+          if (initialName && (!thread.contactName || thread.contactName.startsWith("+"))) {
+            thread.contactName = initialName;
+          }
+          if (regId && !thread.registrationId) {
+            thread.registrationId = regId;
+          }
+        }
+        return thread;
+      };
+
+      // Add outbound sends
+      for (const out of outboundRows || []) {
+        const phone = out.phone || "";
+        if (!phone) continue;
+        const thread = getOrCreateThread(phone, null, out.registration_id);
+        thread.messages.push({
+          id: out.id || String(Math.random()),
+          direction: "outbound",
+          body: out.template_name ? `[Template: ${out.template_name}]` : "[Outbound Message]",
+          createdAt: out.created_at || new Date().toISOString(),
+          status: out.status || "sent",
+          repliedToMessageKey: out.template_name || null,
+        });
+      }
+
+      // Add inbound messages
+      for (const inb of inboundRows || []) {
+        const phone = inb.phone || "";
+        if (!phone) continue;
+        const thread = getOrCreateThread(phone, inb.sender_name, inb.registration_id);
+        if (!inb.is_read) {
+          thread.unreadCount++;
+        }
+        thread.lastInboundAt = inb.created_at;
+        thread.messages.push({
+          id: inb.id || String(Math.random()),
+          direction: "inbound",
+          body: inb.message_body || "[Inbound Message]",
+          createdAt: inb.created_at || new Date().toISOString(),
+          senderName: inb.sender_name || thread.contactName,
+          messageType: inb.message_type || "text",
+          repliedToMessageKey: inb.replied_to_message_key || null,
+        });
+      }
+
+      // Sort and assemble threads
+      const now = Date.now();
+      const threads: WhatsAppConversationThread[] = [];
+      let totalInbound = 0;
+      let totalUnread = 0;
+      let activeCareWindows = 0;
+
+      for (const t of threadMap.values()) {
+        // Sort messages inside thread chronologically
+        t.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        const lastMsg = t.messages[t.messages.length - 1];
+        if (!lastMsg) continue;
+
+        let isCareWindowActive = false;
+        let careWindowHoursLeft = 0;
+        if (t.lastInboundAt) {
+          totalInbound++;
+          const inboundTime = new Date(t.lastInboundAt).getTime();
+          const msPassed = now - inboundTime;
+          const hoursLeft = Math.max(0, 24 - msPassed / (1000 * 60 * 60));
+          if (hoursLeft > 0) {
+            isCareWindowActive = true;
+            careWindowHoursLeft = Math.round(hoursLeft * 10) / 10;
+            activeCareWindows++;
+          }
+        }
+
+        totalUnread += t.unreadCount;
+
+        threads.push({
+          phone: t.phone,
+          contactName: t.contactName,
+          email: t.email,
+          registrationId: t.registrationId,
+          status: t.status,
+          sessionDate: t.sessionDate,
+          unreadCount: t.unreadCount,
+          lastMessage: lastMsg,
+          lastInboundAt: t.lastInboundAt,
+          isCareWindowActive,
+          careWindowHoursLeft,
+          messages: t.messages,
+        });
+      }
+
+      // Sort threads: most recent message first
+      threads.sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime());
+
+      return {
+        ok: true as const,
+        data: {
+          threads,
+          summary: {
+            totalInbound,
+            totalContacts: threads.length,
+            totalUnread,
+            activeCareWindows,
+          },
+        } as WhatsAppInboxData,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[adminGetWhatsAppInbox] error:", msg);
+      return { ok: false as const, error: msg || "Failed to load WhatsApp inbox" };
+    }
+  });
+
+export const adminMarkWhatsAppRead = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string; phone: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    const clean = data.phone.replace(/\D/g, "");
+    const last10 = clean.slice(-10);
+
+    try {
+      await (db as any)
+        .from("whatsapp_inbound_messages")
+        .update({ is_read: true, updated_at: new Date().toISOString() })
+        .or(`phone.eq.${clean},phone.ilike.%${last10}`);
+
+      return { ok: true as const };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminSendWhatsAppDirectReply = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string; phone: string; message: string; registrationId?: string | null }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    const text = data.message?.trim();
+    if (!text) {
+      return { ok: false as const, error: "Message text cannot be empty." };
+    }
+
+    try {
+      const { sendWhatsAppMessage } = await import("@/services/whatsapp/sender");
+      const cleanPhone = data.phone.replace(/\D/g, "");
+
+      const result = await sendWhatsAppMessage({
+        to: cleanPhone,
+        message: {
+          type: "text",
+          text: { body: text },
+        },
+      });
+
+      const messageId = result.messages?.[0]?.id || null;
+
+      // Log into whatsapp_sends table
+      await (db as any).from("whatsapp_sends").insert({
+        registration_id: data.registrationId || null,
+        phone: cleanPhone,
+        template_name: "direct_admin_reply",
+        status: "sent",
+        provider_message_id: messageId,
+        sent_at: new Date().toISOString(),
+      });
+
+      return { ok: true as const, messageId };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[adminSendWhatsAppDirectReply] error:", msg);
+      return { ok: false as const, error: msg || "Failed to send direct WhatsApp message" };
+    }
+  });
+
