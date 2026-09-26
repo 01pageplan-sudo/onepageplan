@@ -205,14 +205,49 @@ Milan Dodhia
 
 ---
 
+### 7. `webinar_missed` (Non-Attendee Follow-up / Missed Session)
+*Dispatched on Sunday morning to registrants who did NOT join the live room (verified via Webinar.gg webhook).*
+
+- **Template Name:** `webinar_missed`
+- **Category:** `UTILITY`
+- **Language:** `English`
+- **Header:** None (or Text: `The One Page Plan`)
+- **Body:**
+```text
+Hello {{1}},
+
+You registered for The Money Reality Masterclass and couldn't make it. That happens, and no guilt about a Saturday evening.
+
+Good news: the session runs again this Saturday at 7:00 PM IST, and your seat carries over automatically. You do not need to register again.
+
+In the meantime, here is the one exercise the whole session is built on:
+Take a blank sheet and list everything you own and everything you owe. Next to each, write one line explaining what it actually does for your family. If you can't write that line, that is where your money is quietly leaking.
+
+Tap the button below to bookmark the room for this Saturday, or connect on LinkedIn to read more:
+https://www.linkedin.com/in/milanaire-me/
+
+See you this Saturday,
+Milan Dodhia
+```
+- **Button (Required):**
+  - Type: **Visit website**
+  - Button text: `Join Next Saturday`
+  - URL type: **Static**
+  - Website URL: `https://onepageplan.in/room`
+- **Sample Values (Required by Meta):**
+  - `{{1}}`: `Milan`
+
+---
+
 ## 🛠️ Code Mapping Reference
 In `src/services/whatsapp/whatsapp-nurture.server.ts`, these template names map directly:
 
-| Message Key | Default Template Name | Overriding Environment Variable |
-| :--- | :--- | :--- |
-| `confirmation` | `webinar_confirmation` | `WHATSAPP_TEMPLATE_CONFIRMATION` |
-| `reminder-2h` | `webinar_reminder_2h` | `WHATSAPP_TEMPLATE_REMINDER_2H` |
-| `reminder-15m` | `webinar_reminder_15m` | `WHATSAPP_TEMPLATE_REMINDER_15M` |
-| `live` | `webinar_live_now` | `WHATSAPP_TEMPLATE_LIVE` |
-| `followup` | `webinar_followup` | `WHATSAPP_TEMPLATE_FOLLOWUP` |
-| `purchase` | `course_purchase_confirmation` | `WHATSAPP_TEMPLATE_PURCHASE` |
+| Message Key | Default Template Name | Overriding Environment Variable | Target Audience |
+| :--- | :--- | :--- | :--- |
+| `confirmation` | `webinar_confirmation` | `WHATSAPP_TEMPLATE_CONFIRMATION` | On landing page registration |
+| `reminder-2h` | `webinar_reminder_2h` | `WHATSAPP_TEMPLATE_REMINDER_2H` | Saturday 5:00 PM IST |
+| `reminder-15m` | `webinar_reminder_15m` | `WHATSAPP_TEMPLATE_REMINDER_15M` | Saturday 6:45 PM IST |
+| `live` | `webinar_live_now` | `WHATSAPP_TEMPLATE_LIVE` | Saturday 7:00 PM IST |
+| `followup` | `webinar_followup` | `WHATSAPP_TEMPLATE_FOLLOWUP` | Sunday morning (Attended webinar) |
+| `no-show` | `webinar_missed` | `WHATSAPP_TEMPLATE_NO_SHOW` | Sunday morning (Missed / Did not attend) |
+| `purchase` | `course_purchase_confirmation` | `WHATSAPP_TEMPLATE_PURCHASE` | After buying The Calm Money System |
