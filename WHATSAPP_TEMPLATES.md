@@ -17,11 +17,12 @@ Use this guide to create and submit your WhatsApp message templates in **Meta Wh
 ## ⚡ Important Rules for Fast Meta Approval
 - **Category:** Choose **`UTILITY`** for all webinar confirmations and reminders (Meta approves UTILITY templates in under 5 minutes, and they cost significantly less than Marketing).
 - **Language:** Choose **`English`** (Code: `en` or `en_US`).
-- **Variables:** Enter sample values for every `{{1}}` and `{{2}}` before submitting.
+- **Variables:** Enter sample values for `{{1}}` (e.g. `Milan`) before submitting.
+- **Button:** Set Type to **Visit website**, URL Type to **Static**, and URL to `https://onepageplan.in/room`. (Because the button is a Static URL, Meta handles the click directly without needing dynamic URL parameters in the API payload).
 
 ---
 
-## 📋 The 6 Required Templates
+## 📋 The 6 Templates (Clean Button + LinkedIn Profile)
 
 ### 1. `webinar_confirmation` (Immediate Registration Confirmation)
 *Dispatched immediately when an attendee registers on the landing page.*
@@ -36,8 +37,10 @@ Hello {{1}},
 
 Your seat for The Money Reality Masterclass is saved. It runs this Saturday at 7:00 PM IST.
 
-Here is your link to join the live session:
-{{2}}
+Tap the "Join Session" button below to access the session room.
+
+In the meantime, feel free to connect with me on LinkedIn to read more about the framework:
+https://www.linkedin.com/in/milanaire-me/
 
 Before Saturday, please sit somewhere quiet with a notebook and pen.
 
@@ -45,14 +48,13 @@ See you in the room,
 Milan Dodhia
 Financial Educator, The One Page Plan
 ```
-- **Button (Optional):**
+- **Button (Required):**
   - Type: **Visit website**
   - Button text: `Join Session`
   - URL type: **Static**
   - Website URL: `https://onepageplan.in/room`
 - **Sample Values (Required by Meta):**
   - `{{1}}`: `Milan`
-  - `{{2}}`: `https://onepageplan.in/room`
 
 ---
 
@@ -69,19 +71,18 @@ Hello {{1}},
 
 We start The Money Reality Masterclass in exactly two hours (7:00 PM IST).
 
-Have your notepad ready. Here is your direct link to enter:
-{{2}}
+Have your notepad and pen ready. Tap the button below to enter the room.
 
 See you shortly,
 Milan Dodhia
 ```
-- **Button (Optional):**
+- **Button (Required):**
   - Type: **Visit website**
   - Button text: `Enter Room`
+  - URL type: **Static**
   - Website URL: `https://onepageplan.in/room`
 - **Sample Values:**
   - `{{1}}`: `Milan`
-  - `{{2}}`: `https://onepageplan.in/room`
 
 ---
 
@@ -98,20 +99,18 @@ Hello {{1}},
 
 The Money Reality Masterclass begins in 15 minutes.
 
-Click here to enter the room:
-{{2}}
+Tap the button below to join the room. We start promptly at 7:00 PM IST.
 
-We start promptly at 7:00 PM IST.
-
+See you inside,
 Milan Dodhia
 ```
-- **Button (Optional):**
+- **Button (Required):**
   - Type: **Visit website**
   - Button text: `Join Live Now`
+  - URL type: **Static**
   - Website URL: `https://onepageplan.in/room`
 - **Sample Values:**
   - `{{1}}`: `Milan`
-  - `{{2}}`: `https://onepageplan.in/room`
 
 ---
 
@@ -128,19 +127,18 @@ Hello {{1}},
 
 The Money Reality Masterclass is live right now.
 
-Join the room here:
-{{2}}
+Tap the button below to join the room.
 
 See you inside,
 Milan Dodhia
 ```
-- **Button (Optional):**
+- **Button (Required):**
   - Type: **Visit website**
   - Button text: `Join Masterclass`
+  - URL type: **Static**
   - Website URL: `https://onepageplan.in/room`
 - **Sample Values:**
   - `{{1}}`: `Milan`
-  - `{{2}}`: `https://onepageplan.in/room`
 
 ---
 
@@ -157,21 +155,23 @@ Hello {{1}},
 
 Thank you for attending The Money Reality Masterclass.
 
-You can access your session summary and next steps here:
-{{2}}
+Tap the button below to view your session summary and next steps.
+
+You can also read my latest financial notes and connect on LinkedIn:
+https://www.linkedin.com/in/milanaire-me/
 
 If you have any questions, reply directly to this message.
 
 Warmly,
 Milan Dodhia
 ```
-- **Button (Optional):**
+- **Button (Required):**
   - Type: **Visit website**
   - Button text: `View Summary`
+  - URL type: **Static**
   - Website URL: `https://onepageplan.in/course`
 - **Sample Values:**
   - `{{1}}`: `Milan`
-  - `{{2}}`: `https://onepageplan.in/course`
 
 ---
 
@@ -188,21 +188,20 @@ Hello {{1}},
 
 Thank you for joining The Calm Money System. Your enrollment is confirmed.
 
-Access your course portal and modules here:
-{{2}}
+Tap the button below to access your learning portal.
 
 Reply to this chat anytime if you need help with your access.
 
 Warmly,
 Milan Dodhia
 ```
-- **Button (Optional):**
+- **Button (Required):**
   - Type: **Visit website**
   - Button text: `Open Portal`
+  - URL type: **Static**
   - Website URL: `https://onepageplan.in/course`
 - **Sample Values:**
   - `{{1}}`: `Milan`
-  - `{{2}}`: `https://onepageplan.in/course`
 
 ---
 

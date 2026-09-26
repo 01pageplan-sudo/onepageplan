@@ -67,12 +67,26 @@ export async function sendWhatsAppAutomation(
   const recordId = (inserted as { id?: string } | null)?.id;
 
   // Dispatch through Meta Cloud API
-  const result = await sendWhatsAppTemplate({
+  // Primary attempt: single parameter {{1}} for firstName (CTA button handles room access)
+  let result = await sendWhatsAppTemplate({
     to: normalizedPhone,
     templateName,
-    bodyParameters: [firstName, webinarUrl],
-    buttonUrlParam: webinarUrl.replace("https://onepageplan.in", ""),
+    bodyParameters: [firstName],
   });
+
+  // Fallback: if Meta reports parameter count mismatch (e.g. if template expects 2 params)
+  if (!result.sent && result.error && /parameter|mismatch|count/i.test(result.error)) {
+    console.log(`[WhatsApp Nurture] Retrying template ${templateName} with 2 parameters (firstName, webinarUrl)...`);
+    const retryResult = await sendWhatsAppTemplate({
+      to: normalizedPhone,
+      templateName,
+      bodyParameters: [firstName, webinarUrl],
+      buttonUrlParam: webinarUrl.replace("https://onepageplan.in", ""),
+    });
+    if (retryResult.sent) {
+      result = retryResult;
+    }
+  }
 
   const now = new Date().toISOString();
 
