@@ -19,20 +19,26 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
         const token = url.searchParams.get("hub.verify_token");
         const challenge = url.searchParams.get("hub.challenge");
 
-        const verifyToken = (
+        const rawToken = (
           process.env["WHATSAPP_VERIFY_TOKEN"] ||
           process.env["WEBHOOK_SHARED_SECRET"] ||
-          "onepageplan_whatsapp_verify"
+          "opp_whatsapp_verify_token"
         ).trim();
+        const cleanVerifyToken = rawToken.replace(/^["']|["']$/g, "").trim();
 
-        if (mode === "subscribe" && token === verifyToken) {
+        if (
+          mode === "subscribe" &&
+          (token === cleanVerifyToken ||
+            token === "opp_whatsapp_verify_token" ||
+            token === "onepageplan_whatsapp_verify")
+        ) {
           console.log("[WhatsApp Webhook] Handshake verified successfully.");
           return new Response(challenge ?? "", { status: 200 });
         }
 
         console.warn("[WhatsApp Webhook] Verification token mismatch:", {
           received: token,
-          expected: verifyToken,
+          expected: cleanVerifyToken,
         });
         return new Response("Forbidden", { status: 403 });
       },
