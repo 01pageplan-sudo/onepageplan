@@ -220,18 +220,16 @@ You registered for The Money Reality Masterclass and couldn't make it. That happ
 
 Good news: the session runs again this Saturday at 7:00 PM IST, and your seat carries over automatically. You do not need to register again.
 
-In the meantime, here is the one exercise the whole session is built on:
-Take a blank sheet and list everything you own and everything you owe. Next to each, write one line explaining what it actually does for your family. If you can't write that line, that is where your money is quietly leaking.
+Tap the button below to bookmark the room for this Saturday
 
-Tap the button below to bookmark the room for this Saturday, or connect on LinkedIn to read more:
-https://www.linkedin.com/in/milanaire-me/
+Find out your Wealth Wheel Balance: https://www.milanaire.me/wealth-wheel
 
 See you this Saturday,
 Milan Dodhia
 ```
 - **Button (Required):**
   - Type: **Visit website**
-  - Button text: `Join Next Saturday`
+  - Button text: `Bookmark Room` (or `Join Next Saturday`)
   - URL type: **Static**
   - Website URL: `https://onepageplan.in/room`
 - **Sample Values (Required by Meta):**
