@@ -142,8 +142,8 @@ Milan Dodhia
 
 ---
 
-### 5. `webinar_followup` (Post-Session Notes & Next Steps)
-*Dispatched after the masterclass concludes.*
+### 5. `webinar_followup` (Post-Session Tools & Next Steps)
+*Dispatched on Sunday morning to registrants who ATTENDED the masterclass.*
 
 - **Template Name:** `webinar_followup`
 - **Category:** `UTILITY`
@@ -155,7 +155,7 @@ Hello {{1}},
 
 Thank you for attending The Money Reality Masterclass.
 
-Tap the button below to view your session summary and next steps.
+Tap the button below to download your 3 Masterclass tools (The One Page Plan template, the Real Return Google Sheet, and the Family Protection Checklist).
 
 You can also read my latest financial notes and connect on LinkedIn:
 https://www.linkedin.com/in/milanaire-me/
@@ -167,9 +167,9 @@ Milan Dodhia
 ```
 - **Button (Required):**
   - Type: **Visit website**
-  - Button text: `View Summary`
+  - Button text: `Download 3 Tools`
   - URL type: **Static**
-  - Website URL: `https://onepageplan.in/course`
+  - Website URL: `https://onepageplan.in/resources`
 - **Sample Values:**
   - `{{1}}`: `Milan`
 

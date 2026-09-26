@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ConfirmedRouteImport } from './routes/confirmed'
 import { Route as CourseRouteImport } from './routes/course'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ResourcesRouteImport } from './routes/resources'
 import { Route as RoomRouteImport } from './routes/room'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiGetWebinarMetricsRouteImport } from './routes/api/get-webinar-metrics'
@@ -51,6 +52,11 @@ const CourseRoute = CourseRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResourcesRoute = ResourcesRouteImport.update({
+  id: '/resources',
+  path: '/resources',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RoomRoute = RoomRouteImport.update({
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/confirmed': typeof ConfirmedRoute
   '/course': typeof CourseRoute
   '/privacy': typeof PrivacyRoute
+  '/resources': typeof ResourcesRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/confirmed': typeof ConfirmedRoute
   '/course': typeof CourseRoute
   '/privacy': typeof PrivacyRoute
+  '/resources': typeof ResourcesRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/confirmed': typeof ConfirmedRoute
   '/course': typeof CourseRoute
   '/privacy': typeof PrivacyRoute
+  '/resources': typeof ResourcesRoute
   '/room': typeof RoomRoute
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/confirmed'
     | '/course'
     | '/privacy'
+    | '/resources'
     | '/room'
     | '/terms'
     | '/api/get-webinar-metrics'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/confirmed'
     | '/course'
     | '/privacy'
+    | '/resources'
     | '/room'
     | '/terms'
     | '/api/get-webinar-metrics'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/confirmed'
     | '/course'
     | '/privacy'
+    | '/resources'
     | '/room'
     | '/terms'
     | '/api/get-webinar-metrics'
@@ -253,6 +265,7 @@ export interface RootRouteChildren {
   ConfirmedRoute: typeof ConfirmedRoute
   CourseRoute: typeof CourseRoute
   PrivacyRoute: typeof PrivacyRoute
+  ResourcesRoute: typeof ResourcesRoute
   RoomRoute: typeof RoomRoute
   TermsRoute: typeof TermsRoute
   ApiGetWebinarMetricsRoute: typeof ApiGetWebinarMetricsRoute
@@ -303,6 +316,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resources': {
+      id: '/resources'
+      path: '/resources'
+      fullPath: '/resources'
+      preLoaderRoute: typeof ResourcesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/room': {
@@ -405,6 +425,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfirmedRoute: ConfirmedRoute,
   CourseRoute: CourseRoute,
   PrivacyRoute: PrivacyRoute,
+  ResourcesRoute: ResourcesRoute,
   RoomRoute: RoomRoute,
   TermsRoute: TermsRoute,
   ApiGetWebinarMetricsRoute: ApiGetWebinarMetricsRoute,
