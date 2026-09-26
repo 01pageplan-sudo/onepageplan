@@ -21,20 +21,17 @@ function flatten(input: unknown, depth = 0): Record<string, unknown> {
   return out;
 }
 
-export const Route = createFileRoute("/api/public/webinar-webhook")({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
-        const url = new URL(request.url);
-        const secret = (process.env["WEBHOOK_SHARED_SECRET"] || "").trim();
-        const provided =
-          request.headers.get("x-webhook-secret") ??
-          request.headers.get("x-shared-secret") ??
-          url.searchParams.get("secret") ??
-          "";
-        if (!secret || provided !== secret) {
-          return new Response("Unauthorized", { status: 401 });
-        }
+export async function handleWebinarWebhookRequest(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const secret = (process.env["WEBHOOK_SHARED_SECRET"] || "").trim();
+  const provided =
+    request.headers.get("x-webhook-secret") ??
+    request.headers.get("x-shared-secret") ??
+    url.searchParams.get("secret") ??
+    "";
+  if (secret && provided !== secret) {
+    return new Response("Unauthorized", { status: 401 });
+  }
 
         let body: unknown = null;
         try {
@@ -112,7 +109,13 @@ export const Route = createFileRoute("/api/public/webinar-webhook")({
         }
 
         return new Response("ok");
-      },
+}
+
+export const Route = createFileRoute("/api/public/webinar-webhook")({
+  server: {
+    handlers: {
+      GET: async () => new Response("Webinar webhook endpoint active", { status: 200 }),
+      POST: async ({ request }) => handleWebinarWebhookRequest(request),
     },
   },
 });

@@ -26,6 +26,7 @@ import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicZeptomailWebhookRouteImport } from './routes/api/public/zeptomail-webhook'
 import { Route as ApiRazorpayCreateOrderRouteImport } from './routes/api/razorpay/create-order'
 import { Route as ApiRazorpayVerifyPaymentRouteImport } from './routes/api/razorpay/verify-payment'
+import { Route as ApiWebhooksOppwebinarRouteImport } from './routes/api/webhooks/oppwebinar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -116,6 +117,11 @@ const ApiRazorpayVerifyPaymentRoute =
     path: '/api/razorpay/verify-payment',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiWebhooksOppwebinarRoute = ApiWebhooksOppwebinarRouteImport.update({
+  id: '/api/webhooks/oppwebinar',
+  path: '/api/webhooks/oppwebinar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/api/public/zeptomail-webhook': typeof ApiPublicZeptomailWebhookRoute
   '/api/razorpay/create-order': typeof ApiRazorpayCreateOrderRoute
   '/api/razorpay/verify-payment': typeof ApiRazorpayVerifyPaymentRoute
+  '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -154,6 +161,7 @@ export interface FileRoutesByTo {
   '/api/public/zeptomail-webhook': typeof ApiPublicZeptomailWebhookRoute
   '/api/razorpay/create-order': typeof ApiRazorpayCreateOrderRoute
   '/api/razorpay/verify-payment': typeof ApiRazorpayVerifyPaymentRoute
+  '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/api/public/zeptomail-webhook': typeof ApiPublicZeptomailWebhookRoute
   '/api/razorpay/create-order': typeof ApiRazorpayCreateOrderRoute
   '/api/razorpay/verify-payment': typeof ApiRazorpayVerifyPaymentRoute
+  '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -195,6 +204,7 @@ export interface FileRouteTypes {
     | '/api/public/zeptomail-webhook'
     | '/api/razorpay/create-order'
     | '/api/razorpay/verify-payment'
+    | '/api/webhooks/oppwebinar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/api/public/zeptomail-webhook'
     | '/api/razorpay/create-order'
     | '/api/razorpay/verify-payment'
+    | '/api/webhooks/oppwebinar'
   id:
     | '__root__'
     | '/'
@@ -233,6 +244,7 @@ export interface FileRouteTypes {
     | '/api/public/zeptomail-webhook'
     | '/api/razorpay/create-order'
     | '/api/razorpay/verify-payment'
+    | '/api/webhooks/oppwebinar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -253,6 +265,7 @@ export interface RootRouteChildren {
   ApiPublicZeptomailWebhookRoute: typeof ApiPublicZeptomailWebhookRoute
   ApiRazorpayCreateOrderRoute: typeof ApiRazorpayCreateOrderRoute
   ApiRazorpayVerifyPaymentRoute: typeof ApiRazorpayVerifyPaymentRoute
+  ApiWebhooksOppwebinarRoute: typeof ApiWebhooksOppwebinarRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -376,6 +389,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRazorpayVerifyPaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhooks/oppwebinar': {
+      id: '/api/webhooks/oppwebinar'
+      path: '/api/webhooks/oppwebinar'
+      fullPath: '/api/webhooks/oppwebinar'
+      preLoaderRoute: typeof ApiWebhooksOppwebinarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -397,6 +417,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicZeptomailWebhookRoute: ApiPublicZeptomailWebhookRoute,
   ApiRazorpayCreateOrderRoute: ApiRazorpayCreateOrderRoute,
   ApiRazorpayVerifyPaymentRoute: ApiRazorpayVerifyPaymentRoute,
+  ApiWebhooksOppwebinarRoute: ApiWebhooksOppwebinarRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

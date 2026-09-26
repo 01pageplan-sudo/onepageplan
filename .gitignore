@@ -35,3 +35,11 @@ dist-ssr
 supabase/.temp/
 
 .vercel
+
+# Environment variables & secrets (safe local copies)
+.env
+.env.*
+!.env.example
+!.env.production.template
+vercel.env.txt
+
