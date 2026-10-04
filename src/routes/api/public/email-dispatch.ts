@@ -16,19 +16,28 @@ export const Route = createFileRoute("/api/public/email-dispatch")({
 
 async function handle(request: Request) {
   const url = new URL(request.url);
-  const provided =
+  const rawProvided =
     request.headers.get("x-cron-secret") ??
     request.headers.get("x-webhook-secret") ??
     url.searchParams.get("secret") ??
     "";
 
-  if (provided === "") return new Response("Unauthorized", { status: 401 });
+  if (!rawProvided.trim()) return new Response("Unauthorized", { status: 401 });
 
-  // Look for CRON_SECRET case-insensitively
+  // Clean provided secret (support URL decoding if passed via query string)
+  const cleanProvided = rawProvided.trim();
+  let decodedProvided = cleanProvided;
+  try {
+    decodedProvided = decodeURIComponent(cleanProvided);
+  } catch {
+    /* ignore */
+  }
+
+  // Look for CRON_SECRET case-insensitively from environment
   const findEnvVar = (targetName: string): string | undefined => {
     const target = targetName.toLowerCase();
     for (const [key, value] of Object.entries(process.env)) {
-      if (key.toLowerCase() === target && value) return value;
+      if (key.toLowerCase() === target && value) return value.trim();
     }
     return undefined;
   };
@@ -37,19 +46,58 @@ async function handle(request: Request) {
     findEnvVar("CRON_SECRET") ??
     findEnvVar("WEBHOOK_SHARED_SECRET") ??
     findEnvVar("LOVABLE_CRON_SECRET");
-  let allowed = Boolean(envSecret) && provided === envSecret;
+
+  let allowed =
+    Boolean(envSecret) &&
+    (cleanProvided === envSecret || decodedProvided === envSecret);
 
   if (!allowed) {
-    // The scheduler inside the database uses its own key.
+    // 1. Check database app_config table
     const { createPublicServerClient } = await import("@/lib/supabase-public.server");
-    const { data, error } = await createPublicServerClient().rpc("verify_cron_secret", {
-      p_secret: provided,
-    });
-    if (error) console.error("email-dispatch secret check failed", error.message);
-    allowed = data === true;
+    const db = createPublicServerClient();
+
+    const { data: appConfigSecret } = await db
+      .from("app_config" as never)
+      .select("value")
+      .eq("key" as never, "cron_secret")
+      .maybeSingle();
+
+    if (appConfigSecret && (appConfigSecret as any).value) {
+      const val = String((appConfigSecret as any).value).trim();
+      if (cleanProvided === val || decodedProvided === val) {
+        allowed = true;
+      }
+    }
+
+    if (!allowed) {
+      const { data: dbCheck } = await db.rpc("verify_cron_secret", {
+        p_secret: cleanProvided,
+      });
+      if (dbCheck === true) allowed = true;
+    }
+
+    // 2. Also check if stored in commerce_settings or app_config under other keys
+    if (!allowed) {
+      const { data: altConfig } = await db
+        .from("app_config" as never)
+        .select("value")
+        .or(`key.eq.CRON_SECRET,key.eq.Cron_secret,key.eq.cron_secret` as never);
+      if (altConfig && Array.isArray(altConfig)) {
+        for (const item of altConfig) {
+          const val = String((item as any).value || "").trim();
+          if (val && (cleanProvided === val || decodedProvided === val)) {
+            allowed = true;
+            break;
+          }
+        }
+      }
+    }
   }
 
-  if (!allowed) return new Response("Unauthorized", { status: 401 });
+  if (!allowed) {
+    console.warn("[email-dispatch] Unauthorized request attempt.");
+    return new Response("Unauthorized", { status: 401 });
+  }
 
   try {
     const { runDispatch } = await import("@/lib/email-automation.server");
