@@ -24,10 +24,19 @@ async function handle(request: Request) {
 
   if (provided === "") return new Response("Unauthorized", { status: 401 });
 
+  // Look for CRON_SECRET case-insensitively
+  const findEnvVar = (targetName: string): string | undefined => {
+    const target = targetName.toLowerCase();
+    for (const [key, value] of Object.entries(process.env)) {
+      if (key.toLowerCase() === target && value) return value;
+    }
+    return undefined;
+  };
+
   const envSecret =
-    process.env["CRON_SECRET"] ??
-    process.env["WEBHOOK_SHARED_SECRET"] ??
-    process.env["LOVABLE_CRON_SECRET"];
+    findEnvVar("CRON_SECRET") ??
+    findEnvVar("WEBHOOK_SHARED_SECRET") ??
+    findEnvVar("LOVABLE_CRON_SECRET");
   let allowed = Boolean(envSecret) && provided === envSecret;
 
   if (!allowed) {
