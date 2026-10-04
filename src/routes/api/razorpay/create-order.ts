@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createRazorpayOrder } from "@/lib/razorpay.server";
+import { computeOrderPricing } from "@/lib/commerce/pricing.server";
+import { createRazorpayOrder, getRazorpayMode } from "@/lib/commerce/razorpay.server";
+import { createPublicServerClient } from "@/lib/supabase-public.server";
 
 /**
- * Creates a Razorpay order for The Calm Money System (₹6,000 / 600000 paise).
- * Endpoint: POST /api/razorpay/create-order
+ * Legacy endpoint adapter: POST /api/razorpay/create-order
+ * Routes through the new unified commerce pricing and order engine.
  */
 export const Route = createFileRoute("/api/razorpay/create-order")({
   server: {
@@ -14,34 +16,68 @@ export const Route = createFileRoute("/api/razorpay/create-order")({
             email?: string;
             name?: string;
             phone?: string;
-            amountPaise?: number;
+            product?: string;
           };
 
-          const amount = typeof body.amountPaise === "number" && body.amountPaise > 0
-            ? body.amountPaise
-            : 600000; // 6,000 INR default
+          const email = (body.email || "").trim().toLowerCase();
+          if (!email) {
+            return Response.json({ error: "Email is required." }, { status: 400 });
+          }
 
-          const result = await createRazorpayOrder({
-            amountPaise: amount,
-            currency: "INR",
+          const product = (body.product === "money_reality_check" ? "money_reality_check" : "silver");
+
+          const pricing = await computeOrderPricing({
+            product,
+            email,
+          });
+
+          if (!pricing.ok) {
+            return Response.json({ error: pricing.error || "Pricing calculation failed" }, { status: 400 });
+          }
+
+          const rzpResult = await createRazorpayOrder({
+            amountPaise: pricing.amountPaise,
+            product,
+            email,
+            name: body.name,
+            phone: body.phone,
+            receipt: `rcpt_${Date.now()}`,
             notes: {
-              product: "The Calm Money System",
-              email: body.email?.slice(0, 100) || "",
-              name: body.name?.slice(0, 100) || "",
-              phone: body.phone?.slice(0, 20) || "",
+              product,
+              email,
+              name: body.name || "",
+              pricing_rule: pricing.pricingRule,
             },
           });
 
-          if (!result.ok) {
-            return Response.json({ error: result.error || "order_creation_failed" }, { status: 500 });
+          if (!rzpResult.ok || !rzpResult.orderId) {
+            return Response.json({ error: rzpResult.error || "Order creation failed" }, { status: 500 });
           }
+
+          const db = createPublicServerClient();
+          await db.from("orders" as never).insert({
+            razorpay_order_id: rzpResult.orderId,
+            product_id: product,
+            pricing_rule_applied: pricing.pricingRule,
+            base_price: pricing.basePrice,
+            credit_applied: pricing.creditApplied,
+            amount_charged: pricing.amountCharged,
+            currency: "INR",
+            buyer_name: body.name?.trim() || null,
+            buyer_email: email,
+            buyer_phone: body.phone?.trim() || null,
+            status: "created",
+            price_expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          } as never);
 
           return Response.json({
             ok: true,
-            orderId: result.orderId,
-            amount: result.amount,
-            currency: result.currency,
-            keyId: result.keyId,
+            orderId: rzpResult.orderId,
+            amount: pricing.amountCharged,
+            amountPaise: pricing.amountPaise,
+            currency: "INR",
+            keyId: rzpResult.keyId,
+            mode: getRazorpayMode(),
           });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);

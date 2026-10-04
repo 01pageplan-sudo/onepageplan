@@ -92,8 +92,8 @@ export function RegistrationModal({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [whatsappConsent, setWhatsappConsent] = useState(true);
-  const [voiceConsent, setVoiceConsent] = useState(true);
+  const [whatsappConsent, setWhatsappConsent] = useState(false);
+  const [voiceConsent, setVoiceConsent] = useState(false);
   const [company, setCompany] = useState("");
 
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -442,7 +442,7 @@ export function RegistrationModal({
               </Button>
 
               <div className="mt-4">
-                <label className="flex gap-3 text-xs leading-snug text-muted-foreground">
+                <label className="flex gap-3 text-xs leading-snug text-muted-foreground cursor-pointer">
                   <Checkbox
                     checked={whatsappConsent}
                     onCheckedChange={(value) => {
@@ -453,9 +453,7 @@ export function RegistrationModal({
                     className="mt-0.5"
                   />
                   <span>
-                    Yes, send me the joining link and session reminders on WhatsApp, and subscribe
-                    me to the email newsletter. I can opt out any time by replying STOP. You may
-                    also call me with a reminder.
+                    Send me session reminders and course updates on WhatsApp.
                   </span>
                 </label>
               </div>

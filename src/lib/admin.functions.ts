@@ -926,3 +926,708 @@ export const adminSendWhatsAppDirectReply = createServerFn({ method: "POST" })
     }
   });
 
+// ==============================================================================
+// COMMERCE ADMIN FUNCTIONS
+// ==============================================================================
+
+export type AdminCommerceOrder = {
+  id: string;
+  razorpay_order_id: string | null;
+  razorpay_payment_id: string | null;
+  product_id: string;
+  pricing_rule_applied: string;
+  base_price: number;
+  credit_applied: number;
+  discount_code_applied: string | null;
+  discount_amount: number;
+  referral_code_applied: string | null;
+  amount_charged: number;
+  currency: string;
+  buyer_name: string | null;
+  buyer_email: string;
+  buyer_phone: string | null;
+  status: string;
+  created_at: string;
+  captured_at: string | null;
+  refunded_at: string | null;
+};
+
+export type AdminManualGrant = {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  product_id: string;
+  reason_note: string;
+  granted_by: string;
+  created_at: string;
+};
+
+export type AdminDiscountCode = {
+  id: string;
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  applies_to_products: string[];
+  max_uses: number | null;
+  used_count: number;
+  expires_at: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type AdminReferralPartner = {
+  id: string;
+  code: string;
+  partner_name: string;
+  partner_email: string;
+  reward_type: string;
+  reward_value: number;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type AdminReferralConversion = {
+  id: string;
+  partner_id: string | null;
+  order_id: string;
+  referral_code: string;
+  buyer_email: string;
+  order_amount: number;
+  reward_amount: number;
+  status: string;
+  created_at: string;
+};
+
+export type AdminReconciliationFlag = {
+  id: string;
+  razorpay_payment_id: string | null;
+  razorpay_order_id: string | null;
+  email: string | null;
+  amount: number | null;
+  issue_type: string;
+  details: Record<string, unknown>;
+  resolved: boolean;
+  flagged_at: string;
+};
+
+export const adminGetCommerceDashboard = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    const { getRazorpayMode } = await import("./commerce/razorpay.server");
+    const { getSilverMilestonePricing } = await import("./commerce/pricing.server");
+
+    try {
+      const [
+        settingsRes,
+        cohortsRes,
+        ordersRes,
+        manualGrantsRes,
+        reconciliationRes,
+        discountsRes,
+        partnersRes,
+        conversionsRes,
+        milestoneInfo,
+      ] = await Promise.all([
+        db.from("commerce_settings" as never).select("*").eq("id" as never, 1 as never).maybeSingle(),
+        db.from("cohorts" as never).select("*").order("cohort_number" as never, { ascending: true } as never),
+        db.from("orders" as never).select("*").order("created_at" as never, { ascending: false } as never).limit(500),
+        db.from("manual_grants" as never).select("*").order("created_at" as never, { ascending: false } as never).limit(200),
+        db.from("reconciliation_flags" as never).select("*").order("flagged_at" as never, { ascending: false } as never),
+        db.from("discount_codes" as never).select("*").order("created_at" as never, { ascending: false } as never),
+        db.from("referral_partners" as never).select("*").order("created_at" as never, { ascending: false } as never),
+        db.from("referral_conversions" as never).select("*").order("created_at" as never, { ascending: false } as never).limit(200),
+        db.from("completion_page_templates" as never).select("*").order("slug" as never, { ascending: true } as never).order("version" as never, { ascending: false } as never),
+        getSilverMilestonePricing(),
+      ]);
+
+      const orders = (ordersRes.data ?? []) as unknown as AdminCommerceOrder[];
+
+      // Calculate current Indian Financial Year total revenue (April 1 to now)
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const fyStartYear = now.getMonth() >= 3 ? currentYear : currentYear - 1;
+      const fyStartDate = new Date(fyStartYear, 3, 1, 0, 0, 0); // April 1 00:00:00
+
+      const fyCapturedTotal = orders
+        .filter((o) => o.status === "captured" && new Date(o.created_at) >= fyStartDate)
+        .reduce((sum, o) => sum + (Number(o.amount_charged) || 0), 0);
+
+      const allTimeTotal = orders
+        .filter((o) => o.status === "captured")
+        .reduce((sum, o) => sum + (Number(o.amount_charged) || 0), 0);
+
+      const completionTemplates = (templatesRes.data ?? []) as unknown as AdminCompletionTemplate[];
+
+      return {
+        ok: true as const,
+        data: {
+          mode: getRazorpayMode(),
+          settings: (settingsRes.data as any) || {},
+          cohorts: (cohortsRes.data ?? []) as any[],
+          orders,
+          manualGrants: (manualGrantsRes.data ?? []) as unknown as AdminManualGrant[],
+          reconciliationFlags: (reconciliationRes.data ?? []) as unknown as AdminReconciliationFlag[],
+          discountCodes: (discountsRes.data ?? []) as unknown as AdminDiscountCode[],
+          referralPartners: (partnersRes.data ?? []) as unknown as AdminReferralPartner[],
+          referralConversions: (conversionsRes.data ?? []) as unknown as AdminReferralConversion[],
+          completionTemplates,
+          milestoneInfo,
+          fyCapturedTotal,
+          allTimeTotal,
+          currentFy: `${fyStartYear}-${String((fyStartYear + 1) % 100).padStart(2, "0")}`,
+        },
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[adminGetCommerceDashboard] error:", msg);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminSaveCommerceSettings = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string; settings: Record<string, unknown> }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const payload = {
+        ...data.settings,
+        updated_at: new Date().toISOString(),
+      };
+
+      // If community_url changed from empty to non-empty, record community_set_at
+      if (payload["community_url"] && typeof payload["community_url"] === "string" && payload["community_url"].trim() !== "") {
+        payload["community_set_at"] = new Date().toISOString();
+      }
+
+      const { error } = await db
+        .from("commerce_settings" as never)
+        .update(payload as never)
+        .eq("id" as never, 1 as never);
+
+      if (error) {
+        return { ok: false as const, error: error.message };
+      }
+
+      return { ok: true as const };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminProcessRefund = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string; orderId: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const { data: order } = await db
+        .from("orders" as never)
+        .select("*")
+        .eq("id" as never, data.orderId as never)
+        .single();
+
+      if (!order) {
+        return { ok: false as const, error: "Order not found." };
+      }
+
+      const ord = order as any;
+      if (!ord.razorpay_payment_id) {
+        return { ok: false as const, error: "Order has no Razorpay payment ID on record." };
+      }
+
+      // 1. Initiate refund through Razorpay REST API
+      const { initiateRazorpayRefund } = await import("./commerce/razorpay.server");
+      const rzpRefund = await initiateRazorpayRefund(ord.razorpay_payment_id);
+
+      if (!rzpRefund.ok) {
+        return { ok: false as const, error: rzpRefund.error || "Razorpay refund initiation failed." };
+      }
+
+      // 2. Revoke entitlements in Supabase atomically
+      const { data: revokeResult, error: revokeError } = await (db.rpc as any)(
+        "revoke_entitlement_on_refund",
+        {
+          p_order_id: ord.id,
+        },
+      );
+
+      if (revokeError) {
+        return { ok: false as const, error: revokeError.message };
+      }
+
+      return { ok: true as const, refundId: rzpRefund.refundId };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminCreateManualGrant = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      email: string;
+      name?: string;
+      phone?: string;
+      productId: string;
+      reasonNote: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    if (!data.reasonNote || !data.reasonNote.trim()) {
+      return { ok: false as const, error: "Reason note is strictly required for manual grants." };
+    }
+
+    try {
+      const { data: result, error } = await (db.rpc as any)("record_manual_grant", {
+        p_email: data.email,
+        p_name: data.name || "",
+        p_phone: data.phone || "",
+        p_product_id: data.productId,
+        p_reason_note: data.reasonNote.trim(),
+        p_admin: "admin",
+      });
+
+      if (error) {
+        return { ok: false as const, error: error.message };
+      }
+
+      return { ok: true as const, manualGrantId: result?.manual_grant_id };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminRunReconciliation = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    const { runCommerceReconciliation } = await import("./commerce/reconciliation.server");
+    return await runCommerceReconciliation();
+  });
+
+export const adminBulkUploadMembers = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string; users: Array<Record<string, unknown>> }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const { data: result, error } = await (db.rpc as any)("bulk_upload_members", {
+        p_users: data.users,
+        p_admin: "admin",
+      });
+
+      if (error) {
+        return { ok: false as const, error: error.message };
+      }
+
+      return { ok: true as const, importedCount: result?.imported_count || 0 };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminSaveDiscountCode = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      code: string;
+      discountType: string;
+      discountValue: number;
+      appliesToProducts?: string[];
+      maxUses?: number | null;
+      expiresAt?: string | null;
+      isActive: boolean;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const cleanCode = data.code.trim().toUpperCase();
+      const { error } = await db.from("discount_codes" as never).upsert(
+        {
+          code: cleanCode,
+          discount_type: data.discountType,
+          discount_value: data.discountValue,
+          applies_to_products: data.appliesToProducts || ["all"],
+          max_uses: data.maxUses ?? null,
+          expires_at: data.expiresAt ?? null,
+          is_active: data.isActive,
+        } as never,
+        { onConflict: "code" } as never,
+      );
+
+      if (error) {
+        return { ok: false as const, error: error.message };
+      }
+
+      return { ok: true as const };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminSaveReferralPartner = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      code: string;
+      partnerName: string;
+      partnerEmail: string;
+      rewardType: string;
+      rewardValue: number;
+      isActive: boolean;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const cleanCode = data.code.trim().toLowerCase();
+      const { error } = await db.from("referral_partners" as never).upsert(
+        {
+          code: cleanCode,
+          partner_name: data.partnerName.trim(),
+          partner_email: data.partnerEmail.trim().toLowerCase(),
+          reward_type: data.rewardType,
+          reward_value: data.rewardValue,
+          is_active: data.isActive,
+        } as never,
+        { onConflict: "code" } as never,
+      );
+
+      if (error) {
+        return { ok: false as const, error: error.message };
+      }
+
+      return { ok: true as const };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export interface AdminCompletionTemplate {
+  id: string;
+  slug: string;
+  version: number;
+  html_content: string;
+  is_active: boolean;
+  uploaded_by: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export const adminSaveCompletionTemplate = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      slug: string;
+      htmlContent: string;
+      notes?: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const { data: res, error } = await (db.rpc as any)("save_completion_template", {
+        p_slug: data.slug.trim(),
+        p_html_content: data.htmlContent,
+        p_uploaded_by: "admin",
+        p_notes: data.notes || null,
+      });
+
+      if (error) {
+        return { ok: false as const, error: error.message };
+      }
+
+      return { ok: true as const, result: res };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminRollbackCompletionTemplate = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      slug: string;
+      targetVersion: number;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const { data: res, error } = await (db.rpc as any)("rollback_completion_template", {
+        p_slug: data.slug.trim(),
+        p_target_version: data.targetVersion,
+      });
+
+      if (error) {
+        return { ok: false as const, error: error.message };
+      }
+
+      return { ok: true as const, result: res };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+// PROMPT 4: MESSAGING ADMIN FUNCTIONS
+export const adminGetMessagingData = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const { seedMessageTemplates } = await import("./messaging/template-registry.server");
+      await seedMessageTemplates();
+
+      const [templatesRes, scheduledRes, logsRes, suppressionsRes, settingsRes] = await Promise.all([
+        db.from("message_templates" as never).select("*").order("channel" as never, { ascending: true }),
+        db.from("scheduled_messages" as never).select("*").order("scheduled_for" as never, { ascending: false }).limit(200),
+        db.from("message_send_logs" as never).select("*").order("created_at" as never, { ascending: false }).limit(200),
+        db.from("communication_suppressions" as never).select("*").order("created_at" as never, { ascending: false }).limit(100),
+        db.from("commerce_settings" as never).select("messaging_test_mode, test_recipient_email, test_recipient_phone").eq("id" as never, 1).maybeSingle(),
+      ]);
+
+      return {
+        ok: true as const,
+        templates: (templatesRes.data ?? []) as any[],
+        scheduled: (scheduledRes.data ?? []) as any[],
+        logs: (logsRes.data ?? []) as any[],
+        suppressions: (suppressionsRes.data ?? []) as any[],
+        settings: (settingsRes.data as any) || {},
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminSaveMessageTemplate = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      key: string;
+      subject?: string;
+      body: string;
+      isActive: boolean;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const { error } = await db
+        .from("message_templates" as never)
+        .update({
+          subject: data.subject || null,
+          body: data.body,
+          is_active: data.isActive,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("key" as never, data.key);
+
+      if (error) return { ok: false as const, error: error.message };
+      return { ok: true as const };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminToggleMessagingSettings = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      testMode: boolean;
+      testEmail?: string;
+      testPhone?: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const { error } = await db
+        .from("commerce_settings" as never)
+        .update({
+          messaging_test_mode: data.testMode,
+          test_recipient_email: data.testEmail || "dodhia.milan@gmail.com",
+          test_recipient_phone: data.testPhone || "+919820000000",
+        } as never)
+        .eq("id" as never, 1);
+
+      if (error) return { ok: false as const, error: error.message };
+      return { ok: true as const };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminUploadAttendanceCsv = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      sessionDate: string;
+      csvContent: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const lines = data.csvContent.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      let matchedCount = 0;
+      let unmatchedCount = 0;
+      const parsedAttendees: Array<{ email: string; phone?: string; matched: boolean }> = [];
+
+      for (const line of lines) {
+        // Simple comma split
+        const parts = line.split(",").map((p) => p.trim().replace(/^["']|["']$/g, ""));
+        const email = parts[0]?.toLowerCase();
+        const phone = parts[1] || "";
+
+        if (email && email.includes("@")) {
+          // Check match against registrations
+          const { data: reg } = await db
+            .from("registrations" as never)
+            .select("id")
+            .eq("email" as never, email)
+            .maybeSingle();
+
+          const isMatched = Boolean(reg);
+          if (isMatched) matchedCount++;
+          else unmatchedCount++;
+
+          parsedAttendees.push({ email, phone, matched: isMatched });
+
+          // Record attendance record
+          await db.from("attendance_records" as never).upsert(
+            {
+              email,
+              phone: phone || null,
+              session_date: data.sessionDate,
+            } as never,
+            { onConflict: "email" } as never
+          );
+        }
+      }
+
+      return {
+        ok: true as const,
+        total: parsedAttendees.length,
+        matchedCount,
+        unmatchedCount,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+
+
+

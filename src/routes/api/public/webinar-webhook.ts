@@ -104,6 +104,53 @@ export async function handleWebinarWebhookRequest(request: Request): Promise<Res
           if (!matched) {
             console.log("webinar-webhook: no matching registration for", email);
           }
+
+          // Prompt 4: Record attendee in attendance_records and schedule 11:00 AM IST follow-up if attended
+          if (status === "attended") {
+            try {
+              // Ensure deduplication: check if person ever attended or ever received follow-up
+              const { data: existingAtt } = await db
+                .from("attendance_records" as never)
+                .select("id, followup_sent")
+                .eq("email" as never, email.toLowerCase())
+                .maybeSingle();
+
+              if (!existingAtt) {
+                await db.from("attendance_records" as never).insert({
+                  email: email.toLowerCase(),
+                  session_date: sessionDate,
+                } as never);
+
+                // Schedule follow-up at 11:00 AM IST tomorrow
+                const tomorrow11Am = new Date();
+                tomorrow11Am.setDate(tomorrow11Am.getDate() + 1);
+                tomorrow11Am.setUTCHours(5, 30, 0, 0); // 11:00 AM IST
+
+                // Check if user already owns Silver or MRC before scheduling
+                const { hasActiveAccess } = await import("@/lib/commerce/pricing.server");
+                const hasSilver = await hasActiveAccess(email.toLowerCase(), "silver");
+                const hasMrc = await hasActiveAccess(email.toLowerCase(), "money_reality_check");
+
+                if (!hasSilver && !hasMrc) {
+                  // Schedule Email follow-up
+                  await db.from("scheduled_messages" as never).insert({
+                    recipient_email: email.toLowerCase(),
+                    template_key: "mrm_reality_check_followup_email",
+                    channel: "email",
+                    category: "marketing",
+                    scheduled_for: tomorrow11Am.toISOString(),
+                    status: "pending",
+                    context_payload: {
+                      first_name: email.split("@")[0],
+                      checkout_mrc_url: `https://onepageplan.in/checkout/money-reality-check?email=${encodeURIComponent(email.toLowerCase())}`,
+                    },
+                  } as never);
+                }
+              }
+            } catch (attErr) {
+              console.warn("[Webinar Webhook] Error recording attendance record:", attErr);
+            }
+          }
         } catch (error) {
           console.error("webinar-webhook error", error);
         }

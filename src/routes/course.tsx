@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Lock,
@@ -66,7 +66,7 @@ export const checkAccessFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const cleanEmail = (data.email || "").trim().toLowerCase();
     if (!cleanEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(cleanEmail)) {
-      return { ok: false, hasAccess: false, error: "invalid_email" };
+      return { ok: false, hasAccess: false, error: "invalid_email", tiers: null };
     }
 
     // Owner / Creator & Admin bypass for review & testing
@@ -81,26 +81,48 @@ export const checkAccessFn = createServerFn({ method: "POST" })
         hasAccess: true,
         email: cleanEmail,
         isAdmin: true,
+        tiers: { canViewMrc: true, canViewSilver: true, canViewGold: true, canViewDiamond: true },
       };
     }
 
+    const { getMemberEntitledTiers } = await import("@/lib/commerce/video-access.server");
+    const tiers = await getMemberEntitledTiers(cleanEmail);
+    const hasAnyTier = tiers.canViewMrc || tiers.canViewSilver || tiers.canViewGold || tiers.canViewDiamond;
+
+    if (hasAnyTier) {
+      return {
+        ok: true,
+        hasAccess: true,
+        email: cleanEmail,
+        tiers,
+      };
+    }
+
+    // Fallback: check legacy course access
     const { createPublicServerClient } = await import("@/lib/supabase-public.server");
     const db = createPublicServerClient();
-
-    const { data: hasAccess, error } = await (db.rpc as any)("check_course_access", {
+    const { data: legacyAccess } = await (db.rpc as any)("check_course_access", {
       p_email: cleanEmail,
     });
 
-    if (error) {
-      console.error("[Course Access] Lookup failed:", error.message);
-      return { ok: false, hasAccess: false, error: "lookup_failed" };
-    }
+    const hasAccess = Boolean(legacyAccess);
 
     return {
       ok: true,
-      hasAccess: Boolean(hasAccess),
+      hasAccess,
       email: cleanEmail,
+      tiers: hasAccess ? { canViewMrc: true, canViewSilver: true, canViewGold: false, canViewDiamond: false } : null,
     };
+  });
+
+export const getLessonVideoFn = createServerFn({ method: "POST" })
+  .inputValidator((data: { email: string; lessonId: string }) => data)
+  .handler(async ({ data }) => {
+    const { getEntitledLessonVideo } = await import("@/lib/commerce/video-access.server");
+    return await getEntitledLessonVideo({
+      email: data.email,
+      lessonId: data.lessonId,
+    });
   });
 
 export type CourseMaterial = {
@@ -126,13 +148,143 @@ export type CourseLesson = {
 
 export type CourseSection = {
   id: string;
-  category: "core" | "implementation" | "bonuses";
+  category: "mrc" | "core" | "implementation" | "bonuses";
   categoryLabel: string;
   sectionTitle: string;
   lessons: CourseLesson[];
 };
 
 export const COURSE_SECTIONS: CourseSection[] = [
+  {
+    id: "sec-mrc",
+    category: "mrc",
+    categoryLabel: "Money Reality Check",
+    sectionTitle: "Money Reality Check: 12 Diagnostic Sessions",
+    lessons: [
+      {
+        id: "mrc-01",
+        title: "Session 1: Unearthing Scattered Bank Accounts & Folios",
+        duration: "15 mins",
+        durationSeconds: 900,
+        minWatchSeconds: 60,
+        desc: "Systematically tracking every bank account, FD, and folio.",
+        provider: "bigvu",
+        materials: [{ title: "Bank & Folio Diagnostic Sheet (PDF)", type: "pdf", url: "/assets/Money-Audit-Worksheet.pdf" }],
+        takeaways: ["Identify idle savings accounts", "Locate lost MF folios"],
+      },
+      {
+        id: "mrc-02",
+        title: "Session 2: Real Asset vs Nominal Asset Clarity",
+        duration: "18 mins",
+        durationSeconds: 1080,
+        minWatchSeconds: 60,
+        desc: "Separating wealth that beats inflation from wealth that depreciates.",
+        provider: "bigvu",
+        materials: [{ title: "Asset Categorization Matrix (XLSX)", type: "excel", url: "/assets/Real-Return-Calculator.xlsx" }],
+        takeaways: ["Understand asset drag", "Calculate real inflation"],
+      },
+      {
+        id: "mrc-03",
+        title: "Session 3: The 30% Tax Leak in Traditional Fixed Deposits",
+        duration: "20 mins",
+        durationSeconds: 1200,
+        minWatchSeconds: 60,
+        desc: "Why FD returns after highest slab tax yield negative purchasing power.",
+        provider: "bigvu",
+        takeaways: ["Tax slab impact on debt", "Alternative tax-efficient instruments"],
+      },
+      {
+        id: "mrc-04",
+        title: "Session 4: The 4 Core Financial Diagnostic Tools",
+        duration: "22 mins",
+        durationSeconds: 1320,
+        minWatchSeconds: 60,
+        desc: "Introduction to the 4 shared diagnostic frameworks.",
+        provider: "bigvu",
+        takeaways: ["Master the audit sheet", "Run your first debt sanity check"],
+      },
+      {
+        id: "mrc-05",
+        title: "Session 5: Emergency Fund Math vs Emotional Buffers",
+        duration: "16 mins",
+        durationSeconds: 960,
+        minWatchSeconds: 60,
+        desc: "How many months of runway you actually need in high-liquidity assets.",
+        provider: "bigvu",
+        takeaways: ["Define 6-month runway", "Eliminate panic-driven cash piles"],
+      },
+      {
+        id: "mrc-06",
+        title: "Session 6: High-Interest Debt Triage & Rapid Elimination",
+        duration: "19 mins",
+        durationSeconds: 1140,
+        minWatchSeconds: 60,
+        desc: "Prioritizing personal loans, credit card balances, and auto debt.",
+        provider: "bigvu",
+        takeaways: ["Avalanche vs Snowball method", "Refinancing high APR obligations"],
+      },
+      {
+        id: "mrc-07",
+        title: "Session 7: Insurance Check: Term vs Investment Traps",
+        duration: "25 mins",
+        durationSeconds: 1500,
+        minWatchSeconds: 60,
+        desc: "Separating pure risk protection from low-yield endowment policies.",
+        provider: "bigvu",
+        takeaways: ["Calculating pure term cover", "Exiting toxic ULIPs"],
+      },
+      {
+        id: "mrc-08",
+        title: "Session 8: Medical Coverage Gaps & Super Top-Up Setup",
+        duration: "21 mins",
+        durationSeconds: 1260,
+        minWatchSeconds: 60,
+        desc: "Why base corporate coverage fails during catastrophic illness.",
+        provider: "bigvu",
+        takeaways: ["Deductible optimization", "Restoration and room rent limits"],
+      },
+      {
+        id: "mrc-09",
+        title: "Session 9: Single-Source Risk: Salary vs Sinking Funds",
+        duration: "17 mins",
+        durationSeconds: 1020,
+        minWatchSeconds: 60,
+        desc: "Decoupling household expenses from day 1 paycheck arrival.",
+        provider: "bigvu",
+        takeaways: ["Sinking fund segregation", "Smoothing lumpy yearly costs"],
+      },
+      {
+        id: "mrc-10",
+        title: "Session 10: Nomination vs Legal Heir Clarity",
+        duration: "23 mins",
+        durationSeconds: 1380,
+        minWatchSeconds: 60,
+        desc: "Why nominees are only caretakers and how to avoid estate disputes.",
+        provider: "bigvu",
+        takeaways: ["Nominee rights vs succession", "Joint account holding types"],
+      },
+      {
+        id: "mrc-11",
+        title: "Session 11: The Thursday Live Clarity Session Preparation",
+        duration: "15 mins",
+        durationSeconds: 900,
+        minWatchSeconds: 60,
+        desc: "How to bring your diagnostic worksheet questions to the live session.",
+        provider: "bigvu",
+        takeaways: ["Formulating high-impact questions", "Guest seat guidelines"],
+      },
+      {
+        id: "mrc-12",
+        title: "Session 12: Transitioning from Diagnostic to Execution",
+        duration: "24 mins",
+        durationSeconds: 1440,
+        minWatchSeconds: 60,
+        desc: "How the 30-day Silver upgrade path integrates full portfolio pruning.",
+        provider: "bigvu",
+        takeaways: ["The 30-day upgrade advantage", "Next steps for execution"],
+      },
+    ],
+  },
   {
     id: "sec-core",
     category: "core",
@@ -144,10 +296,9 @@ export const COURSE_SECTIONS: CourseSection[] = [
         title: "Module 1: The Consolidated Money Picture",
         duration: "45 mins",
         durationSeconds: 2700,
-        minWatchSeconds: 120, // 2 mins requirement (or instant completion click)
+        minWatchSeconds: 120,
         desc: "Unearth the accounts you forgot existed. Calculate your real asset-to-liability ratio on one single sheet without financial jargon.",
         provider: "bigvu",
-        videoUrl: "https://desk.bigvu.tv/embed/6828cee3fbf28abcfe211466/6831ae85078adf5a997bcfea",
         materials: [
           { title: "Consolidated Money Audit Sheet (PDF)", type: "pdf", url: "/assets/Money-Audit-Worksheet.pdf", size: "1.4 MB" },
           { title: "Net Worth & Account Aggregator (XLSX)", type: "excel", url: "/assets/Real-Return-Calculator.xlsx", size: "320 KB" },
@@ -166,7 +317,6 @@ export const COURSE_SECTIONS: CourseSection[] = [
         minWatchSeconds: 120,
         desc: "Why doubling your money in 10 years is actually a negative 1% real return. Calculating the true after-tax, after-inflation numbers.",
         provider: "bigvu",
-        videoUrl: "https://desk.bigvu.tv/embed/6828cee3fbf28abcfe211466/6831ae85078adf5a997bcfea",
         materials: [
           { title: "Inflation & Tax Drag Interactive Model (XLSX)", type: "excel", url: "/assets/Real-Return-Calculator.xlsx", size: "410 KB" },
           { title: "Tax Slabs & Real Return Benchmark Guide (PDF)", type: "pdf", url: "/assets/Money-Audit-Worksheet.pdf", size: "850 KB" },
@@ -185,7 +335,6 @@ export const COURSE_SECTIONS: CourseSection[] = [
         minWatchSeconds: 120,
         desc: "The single legal clause that decides whether insurance payouts land in your family's hands or creditors' hands.",
         provider: "bigvu",
-        videoUrl: "https://desk.bigvu.tv/embed/6828cee3fbf28abcfe211466/6831ae85078adf5a997bcfea",
         materials: [
           { title: "MWP Act Endorsement Template (PDF)", type: "pdf", url: "/assets/Money-Audit-Worksheet.pdf", size: "520 KB" },
           { title: "Family Nomination & Transmission Checklist", type: "template", url: "/assets/Money-Audit-Worksheet.pdf", size: "640 KB" },
@@ -204,7 +353,6 @@ export const COURSE_SECTIONS: CourseSection[] = [
         minWatchSeconds: 120,
         desc: "Synthesizing everything into a single, unambiguous document that removes money anxiety permanently.",
         provider: "bigvu",
-        videoUrl: "https://desk.bigvu.tv/embed/6828cee3fbf28abcfe211466/6831ae85078adf5a997bcfea",
         materials: [
           { title: "The Master One Page Plan Template (Word / Docx)", type: "template", url: "/assets/Money-Audit-Worksheet.pdf", size: "290 KB" },
           { title: "Emergency Family Playbook & Contact Hierarchy", type: "pdf", url: "/assets/Money-Audit-Worksheet.pdf", size: "480 KB" },
@@ -231,7 +379,6 @@ export const COURSE_SECTIONS: CourseSection[] = [
         minWatchSeconds: 90,
         desc: "Step-by-step guidance on closing redundant bank accounts, consolidating 14 mutual fund schemes into 3-4 clean index funds, and pruning toxic policies.",
         provider: "bigvu",
-        videoUrl: "https://desk.bigvu.tv/embed/6828cee3fbf28abcfe211466/6831ae85078adf5a997bcfea",
         materials: [
           { title: "Portfolio Pruning & Capital Gains Offset Plan (XLSX)", type: "excel", url: "/assets/Real-Return-Calculator.xlsx", size: "380 KB" },
         ],
@@ -248,7 +395,6 @@ export const COURSE_SECTIONS: CourseSection[] = [
         minWatchSeconds: 90,
         desc: "Automating savings on day 1 of every month so you never have to think about budgeting or restricting everyday lifestyle expenses.",
         provider: "bigvu",
-        videoUrl: "https://desk.bigvu.tv/embed/6828cee3fbf28abcfe211466/6831ae85078adf5a997bcfea",
         materials: [
           { title: "3-Account Automated Flowchart (PDF)", type: "pdf", url: "/assets/Money-Audit-Worksheet.pdf", size: "620 KB" },
         ],
@@ -273,7 +419,6 @@ export const COURSE_SECTIONS: CourseSection[] = [
         minWatchSeconds: 120,
         desc: "Drafting a legally binding Will in India without expensive lawyer retainers. Witnessing, executor appointments, and digital asset succession.",
         provider: "bigvu",
-        videoUrl: "https://desk.bigvu.tv/embed/6828cee3fbf28abcfe211466/6831ae85078adf5a997bcfea",
         materials: [
           { title: "Simple Indian Will Standard Draft (Word / Docx)", type: "template", url: "/assets/Money-Audit-Worksheet.pdf", size: "340 KB" },
           { title: "Estate Planning Dos & Don'ts Checklist (PDF)", type: "pdf", url: "/assets/Money-Audit-Worksheet.pdf", size: "510 KB" },
@@ -291,7 +436,6 @@ export const COURSE_SECTIONS: CourseSection[] = [
         minWatchSeconds: 120,
         desc: "Navigating super-top-ups, room-rent capping sub-limits, modern treatments, and restoring family health reserves without overpaying premiums.",
         provider: "bigvu",
-        videoUrl: "https://desk.bigvu.tv/embed/6828cee3fbf28abcfe211466/6831ae85078adf5a997bcfea",
         materials: [
           { title: "Health Policy Evaluation Scorecard (XLSX)", type: "excel", url: "/assets/Real-Return-Calculator.xlsx", size: "290 KB" },
         ],
@@ -431,6 +575,15 @@ function CoursePortalPage() {
   const [checking, setChecking] = useState(false);
   const [errorNotice, setErrorNotice] = useState("");
 
+  const [memberTiers, setMemberTiers] = useState<{
+    canViewMrc?: boolean;
+    canViewSilver?: boolean;
+    canViewGold?: boolean;
+    canViewDiamond?: boolean;
+  } | null>(null);
+  const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+
   // Navigation state: selected section & lesson
   const [activeSectionId, setActiveSectionId] = useState<string>("sec-core");
   const [activeLessonId, setActiveLessonId] = useState<string>("core-1");
@@ -470,12 +623,21 @@ function CoursePortalPage() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [commentSuccess, setCommentSuccess] = useState(false);
 
+  // Filter sections by entitled tiers: MRC only sees sec-mrc; Silver sees Silver + MRC; etc.
+  const displayedSections = useMemo(() => {
+    if (!memberTiers) return COURSE_SECTIONS;
+    if (memberTiers.canViewMrc && !memberTiers.canViewSilver) {
+      return COURSE_SECTIONS.filter((s) => s.category === "mrc");
+    }
+    return COURSE_SECTIONS;
+  }, [memberTiers]);
+
   // Compute active lesson, all ordered lessons, and unlock status
-  const allLessons = COURSE_SECTIONS.flatMap((s) => s.lessons);
+  const allLessons = displayedSections.flatMap((s) => s.lessons);
   const activeSection =
-    COURSE_SECTIONS.find((s) => s.id === activeSectionId) ?? COURSE_SECTIONS[0]!;
+    displayedSections.find((s) => s.id === activeSectionId) ?? displayedSections[0] ?? COURSE_SECTIONS[0]!;
   const activeLesson =
-    allLessons.find((l) => l.id === activeLessonId) ?? activeSection.lessons[0] ?? allLessons[0]!;
+    allLessons.find((l) => l.id === activeLessonId) ?? activeSection?.lessons[0] ?? COURSE_SECTIONS[0]!.lessons[0]!;
 
   const currentLessonIndex = allLessons.findIndex((l) => l.id === activeLesson.id);
   const nextLesson = allLessons[currentLessonIndex + 1];
@@ -558,6 +720,13 @@ function CoursePortalPage() {
 
       setActiveEmail(res.email || clean);
       setHasAccess(res.hasAccess);
+      if (res.tiers) {
+        setMemberTiers(res.tiers);
+        if (res.tiers.canViewMrc && !res.tiers.canViewSilver) {
+          setActiveSectionId("sec-mrc");
+          setActiveLessonId("mrc-01");
+        }
+      }
       if (res.hasAccess && typeof window !== "undefined") {
         try {
           window.localStorage.setItem("opp_course_email", clean);
@@ -571,6 +740,43 @@ function CoursePortalPage() {
       setChecking(false);
     }
   };
+
+  // Dynamically resolve protected BIGVU embed URL for active lesson
+  useEffect(() => {
+    let isMounted = true;
+    if (!activeEmail || !hasAccess) {
+      setCurrentVideoUrl(null);
+      setVideoError(null);
+      return;
+    }
+
+    getLessonVideoFn({ data: { email: activeEmail, lessonId: activeLesson.id } })
+      .then((res) => {
+        if (isMounted) {
+          if (res.ok && res.lesson?.embedUrl) {
+            setCurrentVideoUrl(res.lesson.embedUrl);
+            setVideoError(null);
+          } else {
+            setCurrentVideoUrl(null);
+            setVideoError(
+              res.error === "forbidden_unentitled"
+                ? "This lesson is exclusive to a higher membership tier. Upgrade to unlock."
+                : "Unable to load video stream.",
+            );
+          }
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setCurrentVideoUrl(null);
+          setVideoError("Network error loading video stream.");
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeLesson.id, activeEmail, hasAccess]);
 
   const handleVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -749,10 +955,12 @@ function CoursePortalPage() {
             <div className="space-y-6">
               {/* Category Filter Tabs */}
               <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
-                {COURSE_SECTIONS.map((sec) => {
+                {displayedSections.map((sec) => {
                   const isSecActive = sec.id === activeSectionId;
                   const Icon =
-                    sec.category === "core"
+                    sec.category === "mrc"
+                      ? Award
+                      : sec.category === "core"
                       ? BookOpen
                       : sec.category === "implementation"
                       ? Zap
@@ -784,18 +992,74 @@ function CoursePortalPage() {
                 })}
               </div>
 
+              {/* Money Reality Check to Silver Upgrade Banner */}
+              {activeSection.id === "sec-mrc" || (memberTiers?.canViewMrc && !memberTiers?.canViewSilver) ? (
+                <div className="rounded-xl border border-[var(--brass)]/40 bg-[var(--brass)]/10 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-[var(--brass)] uppercase tracking-wider">
+                      Money Reality Check Upgrade Window
+                    </p>
+                    <p className="text-sm font-semibold text-foreground">
+                      Upgrade to The Calm Money System (Silver)
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Your ₹601 payment counts fully towards Silver. Lock in your cohort seat today.
+                    </p>
+                  </div>
+                  <Link
+                    to="/upgrade/silver"
+                    className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 shrink-0"
+                  >
+                    Upgrade to Silver (Credit Applied) →
+                  </Link>
+                </div>
+              ) : null}
+
+              {/* Silver Completer Gold Offer Banner */}
+              {memberTiers?.canViewSilver && !memberTiers?.canViewGold ? (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-primary uppercase tracking-wider">
+                      Gold Completer Upgrade Path
+                    </p>
+                    <p className="text-sm font-semibold text-foreground">
+                      Ready for Advanced Wealth Transmission & Private Office?
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Silver completers who submit on time qualify for the special upgrade price of ₹18,001.
+                    </p>
+                  </div>
+                  <Link
+                    to="/upgrade/gold"
+                    className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 shrink-0"
+                  >
+                    View Special Upgrade Price →
+                  </Link>
+                </div>
+              ) : null}
+
               {/* Main Content Grid: Video + Details on Left, Curriculum Sidebar on Right */}
               <div className="grid gap-8 lg:grid-cols-[68fr_32fr]">
                 {/* LEFT COLUMN: Player, Materials, Notes, Discussion */}
                 <div className="space-y-6">
                   {/* Video Player */}
                   <div className="space-y-3">
-                    <ProtectedVideoPlayer
-                      videoId={activeLesson.videoId}
-                      url={activeLesson.videoUrl}
-                      provider={activeLesson.provider}
-                      title={activeLesson.title}
-                    />
+                    {videoError ? (
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-center space-y-2">
+                        <Lock className="h-8 w-8 text-amber-600 mx-auto opacity-80" />
+                        <p className="text-sm font-semibold text-amber-900">{videoError}</p>
+                        <p className="text-xs text-amber-700">
+                          Upgrade to Silver or Gold to unlock the full execution curriculum.
+                        </p>
+                      </div>
+                    ) : (
+                      <ProtectedVideoPlayer
+                        videoId={activeLesson.videoId}
+                        url={currentVideoUrl || undefined}
+                        provider={activeLesson.provider}
+                        title={activeLesson.title}
+                      />
+                    )}
 
                     {/* Interactive Watch-Time Tracker & Progression Unlock Bar */}
                     <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-2.5">
@@ -1054,7 +1318,7 @@ function CoursePortalPage() {
 
                     {/* Accordion / List of all sections and lessons */}
                     <div className="space-y-4">
-                      {COURSE_SECTIONS.map((sec) => (
+                      {displayedSections.map((sec) => (
                         <div key={sec.id} className="space-y-1.5">
                           <p className="text-[11px] font-bold text-foreground/80 uppercase tracking-wider px-1">
                             {sec.sectionTitle}

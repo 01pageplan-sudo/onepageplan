@@ -1616,3 +1616,499 @@ CREATE POLICY "Public and anon update on whatsapp_inbound_messages" ON public.wh
 
 GRANT ALL ON public.whatsapp_inbound_messages TO anon, service_role;
 
+-- ==============================================================================
+-- COMMERCE FOUNDATION: Products, Tiers, Multi-Source Access Grants, Invoices,
+-- Discounts, Referral Tracking, Bulk Upload & Events
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.commerce_settings (
+  id INT PRIMARY KEY DEFAULT 1,
+  legal_entity_name TEXT NOT NULL DEFAULT 'Manrrs Wellness LLP',
+  registered_address TEXT NOT NULL DEFAULT 'India',
+  gstin TEXT DEFAULT NULL,
+  sac_code TEXT DEFAULT NULL,
+  community_url TEXT DEFAULT NULL,
+  community_set_at TIMESTAMPTZ DEFAULT NULL,
+  gold_on_sale BOOLEAN NOT NULL DEFAULT false,
+  diamond_on_sale BOOLEAN NOT NULL DEFAULT false,
+  mrc_base_price INT NOT NULL DEFAULT 601,
+  silver_base_price INT NOT NULL DEFAULT 6001,
+  gold_base_price INT NOT NULL DEFAULT 24000,
+  gold_completer_price INT NOT NULL DEFAULT 18001,
+  diamond_base_price INT NOT NULL DEFAULT 60001,
+  diamond_renewal_price INT NOT NULL DEFAULT 60001,
+  bonus_cohort_count INT NOT NULL DEFAULT 2,
+  bonus_per_cohort_count INT NOT NULL DEFAULT 10,
+  late_joiner_cohort_id UUID DEFAULT NULL,
+  silver_milestones JSONB NOT NULL DEFAULT '[{"threshold": 100, "price": 7001}]'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT commerce_settings_single_row CHECK (id = 1)
+);
+
+INSERT INTO public.commerce_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS public.cohorts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cohort_number INT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  start_date TIMESTAMPTZ NOT NULL,
+  submission_deadline TIMESTAMPTZ NOT NULL,
+  is_late_joiner_open BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO public.cohorts (cohort_number, name, start_date, submission_deadline)
+VALUES 
+  (1, 'Cohort 1', now() + interval '14 days', now() + interval '35 days'),
+  (2, 'Cohort 2', now() + interval '45 days', now() + interval '66 days'),
+  (3, 'Cohort 3', now() + interval '75 days', now() + interval '96 days')
+ON CONFLICT (cohort_number) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS public.discount_codes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT NOT NULL UNIQUE,
+  discount_type TEXT NOT NULL DEFAULT 'fixed',
+  discount_value INT NOT NULL,
+  applies_to_products TEXT[] NOT NULL DEFAULT ARRAY['all'],
+  max_uses INT DEFAULT NULL,
+  used_count INT NOT NULL DEFAULT 0,
+  expires_at TIMESTAMPTZ DEFAULT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.referral_partners (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT NOT NULL UNIQUE,
+  partner_name TEXT NOT NULL,
+  partner_email TEXT NOT NULL,
+  reward_type TEXT NOT NULL DEFAULT 'percentage',
+  reward_value INT NOT NULL DEFAULT 10,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  razorpay_order_id TEXT UNIQUE,
+  razorpay_payment_id TEXT UNIQUE,
+  product_id TEXT NOT NULL,
+  pricing_rule_applied TEXT NOT NULL,
+  base_price INT NOT NULL,
+  credit_applied INT NOT NULL DEFAULT 0,
+  discount_code_applied TEXT DEFAULT NULL,
+  discount_amount INT NOT NULL DEFAULT 0,
+  referral_code_applied TEXT DEFAULT NULL,
+  amount_charged INT NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  buyer_name TEXT,
+  buyer_email TEXT NOT NULL,
+  buyer_phone TEXT,
+  consents_captured JSONB NOT NULL DEFAULT '{}'::jsonb,
+  traffic_source JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status TEXT NOT NULL DEFAULT 'created',
+  price_expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '30 minutes'),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  captured_at TIMESTAMPTZ,
+  refunded_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS public.referral_conversions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  partner_id UUID REFERENCES public.referral_partners(id) ON DELETE SET NULL,
+  order_id UUID REFERENCES public.orders(id) ON DELETE CASCADE,
+  referral_code TEXT NOT NULL,
+  buyer_email TEXT NOT NULL,
+  order_amount INT NOT NULL,
+  reward_amount INT NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.manual_grants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  name TEXT,
+  phone TEXT,
+  product_id TEXT NOT NULL,
+  reason_note TEXT NOT NULL,
+  granted_by TEXT NOT NULL DEFAULT 'admin',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.member_access_grants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  access_tier TEXT NOT NULL,
+  source_type TEXT NOT NULL,
+  parent_product TEXT,
+  order_id UUID REFERENCES public.orders(id) ON DELETE SET NULL,
+  manual_grant_id UUID REFERENCES public.manual_grants(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  starts_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ,
+  cohort_id UUID REFERENCES public.cohorts(id) ON DELETE SET NULL,
+  has_one_on_one_bonus BOOLEAN NOT NULL DEFAULT false,
+  bonus_assigned_manually BOOLEAN NOT NULL DEFAULT false,
+  thursday_seat_expires_at TIMESTAMPTZ,
+  community_access_starts_at TIMESTAMPTZ,
+  community_access_expires_at TIMESTAMPTZ,
+  locked_silver_upgrade_price INT,
+  silver_upgrade_deadline TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  revoked_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS public.invoices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID NOT NULL UNIQUE REFERENCES public.orders(id) ON DELETE CASCADE,
+  invoice_number TEXT NOT NULL UNIQUE,
+  financial_year TEXT NOT NULL,
+  document_type TEXT NOT NULL,
+  legal_entity_name TEXT NOT NULL,
+  registered_address TEXT NOT NULL,
+  gstin TEXT,
+  sac_code TEXT,
+  buyer_name TEXT,
+  buyer_email TEXT NOT NULL,
+  product_id TEXT NOT NULL,
+  product_name TEXT NOT NULL,
+  includes_description TEXT NOT NULL,
+  term_description TEXT NOT NULL,
+  base_price INT NOT NULL,
+  credit_applied INT NOT NULL DEFAULT 0,
+  special_upgrade_discount INT NOT NULL DEFAULT 0,
+  discount_amount INT NOT NULL DEFAULT 0,
+  amount_paid INT NOT NULL,
+  tax_breakup JSONB DEFAULT NULL,
+  download_token TEXT NOT NULL UNIQUE,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.commerce_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  emitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  processed BOOLEAN NOT NULL DEFAULT false,
+  processed_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS public.reconciliation_flags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  razorpay_payment_id TEXT,
+  razorpay_order_id TEXT,
+  email TEXT,
+  amount INT,
+  issue_type TEXT NOT NULL,
+  details JSONB NOT NULL DEFAULT '{}'::jsonb,
+  resolved BOOLEAN NOT NULL DEFAULT false,
+  flagged_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.course_completions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  cohort_id UUID REFERENCES public.cohorts(id) ON DELETE SET NULL,
+  completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  is_before_deadline BOOLEAN NOT NULL DEFAULT false,
+  gold_upgrade_eligible BOOLEAN NOT NULL DEFAULT false,
+  gold_upgrade_price INT NOT NULL DEFAULT 18001,
+  gold_upgrade_deadline TIMESTAMPTZ,
+  UNIQUE(email)
+);
+
+CREATE TABLE IF NOT EXISTS public.course_lessons_catalog (
+  id TEXT PRIMARY KEY,
+  tier TEXT NOT NULL,
+  title TEXT NOT NULL,
+  duration TEXT NOT NULL,
+  duration_seconds INT NOT NULL DEFAULT 1800,
+  min_watch_seconds INT NOT NULL DEFAULT 120,
+  "desc" TEXT NOT NULL,
+  embed_url TEXT NOT NULL,
+  materials JSONB NOT NULL DEFAULT '[]'::jsonb,
+  takeaways JSONB NOT NULL DEFAULT '[]'::jsonb,
+  sequence_order INT NOT NULL
+);
+
+-- ==============================================================================
+-- CHECKOUT & LEGAL PAGES CONFIGURATION
+-- ==============================================================================
+ALTER TABLE public.commerce_settings 
+  ADD COLUMN IF NOT EXISTS mrc_included_bullets TEXT DEFAULT '• Money Reality Check 12 recorded diagnostic sessions
+• 4 diagnostic calculator & audit sheets
+• 1 Thursday guest seat (valid for 60 days)
+• 60 days of community access',
+  ADD COLUMN IF NOT EXISTS silver_included_bullets TEXT DEFAULT '• The Calm Money System lifetime curriculum & missions
+• Consolidated asset & liability audit model
+• Real return & 30% tax drag calculations
+• MWP Act, nomination & legal architecture framework
+• Cohort membership & live implementation sprints',
+  ADD COLUMN IF NOT EXISTS gold_included_bullets TEXT DEFAULT '• Lifetime Silver access + complete Gold curriculum
+• Advanced wealth transmission & estate structuring
+• Direct quarterly portfolio reviews & private office sessions
+• Priority cohort positioning',
+  ADD COLUMN IF NOT EXISTS diamond_included_bullets TEXT DEFAULT '• Lifetime Silver and Gold membership
+• 12 months of direct Diamond private office advisory
+• Bespoke estate, trust & tax optimization architecture
+• Direct 1-on-1 private advisory access',
+  ADD COLUMN IF NOT EXISTS policy_terms_markdown TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS policy_privacy_markdown TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS policy_refund_markdown TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS policy_shipping_markdown TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS policy_contact_markdown TEXT DEFAULT NULL;
+
+
+
+
+
+-- COMPLETION PAGE TEMPLATES & REWARDS
+-- Migration: 20261003230000_completion_templates.sql
+-- Description: Completion page templates, versioning, rollback, token render warnings, and reward form tracking
+
+-- 1. COMPLETION PAGE TEMPLATES TABLE
+CREATE TABLE IF NOT EXISTS public.completion_page_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT NOT NULL, -- e.g. 'money-reality-check', 'silver', 'silver-upgrade', 'gold', 'diamond', 'course-complete'
+  version INT NOT NULL DEFAULT 1,
+  html_content TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  uploaded_by TEXT DEFAULT 'admin',
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cpt_slug_active ON public.completion_page_templates (slug, is_active);
+CREATE INDEX IF NOT EXISTS idx_cpt_slug_version ON public.completion_page_templates (slug, version DESC);
+
+-- Ensure only one template is active per slug at any time
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cpt_single_active_per_slug
+  ON public.completion_page_templates (slug)
+  WHERE (is_active = true);
+
+-- 2. TOKEN RENDER WARNINGS LOG
+CREATE TABLE IF NOT EXISTS public.token_render_warnings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT NOT NULL,
+  unknown_tokens JSONB NOT NULL DEFAULT '[]'::jsonb,
+  missing_values JSONB NOT NULL DEFAULT '[]'::jsonb,
+  context JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_trw_slug_created ON public.token_render_warnings (slug, created_at DESC);
+
+-- 3. EXTEND COURSE COMPLETIONS FOR REWARDS
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'course_completions' AND column_name = 'certificate_name'
+  ) THEN
+    ALTER TABLE public.course_completions 
+      ADD COLUMN certificate_name TEXT,
+      ADD COLUMN tshirt_size TEXT,
+      ADD COLUMN shipping_address TEXT,
+      ADD COLUMN reward_submitted_at TIMESTAMPTZ;
+  END IF;
+END $$;
+
+-- 4. FUNCTION TO UPLOAD OR REPLACE TEMPLATE (ATOMIC ROLLBACK / VERSION INCREMENT)
+CREATE OR REPLACE FUNCTION public.save_completion_template(
+  p_slug TEXT,
+  p_html_content TEXT,
+  p_uploaded_by TEXT DEFAULT 'admin',
+  p_notes TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_next_version INT := 1;
+  v_inserted_id UUID;
+BEGIN
+  -- Find max version for this slug
+  SELECT COALESCE(MAX(version), 0) + 1 INTO v_next_version
+  FROM public.completion_page_templates
+  WHERE slug = p_slug;
+
+  -- Deactivate previous active version
+  UPDATE public.completion_page_templates
+  SET is_active = false
+  WHERE slug = p_slug AND is_active = true;
+
+  -- Insert new active version
+  INSERT INTO public.completion_page_templates (
+    slug, version, html_content, is_active, uploaded_by, notes
+  ) VALUES (
+    p_slug, v_next_version, p_html_content, true, p_uploaded_by, p_notes
+  ) RETURNING id INTO v_inserted_id;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'id', v_inserted_id,
+    'slug', p_slug,
+    'version', v_next_version
+  );
+END;
+$$;
+
+-- 5. FUNCTION TO ROLLBACK TEMPLATE TO A PREVIOUS VERSION
+CREATE OR REPLACE FUNCTION public.rollback_completion_template(
+  p_slug TEXT,
+  p_target_version INT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Check if target version exists
+  IF NOT EXISTS (
+    SELECT 1 FROM public.completion_page_templates
+    WHERE slug = p_slug AND version = p_target_version
+  ) THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'Target version does not exist.');
+  END IF;
+
+  -- Deactivate current active
+  UPDATE public.completion_page_templates
+  SET is_active = false
+  WHERE slug = p_slug;
+
+  -- Activate target version
+  UPDATE public.completion_page_templates
+  SET is_active = true
+  WHERE slug = p_slug AND version = p_target_version;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'slug', p_slug,
+    'active_version', p_target_version
+  );
+END;
+$$;
+
+
+-- MESSAGING SYSTEM (PROMPT 4)
+-- Migration: 20261003240000_messaging_system.sql
+-- Description: Unified template registry, message scheduler, send logs, communication suppressions, and attendance tracking
+
+-- 1. MESSAGE TEMPLATES REGISTRY
+CREATE TABLE IF NOT EXISTS public.message_templates (
+  key TEXT PRIMARY KEY,
+  channel TEXT NOT NULL, -- 'email', 'whatsapp'
+  category TEXT NOT NULL, -- 'transactional', 'marketing'
+  subject TEXT, -- For emails
+  body TEXT NOT NULL, -- Email copy / Meta WhatsApp copy
+  meta_template_name TEXT, -- Meta template name (e.g. 'mrc_confirmation_wa')
+  meta_language TEXT DEFAULT 'en',
+  meta_approval_status TEXT DEFAULT 'APPROVED', -- 'APPROVED', 'PENDING', 'REJECTED', 'PAUSED'
+  variables JSONB NOT NULL DEFAULT '[]'::jsonb,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_mt_channel ON public.message_templates (channel);
+CREATE INDEX IF NOT EXISTS idx_mt_category ON public.message_templates (category);
+
+-- 2. SCHEDULED MESSAGES QUEUE
+CREATE TABLE IF NOT EXISTS public.scheduled_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  recipient_email TEXT,
+  recipient_phone TEXT,
+  recipient_name TEXT,
+  template_key TEXT NOT NULL REFERENCES public.message_templates(key) ON DELETE CASCADE,
+  channel TEXT NOT NULL, -- 'email', 'whatsapp'
+  category TEXT NOT NULL, -- 'transactional', 'marketing'
+  context_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  scheduled_for TIMESTAMPTZ NOT NULL DEFAULT now(),
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'processing', 'sent', 'delivered', 'read', 'failed', 'skipped', 'cancelled'
+  skip_reason TEXT,
+  error_message TEXT,
+  provider_message_id TEXT, -- Resend email ID or Meta WhatsApp WAMID
+  product_id TEXT,
+  order_id UUID REFERENCES public.orders(id) ON DELETE SET NULL,
+  sequence_group TEXT, -- e.g. 'mrc_upgrade_sequence', 'gold_completer_sequence', 'abandoned_recovery'
+  attempts INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  sent_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ,
+  read_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_sm_status_scheduled ON public.scheduled_messages (status, scheduled_for);
+CREATE INDEX IF NOT EXISTS idx_sm_recipient_email ON public.scheduled_messages (lower(trim(recipient_email)));
+CREATE INDEX IF NOT EXISTS idx_sm_recipient_phone ON public.scheduled_messages (recipient_phone);
+CREATE INDEX IF NOT EXISTS idx_sm_sequence_group ON public.scheduled_messages (sequence_group);
+CREATE INDEX IF NOT EXISTS idx_sm_product_id ON public.scheduled_messages (product_id);
+
+-- 3. MESSAGE SEND LOGS
+CREATE TABLE IF NOT EXISTS public.message_send_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  scheduled_message_id UUID REFERENCES public.scheduled_messages(id) ON DELETE SET NULL,
+  template_key TEXT NOT NULL,
+  channel TEXT NOT NULL,
+  category TEXT NOT NULL,
+  recipient_email TEXT,
+  recipient_phone TEXT,
+  status TEXT NOT NULL, -- 'sent', 'delivered', 'read', 'failed', 'skipped'
+  provider TEXT NOT NULL, -- 'resend', 'meta_whatsapp'
+  provider_message_id TEXT,
+  error_message TEXT,
+  skip_reason TEXT,
+  is_test_mode BOOLEAN NOT NULL DEFAULT false,
+  payload_snapshot JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_msl_created ON public.message_send_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_msl_template ON public.message_send_logs (template_key);
+CREATE INDEX IF NOT EXISTS idx_msl_email ON public.message_send_logs (lower(trim(recipient_email)));
+
+-- 4. COMMUNICATION SUPPRESSIONS (Unsubscribe & STOP Opt-Outs)
+CREATE TABLE IF NOT EXISTS public.communication_suppressions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  identifier TEXT NOT NULL, -- Normalized email or phone digits
+  channel TEXT NOT NULL, -- 'email', 'whatsapp', 'all'
+  reason TEXT NOT NULL, -- 'user_unsubscribe', 'whatsapp_stop_reply', 'bounce', 'spam_complaint'
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(identifier, channel)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cs_identifier ON public.communication_suppressions (identifier);
+
+-- 5. ATTENDANCE DEDUPLICATION RECORDS
+CREATE TABLE IF NOT EXISTS public.attendance_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  phone TEXT,
+  session_date TEXT NOT NULL,
+  attended_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  followup_sent BOOLEAN NOT NULL DEFAULT false,
+  followup_sent_at TIMESTAMPTZ,
+  UNIQUE(email)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ar_email ON public.attendance_records (lower(trim(email)));
+
+-- 6. EXTEND COMMERCE SETTINGS FOR MESSAGING CONTROLS
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'commerce_settings' AND column_name = 'messaging_test_mode'
+  ) THEN
+    ALTER TABLE public.commerce_settings 
+      ADD COLUMN messaging_test_mode BOOLEAN NOT NULL DEFAULT true,
+      ADD COLUMN test_recipient_email TEXT DEFAULT 'dodhia.milan@gmail.com',
+      ADD COLUMN test_recipient_phone TEXT DEFAULT '+919820000000',
+      ADD COLUMN resend_from_email TEXT DEFAULT 'connect@onepageplan.in',
+      ADD COLUMN resend_from_name TEXT DEFAULT 'Milan Dodhia';
+  END IF;
+END $$;

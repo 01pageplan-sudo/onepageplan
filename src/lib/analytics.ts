@@ -22,6 +22,8 @@ const STANDARD_EVENTS = new Set([
   "CompleteRegistration",
   "Contact",
   "Subscribe",
+  "InitiateCheckout",
+  "Purchase",
 ]);
 
 export const META_PIXEL_ID =

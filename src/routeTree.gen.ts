@@ -12,16 +12,39 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ConfirmedRouteImport } from './routes/confirmed'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CourseRouteImport } from './routes/course'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as ResourcesRouteImport } from './routes/resources'
 import { Route as RoomRouteImport } from './routes/room'
+import { Route as ShippingPolicyRouteImport } from './routes/shipping-policy'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiGetWebinarMetricsRouteImport } from './routes/api/get-webinar-metrics'
 import { Route as ApiGetWebinarTokenRouteImport } from './routes/api/get-webinar-token'
+import { Route as CheckoutDiamondRouteImport } from './routes/checkout.diamond'
+import { Route as CheckoutGoldRouteImport } from './routes/checkout.gold'
+import { Route as CheckoutMoneyRealityCheckRouteImport } from './routes/checkout.money-reality-check'
+import { Route as CheckoutSilverRouteImport } from './routes/checkout.silver'
+import { Route as CompleteDiamondRouteImport } from './routes/complete.diamond'
+import { Route as CompleteGoldRouteImport } from './routes/complete.gold'
+import { Route as CompleteMoneyRealityCheckRouteImport } from './routes/complete.money-reality-check'
+import { Route as CompleteSilverRouteImport } from './routes/complete.silver'
+import { Route as CompleteSilverUpgradeRouteImport } from './routes/complete.silver-upgrade'
+import { Route as CourseCompleteRouteImport } from './routes/course.complete'
+import { Route as PaymentFailedRouteImport } from './routes/payment.failed'
+import { Route as PaymentPendingRouteImport } from './routes/payment.pending'
+import { Route as UpgradeGoldRouteImport } from './routes/upgrade.gold'
+import { Route as UpgradeSilverRouteImport } from './routes/upgrade.silver'
+import { Route as ApiCommerceCreateOrderRouteImport } from './routes/api/commerce/create-order'
+import { Route as ApiCommercePollOrderStatusRouteImport } from './routes/api/commerce/poll-order-status'
+import { Route as ApiCommerceReconcileRouteImport } from './routes/api/commerce/reconcile'
+import { Route as ApiCourseSubmitRewardRouteImport } from './routes/api/course/submit-reward'
+import { Route as ApiInvoicesTokenRouteImport } from './routes/api/invoices/$token'
 import { Route as ApiPublicEmailDispatchRouteImport } from './routes/api/public/email-dispatch'
 import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay-webhook'
 import { Route as ApiPublicResendWebhookRouteImport } from './routes/api/public/resend-webhook'
+import { Route as ApiPublicUnsubscribeRouteImport } from './routes/api/public/unsubscribe'
 import { Route as ApiPublicWebinarWebhookRouteImport } from './routes/api/public/webinar-webhook'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
 import { Route as ApiPublicZeptomailWebhookRouteImport } from './routes/api/public/zeptomail-webhook'
@@ -44,6 +67,11 @@ const ConfirmedRoute = ConfirmedRouteImport.update({
   path: '/confirmed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CourseRoute = CourseRouteImport.update({
   id: '/course',
   path: '/course',
@@ -54,6 +82,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResourcesRoute = ResourcesRouteImport.update({
   id: '/resources',
   path: '/resources',
@@ -62,6 +95,11 @@ const ResourcesRoute = ResourcesRouteImport.update({
 const RoomRoute = RoomRouteImport.update({
   id: '/room',
   path: '/room',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShippingPolicyRoute = ShippingPolicyRouteImport.update({
+  id: '/shipping-policy',
+  path: '/shipping-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -79,6 +117,104 @@ const ApiGetWebinarTokenRoute = ApiGetWebinarTokenRouteImport.update({
   path: '/api/get-webinar-token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckoutDiamondRoute = CheckoutDiamondRouteImport.update({
+  id: '/checkout/diamond',
+  path: '/checkout/diamond',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutGoldRoute = CheckoutGoldRouteImport.update({
+  id: '/checkout/gold',
+  path: '/checkout/gold',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutMoneyRealityCheckRoute =
+  CheckoutMoneyRealityCheckRouteImport.update({
+    id: '/checkout/money-reality-check',
+    path: '/checkout/money-reality-check',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CheckoutSilverRoute = CheckoutSilverRouteImport.update({
+  id: '/checkout/silver',
+  path: '/checkout/silver',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompleteDiamondRoute = CompleteDiamondRouteImport.update({
+  id: '/complete/diamond',
+  path: '/complete/diamond',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompleteGoldRoute = CompleteGoldRouteImport.update({
+  id: '/complete/gold',
+  path: '/complete/gold',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompleteMoneyRealityCheckRoute =
+  CompleteMoneyRealityCheckRouteImport.update({
+    id: '/complete/money-reality-check',
+    path: '/complete/money-reality-check',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CompleteSilverRoute = CompleteSilverRouteImport.update({
+  id: '/complete/silver',
+  path: '/complete/silver',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompleteSilverUpgradeRoute = CompleteSilverUpgradeRouteImport.update({
+  id: '/complete/silver-upgrade',
+  path: '/complete/silver-upgrade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CourseCompleteRoute = CourseCompleteRouteImport.update({
+  id: '/complete',
+  path: '/complete',
+  getParentRoute: () => CourseRoute,
+} as any)
+const PaymentFailedRoute = PaymentFailedRouteImport.update({
+  id: '/payment/failed',
+  path: '/payment/failed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentPendingRoute = PaymentPendingRouteImport.update({
+  id: '/payment/pending',
+  path: '/payment/pending',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpgradeGoldRoute = UpgradeGoldRouteImport.update({
+  id: '/upgrade/gold',
+  path: '/upgrade/gold',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpgradeSilverRoute = UpgradeSilverRouteImport.update({
+  id: '/upgrade/silver',
+  path: '/upgrade/silver',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCommerceCreateOrderRoute = ApiCommerceCreateOrderRouteImport.update({
+  id: '/api/commerce/create-order',
+  path: '/api/commerce/create-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCommercePollOrderStatusRoute =
+  ApiCommercePollOrderStatusRouteImport.update({
+    id: '/api/commerce/poll-order-status',
+    path: '/api/commerce/poll-order-status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiCommerceReconcileRoute = ApiCommerceReconcileRouteImport.update({
+  id: '/api/commerce/reconcile',
+  path: '/api/commerce/reconcile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCourseSubmitRewardRoute = ApiCourseSubmitRewardRouteImport.update({
+  id: '/api/course/submit-reward',
+  path: '/api/course/submit-reward',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInvoicesTokenRoute = ApiInvoicesTokenRouteImport.update({
+  id: '/api/invoices/$token',
+  path: '/api/invoices/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicEmailDispatchRoute = ApiPublicEmailDispatchRouteImport.update({
   id: '/api/public/email-dispatch',
   path: '/api/public/email-dispatch',
@@ -93,6 +229,11 @@ const ApiPublicRazorpayWebhookRoute =
 const ApiPublicResendWebhookRoute = ApiPublicResendWebhookRouteImport.update({
   id: '/api/public/resend-webhook',
   path: '/api/public/resend-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicUnsubscribeRoute = ApiPublicUnsubscribeRouteImport.update({
+  id: '/api/public/unsubscribe',
+  path: '/api/public/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicWebinarWebhookRoute = ApiPublicWebinarWebhookRouteImport.update({
@@ -133,16 +274,39 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/confirmed': typeof ConfirmedRoute
-  '/course': typeof CourseRoute
+  '/contact': typeof ContactRoute
+  '/course': typeof CourseRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/resources': typeof ResourcesRoute
   '/room': typeof RoomRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
+  '/checkout/diamond': typeof CheckoutDiamondRoute
+  '/checkout/gold': typeof CheckoutGoldRoute
+  '/checkout/money-reality-check': typeof CheckoutMoneyRealityCheckRoute
+  '/checkout/silver': typeof CheckoutSilverRoute
+  '/complete/diamond': typeof CompleteDiamondRoute
+  '/complete/gold': typeof CompleteGoldRoute
+  '/complete/money-reality-check': typeof CompleteMoneyRealityCheckRoute
+  '/complete/silver': typeof CompleteSilverRoute
+  '/complete/silver-upgrade': typeof CompleteSilverUpgradeRoute
+  '/course/complete': typeof CourseCompleteRoute
+  '/payment/failed': typeof PaymentFailedRoute
+  '/payment/pending': typeof PaymentPendingRoute
+  '/upgrade/gold': typeof UpgradeGoldRoute
+  '/upgrade/silver': typeof UpgradeSilverRoute
+  '/api/commerce/create-order': typeof ApiCommerceCreateOrderRoute
+  '/api/commerce/poll-order-status': typeof ApiCommercePollOrderStatusRoute
+  '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
+  '/api/course/submit-reward': typeof ApiCourseSubmitRewardRoute
+  '/api/invoices/$token': typeof ApiInvoicesTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/zeptomail-webhook': typeof ApiPublicZeptomailWebhookRoute
@@ -154,16 +318,39 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/confirmed': typeof ConfirmedRoute
-  '/course': typeof CourseRoute
+  '/contact': typeof ContactRoute
+  '/course': typeof CourseRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/resources': typeof ResourcesRoute
   '/room': typeof RoomRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
+  '/checkout/diamond': typeof CheckoutDiamondRoute
+  '/checkout/gold': typeof CheckoutGoldRoute
+  '/checkout/money-reality-check': typeof CheckoutMoneyRealityCheckRoute
+  '/checkout/silver': typeof CheckoutSilverRoute
+  '/complete/diamond': typeof CompleteDiamondRoute
+  '/complete/gold': typeof CompleteGoldRoute
+  '/complete/money-reality-check': typeof CompleteMoneyRealityCheckRoute
+  '/complete/silver': typeof CompleteSilverRoute
+  '/complete/silver-upgrade': typeof CompleteSilverUpgradeRoute
+  '/course/complete': typeof CourseCompleteRoute
+  '/payment/failed': typeof PaymentFailedRoute
+  '/payment/pending': typeof PaymentPendingRoute
+  '/upgrade/gold': typeof UpgradeGoldRoute
+  '/upgrade/silver': typeof UpgradeSilverRoute
+  '/api/commerce/create-order': typeof ApiCommerceCreateOrderRoute
+  '/api/commerce/poll-order-status': typeof ApiCommercePollOrderStatusRoute
+  '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
+  '/api/course/submit-reward': typeof ApiCourseSubmitRewardRoute
+  '/api/invoices/$token': typeof ApiInvoicesTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/zeptomail-webhook': typeof ApiPublicZeptomailWebhookRoute
@@ -176,16 +363,39 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/confirmed': typeof ConfirmedRoute
-  '/course': typeof CourseRoute
+  '/contact': typeof ContactRoute
+  '/course': typeof CourseRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/resources': typeof ResourcesRoute
   '/room': typeof RoomRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
+  '/checkout/diamond': typeof CheckoutDiamondRoute
+  '/checkout/gold': typeof CheckoutGoldRoute
+  '/checkout/money-reality-check': typeof CheckoutMoneyRealityCheckRoute
+  '/checkout/silver': typeof CheckoutSilverRoute
+  '/complete/diamond': typeof CompleteDiamondRoute
+  '/complete/gold': typeof CompleteGoldRoute
+  '/complete/money-reality-check': typeof CompleteMoneyRealityCheckRoute
+  '/complete/silver': typeof CompleteSilverRoute
+  '/complete/silver-upgrade': typeof CompleteSilverUpgradeRoute
+  '/course/complete': typeof CourseCompleteRoute
+  '/payment/failed': typeof PaymentFailedRoute
+  '/payment/pending': typeof PaymentPendingRoute
+  '/upgrade/gold': typeof UpgradeGoldRoute
+  '/upgrade/silver': typeof UpgradeSilverRoute
+  '/api/commerce/create-order': typeof ApiCommerceCreateOrderRoute
+  '/api/commerce/poll-order-status': typeof ApiCommercePollOrderStatusRoute
+  '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
+  '/api/course/submit-reward': typeof ApiCourseSubmitRewardRoute
+  '/api/invoices/$token': typeof ApiInvoicesTokenRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/public/webinar-webhook': typeof ApiPublicWebinarWebhookRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/zeptomail-webhook': typeof ApiPublicZeptomailWebhookRoute
@@ -199,16 +409,39 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/confirmed'
+    | '/contact'
     | '/course'
     | '/privacy'
+    | '/refund-policy'
     | '/resources'
     | '/room'
+    | '/shipping-policy'
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
+    | '/checkout/diamond'
+    | '/checkout/gold'
+    | '/checkout/money-reality-check'
+    | '/checkout/silver'
+    | '/complete/diamond'
+    | '/complete/gold'
+    | '/complete/money-reality-check'
+    | '/complete/silver'
+    | '/complete/silver-upgrade'
+    | '/course/complete'
+    | '/payment/failed'
+    | '/payment/pending'
+    | '/upgrade/gold'
+    | '/upgrade/silver'
+    | '/api/commerce/create-order'
+    | '/api/commerce/poll-order-status'
+    | '/api/commerce/reconcile'
+    | '/api/course/submit-reward'
+    | '/api/invoices/$token'
     | '/api/public/email-dispatch'
     | '/api/public/razorpay-webhook'
     | '/api/public/resend-webhook'
+    | '/api/public/unsubscribe'
     | '/api/public/webinar-webhook'
     | '/api/public/whatsapp-webhook'
     | '/api/public/zeptomail-webhook'
@@ -220,16 +453,39 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/confirmed'
+    | '/contact'
     | '/course'
     | '/privacy'
+    | '/refund-policy'
     | '/resources'
     | '/room'
+    | '/shipping-policy'
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
+    | '/checkout/diamond'
+    | '/checkout/gold'
+    | '/checkout/money-reality-check'
+    | '/checkout/silver'
+    | '/complete/diamond'
+    | '/complete/gold'
+    | '/complete/money-reality-check'
+    | '/complete/silver'
+    | '/complete/silver-upgrade'
+    | '/course/complete'
+    | '/payment/failed'
+    | '/payment/pending'
+    | '/upgrade/gold'
+    | '/upgrade/silver'
+    | '/api/commerce/create-order'
+    | '/api/commerce/poll-order-status'
+    | '/api/commerce/reconcile'
+    | '/api/course/submit-reward'
+    | '/api/invoices/$token'
     | '/api/public/email-dispatch'
     | '/api/public/razorpay-webhook'
     | '/api/public/resend-webhook'
+    | '/api/public/unsubscribe'
     | '/api/public/webinar-webhook'
     | '/api/public/whatsapp-webhook'
     | '/api/public/zeptomail-webhook'
@@ -241,16 +497,39 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/confirmed'
+    | '/contact'
     | '/course'
     | '/privacy'
+    | '/refund-policy'
     | '/resources'
     | '/room'
+    | '/shipping-policy'
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
+    | '/checkout/diamond'
+    | '/checkout/gold'
+    | '/checkout/money-reality-check'
+    | '/checkout/silver'
+    | '/complete/diamond'
+    | '/complete/gold'
+    | '/complete/money-reality-check'
+    | '/complete/silver'
+    | '/complete/silver-upgrade'
+    | '/course/complete'
+    | '/payment/failed'
+    | '/payment/pending'
+    | '/upgrade/gold'
+    | '/upgrade/silver'
+    | '/api/commerce/create-order'
+    | '/api/commerce/poll-order-status'
+    | '/api/commerce/reconcile'
+    | '/api/course/submit-reward'
+    | '/api/invoices/$token'
     | '/api/public/email-dispatch'
     | '/api/public/razorpay-webhook'
     | '/api/public/resend-webhook'
+    | '/api/public/unsubscribe'
     | '/api/public/webinar-webhook'
     | '/api/public/whatsapp-webhook'
     | '/api/public/zeptomail-webhook'
@@ -263,16 +542,38 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ConfirmedRoute: typeof ConfirmedRoute
-  CourseRoute: typeof CourseRoute
+  ContactRoute: typeof ContactRoute
+  CourseRoute: typeof CourseRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
   ResourcesRoute: typeof ResourcesRoute
   RoomRoute: typeof RoomRoute
+  ShippingPolicyRoute: typeof ShippingPolicyRoute
   TermsRoute: typeof TermsRoute
   ApiGetWebinarMetricsRoute: typeof ApiGetWebinarMetricsRoute
   ApiGetWebinarTokenRoute: typeof ApiGetWebinarTokenRoute
+  CheckoutDiamondRoute: typeof CheckoutDiamondRoute
+  CheckoutGoldRoute: typeof CheckoutGoldRoute
+  CheckoutMoneyRealityCheckRoute: typeof CheckoutMoneyRealityCheckRoute
+  CheckoutSilverRoute: typeof CheckoutSilverRoute
+  CompleteDiamondRoute: typeof CompleteDiamondRoute
+  CompleteGoldRoute: typeof CompleteGoldRoute
+  CompleteMoneyRealityCheckRoute: typeof CompleteMoneyRealityCheckRoute
+  CompleteSilverRoute: typeof CompleteSilverRoute
+  CompleteSilverUpgradeRoute: typeof CompleteSilverUpgradeRoute
+  PaymentFailedRoute: typeof PaymentFailedRoute
+  PaymentPendingRoute: typeof PaymentPendingRoute
+  UpgradeGoldRoute: typeof UpgradeGoldRoute
+  UpgradeSilverRoute: typeof UpgradeSilverRoute
+  ApiCommerceCreateOrderRoute: typeof ApiCommerceCreateOrderRoute
+  ApiCommercePollOrderStatusRoute: typeof ApiCommercePollOrderStatusRoute
+  ApiCommerceReconcileRoute: typeof ApiCommerceReconcileRoute
+  ApiCourseSubmitRewardRoute: typeof ApiCourseSubmitRewardRoute
+  ApiInvoicesTokenRoute: typeof ApiInvoicesTokenRoute
   ApiPublicEmailDispatchRoute: typeof ApiPublicEmailDispatchRoute
   ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
   ApiPublicResendWebhookRoute: typeof ApiPublicResendWebhookRoute
+  ApiPublicUnsubscribeRoute: typeof ApiPublicUnsubscribeRoute
   ApiPublicWebinarWebhookRoute: typeof ApiPublicWebinarWebhookRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
   ApiPublicZeptomailWebhookRoute: typeof ApiPublicZeptomailWebhookRoute
@@ -304,6 +605,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfirmedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/course': {
       id: '/course'
       path: '/course'
@@ -318,6 +626,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/resources': {
       id: '/resources'
       path: '/resources'
@@ -330,6 +645,13 @@ declare module '@tanstack/react-router' {
       path: '/room'
       fullPath: '/room'
       preLoaderRoute: typeof RoomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipping-policy': {
+      id: '/shipping-policy'
+      path: '/shipping-policy'
+      fullPath: '/shipping-policy'
+      preLoaderRoute: typeof ShippingPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -353,6 +675,139 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGetWebinarTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/checkout/diamond': {
+      id: '/checkout/diamond'
+      path: '/checkout/diamond'
+      fullPath: '/checkout/diamond'
+      preLoaderRoute: typeof CheckoutDiamondRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout/gold': {
+      id: '/checkout/gold'
+      path: '/checkout/gold'
+      fullPath: '/checkout/gold'
+      preLoaderRoute: typeof CheckoutGoldRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout/money-reality-check': {
+      id: '/checkout/money-reality-check'
+      path: '/checkout/money-reality-check'
+      fullPath: '/checkout/money-reality-check'
+      preLoaderRoute: typeof CheckoutMoneyRealityCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout/silver': {
+      id: '/checkout/silver'
+      path: '/checkout/silver'
+      fullPath: '/checkout/silver'
+      preLoaderRoute: typeof CheckoutSilverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/complete/diamond': {
+      id: '/complete/diamond'
+      path: '/complete/diamond'
+      fullPath: '/complete/diamond'
+      preLoaderRoute: typeof CompleteDiamondRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/complete/gold': {
+      id: '/complete/gold'
+      path: '/complete/gold'
+      fullPath: '/complete/gold'
+      preLoaderRoute: typeof CompleteGoldRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/complete/money-reality-check': {
+      id: '/complete/money-reality-check'
+      path: '/complete/money-reality-check'
+      fullPath: '/complete/money-reality-check'
+      preLoaderRoute: typeof CompleteMoneyRealityCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/complete/silver': {
+      id: '/complete/silver'
+      path: '/complete/silver'
+      fullPath: '/complete/silver'
+      preLoaderRoute: typeof CompleteSilverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/complete/silver-upgrade': {
+      id: '/complete/silver-upgrade'
+      path: '/complete/silver-upgrade'
+      fullPath: '/complete/silver-upgrade'
+      preLoaderRoute: typeof CompleteSilverUpgradeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/course/complete': {
+      id: '/course/complete'
+      path: '/complete'
+      fullPath: '/course/complete'
+      preLoaderRoute: typeof CourseCompleteRouteImport
+      parentRoute: typeof CourseRoute
+    }
+    '/payment/failed': {
+      id: '/payment/failed'
+      path: '/payment/failed'
+      fullPath: '/payment/failed'
+      preLoaderRoute: typeof PaymentFailedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment/pending': {
+      id: '/payment/pending'
+      path: '/payment/pending'
+      fullPath: '/payment/pending'
+      preLoaderRoute: typeof PaymentPendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/upgrade/gold': {
+      id: '/upgrade/gold'
+      path: '/upgrade/gold'
+      fullPath: '/upgrade/gold'
+      preLoaderRoute: typeof UpgradeGoldRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/upgrade/silver': {
+      id: '/upgrade/silver'
+      path: '/upgrade/silver'
+      fullPath: '/upgrade/silver'
+      preLoaderRoute: typeof UpgradeSilverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/commerce/create-order': {
+      id: '/api/commerce/create-order'
+      path: '/api/commerce/create-order'
+      fullPath: '/api/commerce/create-order'
+      preLoaderRoute: typeof ApiCommerceCreateOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/commerce/poll-order-status': {
+      id: '/api/commerce/poll-order-status'
+      path: '/api/commerce/poll-order-status'
+      fullPath: '/api/commerce/poll-order-status'
+      preLoaderRoute: typeof ApiCommercePollOrderStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/commerce/reconcile': {
+      id: '/api/commerce/reconcile'
+      path: '/api/commerce/reconcile'
+      fullPath: '/api/commerce/reconcile'
+      preLoaderRoute: typeof ApiCommerceReconcileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/course/submit-reward': {
+      id: '/api/course/submit-reward'
+      path: '/api/course/submit-reward'
+      fullPath: '/api/course/submit-reward'
+      preLoaderRoute: typeof ApiCourseSubmitRewardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/invoices/$token': {
+      id: '/api/invoices/$token'
+      path: '/api/invoices/$token'
+      fullPath: '/api/invoices/$token'
+      preLoaderRoute: typeof ApiInvoicesTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/email-dispatch': {
       id: '/api/public/email-dispatch'
       path: '/api/public/email-dispatch'
@@ -372,6 +827,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/resend-webhook'
       fullPath: '/api/public/resend-webhook'
       preLoaderRoute: typeof ApiPublicResendWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/unsubscribe': {
+      id: '/api/public/unsubscribe'
+      path: '/api/public/unsubscribe'
+      fullPath: '/api/public/unsubscribe'
+      preLoaderRoute: typeof ApiPublicUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/webinar-webhook': {
@@ -419,20 +881,53 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CourseRouteChildren {
+  CourseCompleteRoute: typeof CourseCompleteRoute
+}
+
+const CourseRouteChildren: CourseRouteChildren = {
+  CourseCompleteRoute: CourseCompleteRoute,
+}
+
+const CourseRouteWithChildren =
+  CourseRoute._addFileChildren(CourseRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ConfirmedRoute: ConfirmedRoute,
-  CourseRoute: CourseRoute,
+  ContactRoute: ContactRoute,
+  CourseRoute: CourseRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
   ResourcesRoute: ResourcesRoute,
   RoomRoute: RoomRoute,
+  ShippingPolicyRoute: ShippingPolicyRoute,
   TermsRoute: TermsRoute,
   ApiGetWebinarMetricsRoute: ApiGetWebinarMetricsRoute,
   ApiGetWebinarTokenRoute: ApiGetWebinarTokenRoute,
+  CheckoutDiamondRoute: CheckoutDiamondRoute,
+  CheckoutGoldRoute: CheckoutGoldRoute,
+  CheckoutMoneyRealityCheckRoute: CheckoutMoneyRealityCheckRoute,
+  CheckoutSilverRoute: CheckoutSilverRoute,
+  CompleteDiamondRoute: CompleteDiamondRoute,
+  CompleteGoldRoute: CompleteGoldRoute,
+  CompleteMoneyRealityCheckRoute: CompleteMoneyRealityCheckRoute,
+  CompleteSilverRoute: CompleteSilverRoute,
+  CompleteSilverUpgradeRoute: CompleteSilverUpgradeRoute,
+  PaymentFailedRoute: PaymentFailedRoute,
+  PaymentPendingRoute: PaymentPendingRoute,
+  UpgradeGoldRoute: UpgradeGoldRoute,
+  UpgradeSilverRoute: UpgradeSilverRoute,
+  ApiCommerceCreateOrderRoute: ApiCommerceCreateOrderRoute,
+  ApiCommercePollOrderStatusRoute: ApiCommercePollOrderStatusRoute,
+  ApiCommerceReconcileRoute: ApiCommerceReconcileRoute,
+  ApiCourseSubmitRewardRoute: ApiCourseSubmitRewardRoute,
+  ApiInvoicesTokenRoute: ApiInvoicesTokenRoute,
   ApiPublicEmailDispatchRoute: ApiPublicEmailDispatchRoute,
   ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
   ApiPublicResendWebhookRoute: ApiPublicResendWebhookRoute,
+  ApiPublicUnsubscribeRoute: ApiPublicUnsubscribeRoute,
   ApiPublicWebinarWebhookRoute: ApiPublicWebinarWebhookRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
   ApiPublicZeptomailWebhookRoute: ApiPublicZeptomailWebhookRoute,

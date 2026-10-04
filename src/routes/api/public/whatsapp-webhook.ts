@@ -206,6 +206,27 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
                     raw_payload: msg,
                     is_read: false,
                   });
+
+                  // Check if user replied STOP (Opt-out request)
+                  const cleanText = messageBody.trim().toUpperCase();
+                  if (cleanText === "STOP" || cleanText === "UNSUBSCRIBE") {
+                    console.log(`[WhatsApp Opt-Out] User ${cleanPhone} requested STOP. Suppressing WhatsApp.`);
+                    await (db as any).from("communication_suppressions").upsert(
+                      {
+                        identifier: cleanPhone,
+                        channel: "whatsapp",
+                        reason: "whatsapp_stop_reply",
+                      },
+                      { onConflict: "identifier,channel" }
+                    );
+
+                    // Also revoke WhatsApp consent on registrations table if matched
+                    if (registrationId) {
+                      await (db.from("registrations") as any)
+                        .update({ whatsapp_consent: false })
+                        .eq("id", registrationId);
+                    }
+                  }
                 } catch (insertErr) {
                   console.error("[WhatsApp Webhook] Failed to insert inbound message:", insertErr);
                 }

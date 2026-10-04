@@ -11,6 +11,7 @@ import {
   adminDashboard,
   adminDeleteLead,
   adminDeliverabilityCheck,
+  adminGetCommerceDashboard,
   adminRunDispatch,
   adminSaveSettings,
   adminSendEmails,
@@ -25,6 +26,7 @@ import { TEMPLATES, templateLabel } from "@/lib/email-templates";
 import { TemplateEditor } from "@/components/site/TemplateEditor";
 import { WebinarAnalytics } from "@/components/site/WebinarAnalytics";
 import { CommunicationsPanel } from "@/components/site/CommunicationsPanel";
+import { CommercePanel } from "@/components/site/CommercePanel";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -151,6 +153,16 @@ function AdminPage() {
   >({});
 
   const [webinarLogs, setWebinarLogs] = useState<AdminWebinarLog[]>([]);
+  const [commerceData, setCommerceData] = useState<any>(null);
+
+  async function loadCommerce() {
+    try {
+      const result = await adminGetCommerceDashboard({ data: { password } });
+      if (result.ok) setCommerceData(result.data);
+    } catch {
+      // Ignored
+    }
+  }
 
   async function loadWebinarLogs() {
     setLoading(true);
@@ -181,6 +193,7 @@ function AdminPage() {
       setSettings(result.settings);
       setStats(result.stats);
       setTemplates(result.templates ?? {});
+      void loadCommerce();
     } catch {
       setError("Could not load the dashboard.");
     } finally {
@@ -396,6 +409,7 @@ function AdminPage() {
         <Tabs defaultValue="analytics">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="analytics">Webinar analytics</TabsTrigger>
+            <TabsTrigger value="commerce">Commerce</TabsTrigger>
             <TabsTrigger value="communications">Communications</TabsTrigger>
             <TabsTrigger value="leads">Leads</TabsTrigger>
             <TabsTrigger value="automation">Email automation</TabsTrigger>
@@ -806,6 +820,26 @@ function AdminPage() {
                 </tbody>
               </table>
             </div>
+          </TabsContent>
+
+          {/* ----------------------------- COMMERCE ------------------------------ */}
+          <TabsContent value="commerce" className="pt-5">
+            {commerceData ? (
+              <CommercePanel
+                password={password}
+                data={commerceData}
+                onRefresh={() => void loadCommerce()}
+              />
+            ) : (
+              <div className="rounded-lg border border-border bg-card p-6 text-center space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Commerce data not loaded yet.
+                </p>
+                <Button onClick={() => void loadCommerce()} disabled={loading}>
+                  Load Commerce Console
+                </Button>
+              </div>
+            )}
           </TabsContent>
 
           {/* --------------------------- COMMUNICATIONS -------------------------- */}

@@ -28,6 +28,15 @@ export function Footer() {
           <Link to="/terms" className="underline">
             Terms of Use
           </Link>
+          <Link to="/refund-policy" className="underline">
+            Refund Policy
+          </Link>
+          <Link to="/shipping-policy" className="underline">
+            Shipping & Delivery
+          </Link>
+          <Link to="/contact" className="underline">
+            Contact Us
+          </Link>
           <span>© {year} Mannrs Wellness LLP</span>
         </div>
       </div>

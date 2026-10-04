@@ -24,7 +24,10 @@ async function handle(request: Request) {
 
   if (provided === "") return new Response("Unauthorized", { status: 401 });
 
-  const envSecret = process.env["WEBHOOK_SHARED_SECRET"] ?? process.env["LOVABLE_CRON_SECRET"];
+  const envSecret =
+    process.env["CRON_SECRET"] ??
+    process.env["WEBHOOK_SHARED_SECRET"] ??
+    process.env["LOVABLE_CRON_SECRET"];
   let allowed = Boolean(envSecret) && provided === envSecret;
 
   if (!allowed) {
@@ -41,8 +44,17 @@ async function handle(request: Request) {
 
   try {
     const { runDispatch } = await import("@/lib/email-automation.server");
-    const result = await runDispatch(40);
-    return Response.json({ ok: true, ...result });
+    const legacyResult = await runDispatch(40);
+
+    // Prompt 4: Process scheduled messages queue
+    const { processPendingMessages } = await import("@/lib/messaging/scheduler.server");
+    const messagingResult = await processPendingMessages(40);
+
+    return Response.json({
+      ok: true,
+      legacy: legacyResult,
+      messagingQueue: messagingResult,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("email-dispatch failed", message);

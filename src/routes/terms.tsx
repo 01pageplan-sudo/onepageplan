@@ -33,9 +33,18 @@ function Block({ heading, children }: { heading: string; children: React.ReactNo
   );
 }
 
+import { getLegalPolicyFn } from "@/lib/commerce/checkout.server";
+
 function TermsPage() {
   const [updated, setUpdated] = useState("");
-  useEffect(() => setUpdated(formatLongDate()), []);
+  const [customMarkdown, setCustomMarkdown] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUpdated(formatLongDate());
+    void getLegalPolicyFn({ data: { policy: "terms" } }).then((res) => {
+      if (res.customMarkdown) setCustomMarkdown(res.customMarkdown);
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,12 +61,17 @@ function TermsPage() {
           {updated ? `Last updated ${updated}.` : null}
         </p>
 
-        <div className="mt-8 space-y-8 text-sm leading-relaxed text-muted-foreground">
-          <p>
-            These terms apply to this website and to The Money Reality Masterclass, both operated by
-            Mannrs Wellness LLP under the name The One Page Plan by Milanaire. By using the website or
-            attending a session you accept them.
-          </p>
+        {customMarkdown ? (
+          <div className="mt-8 space-y-6 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+            {customMarkdown}
+          </div>
+        ) : (
+          <div className="mt-8 space-y-8 text-sm leading-relaxed text-muted-foreground">
+            <p>
+              These terms apply to this website and to The Money Reality Masterclass, both operated by
+              Mannrs Wellness LLP under the name The One Page Plan by Milanaire. By using the website or
+              attending a session you accept them.
+            </p>
 
           <Block heading="Educational content only">
             <p>
@@ -138,6 +152,7 @@ function TermsPage() {
             <p>Questions about these terms: connect@onepageplan.in.</p>
           </Block>
         </div>
+        )}
       </main>
 
       <Footer />

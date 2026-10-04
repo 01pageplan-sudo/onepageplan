@@ -24,9 +24,18 @@ export const Route = createFileRoute("/privacy")({
   component: PrivacyPage,
 });
 
+import { getLegalPolicyFn } from "@/lib/commerce/checkout.server";
+
 function LegalShell({ title, children }: { title: string; children: React.ReactNode }) {
   const [updated, setUpdated] = useState("");
-  useEffect(() => setUpdated(formatLongDate()), []);
+  const [customMarkdown, setCustomMarkdown] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUpdated(formatLongDate());
+    void getLegalPolicyFn({ data: { policy: "privacy" } }).then((res) => {
+      if (res.customMarkdown) setCustomMarkdown(res.customMarkdown);
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -41,9 +50,15 @@ function LegalShell({ title, children }: { title: string; children: React.ReactN
         <p className="mt-3 text-sm text-muted-foreground">
           {updated ? `Last updated ${updated}.` : null}
         </p>
-        <div className="mt-8 space-y-8 text-sm leading-relaxed text-muted-foreground">
-          {children}
-        </div>
+        {customMarkdown ? (
+          <div className="mt-8 space-y-6 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+            {customMarkdown}
+          </div>
+        ) : (
+          <div className="mt-8 space-y-8 text-sm leading-relaxed text-muted-foreground">
+            {children}
+          </div>
+        )}
       </main>
       <Footer />
     </div>
