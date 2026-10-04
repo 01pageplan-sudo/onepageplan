@@ -100,8 +100,20 @@ async function handle(request: Request) {
   }
 
   try {
-    const { runDispatch } = await import("@/lib/email-automation.server");
-    const legacyResult = await runDispatch(40);
+    let legacyResult: unknown = null;
+    try {
+      const { runDispatch } = await import("@/lib/email-automation.server");
+      legacyResult = await runDispatch(40);
+    } catch (legacyErr) {
+      const legacyMsg =
+        legacyErr instanceof Error
+          ? legacyErr.message
+          : typeof legacyErr === "object"
+          ? JSON.stringify(legacyErr)
+          : String(legacyErr);
+      console.warn("[email-dispatch] Legacy dispatch skipped:", legacyMsg);
+      legacyResult = { skipped: true, reason: legacyMsg };
+    }
 
     // Prompt 4: Process scheduled messages queue
     const { processPendingMessages } = await import("@/lib/messaging/scheduler.server");
@@ -113,8 +125,13 @@ async function handle(request: Request) {
       messagingQueue: messagingResult,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object"
+        ? JSON.stringify(error)
+        : String(error);
     console.error("email-dispatch failed", message);
-    return Response.json({ ok: false, error: message.slice(0, 300) }, { status: 500 });
+    return Response.json({ ok: false, error: message.slice(0, 500) }, { status: 500 });
   }
 }
