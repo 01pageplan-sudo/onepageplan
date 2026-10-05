@@ -26,8 +26,9 @@ const STANDARD_EVENTS = new Set([
   "Purchase",
 ]);
 
+const envPixelId = ((import.meta.env["VITE_META_PIXEL_ID"] as string | undefined) ?? "").trim();
 export const META_PIXEL_ID =
-  ((import.meta.env["VITE_META_PIXEL_ID"] as string | undefined) ?? "").trim();
+  !envPixelId || envPixelId === "1670593947760231" ? "1554288210064524" : envPixelId;
 
 type Fbq = (...args: unknown[]) => void;
 
