@@ -23,4 +23,9 @@
 - **WhatsApp Integration (AiSensy)**:
   - Configuration details & step-by-step setup guide: see [`WHATSAPP_SETUP_GUIDE.md`](file:///c:/Projects/One-page-plan-landing-page/plan-one-page/WHATSAPP_SETUP_GUIDE.md).
   - Environment flags: `WHATSAPP_ENABLED` (`false` by default, `true` in production), `AISENSY_API_KEY`, `AISENSY_CAMPAIGN_NAME`.
+- **ChatGPT / OpenAI Ads Conversion Tracking**:
+  - Web Pixel: Initialized in `src/routes/__root.tsx` with Pixel ID `LCLQYPUtFAeHU1BCs5buMR`.
+  - Server-Side Conversion API: `src/lib/chatgpt-conversion.server.ts` and public endpoint `/api/public/chatgpt-conversion`.
+  - Automatic dispatch: Fires `registration_completed` on successful attendee registration (`registerAttendee`).
+  - Environment flags: `CHATGPT_CONVERSION_API_KEY` (in Vercel/production), `CHATGPT_PIXEL_ID` (defaults to `LCLQYPUtFAeHU1BCs5buMR`).
 

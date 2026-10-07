@@ -68,6 +68,10 @@ export const registerAttendee = createServerFn({ method: "POST" })
       if (!saved) return { ok: false as const, error: "Could not save your seat." };
 
       // Delivery must never fail or delay the registration.
+      const siteUrl = (process.env["VITE_SITE_URL"] || "https://onepageplan.in").replace(/\/+$/, "");
+      const sourceUrl = `${siteUrl}${row.landing_path && row.landing_path.startsWith("/") ? row.landing_path : "/confirmed"}`;
+      const { sendChatGPTRegistrationEvent } = await import("./chatgpt-conversion.server");
+
       const delivery = Promise.allSettled([
         helpers.sendConfirmationEmail(db, {
           id: saved.id,
@@ -79,6 +83,10 @@ export const registerAttendee = createServerFn({ method: "POST" })
           phone_e164: row.phone_e164,
           full_name: row.full_name,
           whatsapp_consent: row.whatsapp_consent && row.phone_e164 !== "",
+        }),
+        sendChatGPTRegistrationEvent({
+          id: saved.id,
+          source_url: sourceUrl,
         }),
       ]);
       await Promise.race([delivery, new Promise((resolve) => setTimeout(resolve, 3000))]);

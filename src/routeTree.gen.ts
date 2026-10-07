@@ -41,6 +41,7 @@ import { Route as ApiCommercePollOrderStatusRouteImport } from './routes/api/com
 import { Route as ApiCommerceReconcileRouteImport } from './routes/api/commerce/reconcile'
 import { Route as ApiCourseSubmitRewardRouteImport } from './routes/api/course/submit-reward'
 import { Route as ApiInvoicesTokenRouteImport } from './routes/api/invoices/$token'
+import { Route as ApiPublicChatgptConversionRouteImport } from './routes/api/public/chatgpt-conversion'
 import { Route as ApiPublicEmailDispatchRouteImport } from './routes/api/public/email-dispatch'
 import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay-webhook'
 import { Route as ApiPublicResendWebhookRouteImport } from './routes/api/public/resend-webhook'
@@ -215,6 +216,12 @@ const ApiInvoicesTokenRoute = ApiInvoicesTokenRouteImport.update({
   path: '/api/invoices/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicChatgptConversionRoute =
+  ApiPublicChatgptConversionRouteImport.update({
+    id: '/api/public/chatgpt-conversion',
+    path: '/api/public/chatgpt-conversion',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicEmailDispatchRoute = ApiPublicEmailDispatchRouteImport.update({
   id: '/api/public/email-dispatch',
   path: '/api/public/email-dispatch',
@@ -303,6 +310,7 @@ export interface FileRoutesByFullPath {
   '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
   '/api/course/submit-reward': typeof ApiCourseSubmitRewardRoute
   '/api/invoices/$token': typeof ApiInvoicesTokenRoute
+  '/api/public/chatgpt-conversion': typeof ApiPublicChatgptConversionRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
@@ -347,6 +355,7 @@ export interface FileRoutesByTo {
   '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
   '/api/course/submit-reward': typeof ApiCourseSubmitRewardRoute
   '/api/invoices/$token': typeof ApiInvoicesTokenRoute
+  '/api/public/chatgpt-conversion': typeof ApiPublicChatgptConversionRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
@@ -392,6 +401,7 @@ export interface FileRoutesById {
   '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
   '/api/course/submit-reward': typeof ApiCourseSubmitRewardRoute
   '/api/invoices/$token': typeof ApiInvoicesTokenRoute
+  '/api/public/chatgpt-conversion': typeof ApiPublicChatgptConversionRoute
   '/api/public/email-dispatch': typeof ApiPublicEmailDispatchRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/api/public/resend-webhook': typeof ApiPublicResendWebhookRoute
@@ -438,6 +448,7 @@ export interface FileRouteTypes {
     | '/api/commerce/reconcile'
     | '/api/course/submit-reward'
     | '/api/invoices/$token'
+    | '/api/public/chatgpt-conversion'
     | '/api/public/email-dispatch'
     | '/api/public/razorpay-webhook'
     | '/api/public/resend-webhook'
@@ -482,6 +493,7 @@ export interface FileRouteTypes {
     | '/api/commerce/reconcile'
     | '/api/course/submit-reward'
     | '/api/invoices/$token'
+    | '/api/public/chatgpt-conversion'
     | '/api/public/email-dispatch'
     | '/api/public/razorpay-webhook'
     | '/api/public/resend-webhook'
@@ -526,6 +538,7 @@ export interface FileRouteTypes {
     | '/api/commerce/reconcile'
     | '/api/course/submit-reward'
     | '/api/invoices/$token'
+    | '/api/public/chatgpt-conversion'
     | '/api/public/email-dispatch'
     | '/api/public/razorpay-webhook'
     | '/api/public/resend-webhook'
@@ -570,6 +583,7 @@ export interface RootRouteChildren {
   ApiCommerceReconcileRoute: typeof ApiCommerceReconcileRoute
   ApiCourseSubmitRewardRoute: typeof ApiCourseSubmitRewardRoute
   ApiInvoicesTokenRoute: typeof ApiInvoicesTokenRoute
+  ApiPublicChatgptConversionRoute: typeof ApiPublicChatgptConversionRoute
   ApiPublicEmailDispatchRoute: typeof ApiPublicEmailDispatchRoute
   ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
   ApiPublicResendWebhookRoute: typeof ApiPublicResendWebhookRoute
@@ -808,6 +822,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInvoicesTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/chatgpt-conversion': {
+      id: '/api/public/chatgpt-conversion'
+      path: '/api/public/chatgpt-conversion'
+      fullPath: '/api/public/chatgpt-conversion'
+      preLoaderRoute: typeof ApiPublicChatgptConversionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/email-dispatch': {
       id: '/api/public/email-dispatch'
       path: '/api/public/email-dispatch'
@@ -924,6 +945,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCommerceReconcileRoute: ApiCommerceReconcileRoute,
   ApiCourseSubmitRewardRoute: ApiCourseSubmitRewardRoute,
   ApiInvoicesTokenRoute: ApiInvoicesTokenRoute,
+  ApiPublicChatgptConversionRoute: ApiPublicChatgptConversionRoute,
   ApiPublicEmailDispatchRoute: ApiPublicEmailDispatchRoute,
   ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
   ApiPublicResendWebhookRoute: ApiPublicResendWebhookRoute,
