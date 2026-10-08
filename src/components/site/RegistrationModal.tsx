@@ -45,6 +45,7 @@ type Tracking = {
   utm_term?: string | undefined;
   referrer?: string | undefined;
   landing_path?: string | undefined;
+  oppref?: string | undefined;
 };
 
 type FieldErrors = {
@@ -60,6 +61,19 @@ function readTracking(): Tracking {
   if (typeof window === "undefined") return {};
   const params = new URLSearchParams(window.location.search);
   const read = (key: string) => params.get(key)?.slice(0, 200) ?? undefined;
+
+  let oppref = read("oppref");
+  if (!oppref && typeof document !== "undefined" && document.cookie) {
+    const match = document.cookie.match(/(?:^|;\s*)__oppref=([^;]+)/);
+    if (match && match[1]) {
+      try {
+        oppref = decodeURIComponent(match[1]).slice(0, 300);
+      } catch {
+        oppref = match[1].slice(0, 300);
+      }
+    }
+  }
+
   return {
     utm_source: read("utm_source"),
     utm_medium: read("utm_medium"),
@@ -68,6 +82,7 @@ function readTracking(): Tracking {
     utm_term: read("utm_term"),
     referrer: document.referrer ? document.referrer.slice(0, 300) : undefined,
     landing_path: window.location.pathname + window.location.search,
+    oppref,
   };
 }
 

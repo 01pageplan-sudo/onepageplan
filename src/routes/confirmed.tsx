@@ -47,7 +47,12 @@ function useTrackRegistrationOnce(registrationId: string | undefined) {
     try {
       const win = window as unknown as { oaiq?: (...args: unknown[]) => void };
       if (typeof win.oaiq === "function") {
-        win.oaiq("measure", "registration_completed", {}, { event_id: registrationId });
+        win.oaiq(
+          "measure",
+          "registration_completed",
+          { type: "customer_action" },
+          { event_id: registrationId },
+        );
       }
     } catch {
       /* pixel error tolerated */

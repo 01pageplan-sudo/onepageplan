@@ -12,6 +12,7 @@ export interface ChatGPTConversionEventItem {
   source_url?: string;
   action_source?: "web" | "app" | "system" | string;
   data?: Record<string, unknown>;
+  oppref?: string | undefined;
 }
 
 export interface SendChatGPTConversionOptions {
@@ -101,6 +102,7 @@ export async function sendChatGPTConversionEvents(
           : Date.now(),
       source_url: sourceUrl,
       action_source: item.action_source || "web",
+      ...(item.oppref && item.oppref.trim() !== "" ? { oppref: item.oppref.trim() } : {}),
       data: item.data || {
         type: "customer_action",
       },
@@ -175,6 +177,7 @@ export async function sendChatGPTRegistrationEvent(args?: {
   id?: string;
   source_url?: string;
   timestamp_ms?: number;
+  oppref?: string;
   data?: Record<string, unknown>;
 }): Promise<ChatGPTConversionResult> {
   return sendChatGPTConversionEvents({
@@ -183,6 +186,7 @@ export async function sendChatGPTRegistrationEvent(args?: {
     timestamp_ms: args?.timestamp_ms,
     source_url: args?.source_url,
     action_source: "web",
+    oppref: args?.oppref,
     data: args?.data || { type: "customer_action" },
   });
 }

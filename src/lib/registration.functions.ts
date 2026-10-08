@@ -17,6 +17,7 @@ export type RegisterPayload = {
   utm_term?: string | undefined;
   referrer?: string | undefined;
   landing_path?: string | undefined;
+  oppref?: string | undefined;
 };
 
 function safeRequestIP(): string {
@@ -87,6 +88,7 @@ export const registerAttendee = createServerFn({ method: "POST" })
         sendChatGPTRegistrationEvent({
           id: saved.id,
           source_url: sourceUrl,
+          oppref: data.oppref,
         }),
       ]);
       await Promise.race([delivery, new Promise((resolve) => setTimeout(resolve, 3000))]);

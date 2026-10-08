@@ -60,6 +60,7 @@ export const Route = createFileRoute("/api/public/chatgpt-conversion")({
                 timestamp_ms: typeof body["timestamp_ms"] === "number" ? body["timestamp_ms"] : undefined,
                 source_url: (body["source_url"] as string) || undefined,
                 action_source: (body["action_source"] as string) || "web",
+                oppref: (body["oppref"] as string) || undefined,
                 data: (body["data"] as Record<string, unknown>) || undefined,
               },
             ];
