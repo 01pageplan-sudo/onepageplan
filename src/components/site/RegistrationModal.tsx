@@ -107,8 +107,8 @@ export function RegistrationModal({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [whatsappConsent, setWhatsappConsent] = useState(false);
-  const [voiceConsent, setVoiceConsent] = useState(false);
+  const [whatsappConsent, setWhatsappConsent] = useState(true);
+  const [voiceConsent, setVoiceConsent] = useState(true);
   const [company, setCompany] = useState("");
 
   const [errors, setErrors] = useState<FieldErrors>({});

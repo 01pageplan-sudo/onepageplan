@@ -67,7 +67,7 @@ export function CheckoutView({ product, isUpgrade = false, pagePath }: CheckoutV
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [whatsappConsent, setWhatsappConsent] = useState(false);
+  const [whatsappConsent, setWhatsappConsent] = useState(true);
 
   // Status & Feedback
   const [submitting, setSubmitting] = useState(false);
@@ -698,7 +698,7 @@ export function CheckoutView({ product, isUpgrade = false, pagePath }: CheckoutV
                 </Label>
               </div>
 
-              {/* Optional WhatsApp Consent Checkbox (unticked by default) */}
+              {/* WhatsApp Consent Checkbox (checked by default) */}
               <div className="flex items-start gap-2.5">
                 <Checkbox
                   id="whatsappConsent"
