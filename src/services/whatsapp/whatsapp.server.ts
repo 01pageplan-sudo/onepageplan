@@ -42,6 +42,13 @@ export function normaliseWhatsAppPhone(phone: string, defaultCountryCode = "91")
     cleaned = cleaned.slice(1);
   }
 
+  // If accidentally prefixed with 910... (e.g. 910902987707 or 91098XXXXXXXX)
+  if (cleaned.startsWith("910") && cleaned.length >= 12) {
+    cleaned = `91${cleaned.slice(3)}`;
+  } else if (cleaned.startsWith("0")) {
+    cleaned = cleaned.replace(/^0+/, "");
+  }
+
   const code = defaultCountryCode.replace(/[^\d]/g, "");
   if (cleaned.length === 10) {
     cleaned = `${code}${cleaned}`;

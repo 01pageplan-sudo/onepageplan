@@ -6,10 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { BackToHome, Wordmark } from "@/components/site/Header";
 import {
   adminDashboard,
   adminDeleteLead,
+  adminUpdateLead,
   adminDeliverabilityCheck,
   adminGetCommerceDashboard,
   adminRunDispatch,
@@ -103,6 +111,7 @@ function toCsv(rows: AdminLead[]) {
     "whatsapp_consent",
     "profile_type",
     "pain_point",
+    "unanswered_question",
     "status",
     "tags",
     "emails_sent",
@@ -119,6 +128,7 @@ function toCsv(rows: AdminLead[]) {
       row.whatsapp_consent,
       row.profile_type,
       row.pain_point,
+      row.question || "",
       row.status,
       (row.tags ?? []).join("|"),
       row.emails_sent,
@@ -154,6 +164,15 @@ function AdminPage() {
 
   const [webinarLogs, setWebinarLogs] = useState<AdminWebinarLog[]>([]);
   const [commerceData, setCommerceData] = useState<any>(null);
+
+  const [editingLead, setEditingLead] = useState<AdminLead | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editStatus, setEditStatus] = useState("registered");
+  const [editSessionDate, setEditSessionDate] = useState("");
+  const [editConsent, setEditConsent] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   async function loadCommerce() {
     try {
@@ -254,6 +273,70 @@ function AdminPage() {
     }
     await load();
     setNotice(`Deleted ${lead.email}.`);
+  }
+
+  function startEdit(lead: AdminLead) {
+    setEditingLead(lead);
+    setEditName(lead.full_name || "");
+    setEditEmail(lead.email || "");
+    let p = lead.phone_e164 || "";
+    // If phone has accidental +910, auto-clean preview to +91
+    if (p.startsWith("+910") && p.length > 5) {
+      p = `+91${p.slice(4)}`;
+    }
+    setEditPhone(p);
+    setEditStatus(lead.status || "registered");
+    setEditSessionDate(lead.session_date || "");
+    setEditConsent(lead.whatsapp_consent ?? false);
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingLead) return;
+    setSavingEdit(true);
+    setNotice("");
+    setError("");
+    try {
+      const res = await adminUpdateLead({
+        data: {
+          password,
+          id: editingLead.id,
+          fullName: editName,
+          email: editEmail,
+          phone: editPhone,
+          status: editStatus,
+          sessionDate: editSessionDate || null,
+          whatsappConsent: editConsent,
+        },
+      });
+      if (res.ok) {
+        setLeads((prev) =>
+          prev.map((l) =>
+            l.id === editingLead.id
+              ? {
+                  ...l,
+                  full_name: res.lead.full_name,
+                  email: res.lead.email,
+                  phone_e164: res.lead.phone_e164,
+                  status: res.lead.status ?? l.status,
+                  session_date: res.lead.session_date ?? l.session_date,
+                  whatsapp_consent: res.lead.whatsapp_consent ?? l.whatsapp_consent,
+                }
+              : l,
+          ),
+        );
+        setNotice(
+          `Updated contact details for ${res.lead.email}. Phone formatted as ${res.lead.phone_e164 || "(none)"}.`,
+        );
+        setEditingLead(null);
+      } else {
+        setError(res.error || "Failed to update lead.");
+      }
+    } catch {
+      setError("Failed to update lead.");
+    } finally {
+      setSavingEdit(false);
+    }
   }
 
   async function sendTo(template: string, targets: AdminLead[], force: boolean) {
@@ -507,7 +590,25 @@ function AdminPage() {
                     return (
                       <Fragment key={lead.id}>
                         <tr key={lead.id} className="border-b border-border/60 align-top">
-                          <td className="p-3 font-medium">{lead.full_name}</td>
+                          <td className="p-3 font-medium">
+                            <div>{lead.full_name}</div>
+                            {lead.profile_type ? (
+                              <div
+                                className="mt-1 text-[11px] text-muted-foreground truncate max-w-[200px]"
+                                title={lead.profile_type}
+                              >
+                                👤 {lead.profile_type}
+                              </div>
+                            ) : null}
+                            {lead.question ? (
+                              <div
+                                className="mt-1 inline-flex items-center gap-1 rounded bg-[var(--brass)]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--brass)]"
+                                title={lead.question}
+                              >
+                                ❓ Question asked
+                              </div>
+                            ) : null}
+                          </td>
                           <td className="p-3">{lead.email}</td>
                           <td className="p-3">{lead.phone_e164 || "-"}</td>
                           <td className="p-3">{lead.utm_source || "direct"}</td>
@@ -563,6 +664,14 @@ function AdminPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                className="h-7 text-[11px] font-medium text-primary hover:bg-primary/10"
+                                onClick={() => startEdit(lead)}
+                              >
+                                Edit contact
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 className="h-7 text-[11px]"
                                 onClick={() => setExpanded(isOpen ? null : lead.id)}
                               >
@@ -590,6 +699,46 @@ function AdminPage() {
                           <tr key={`${lead.id}-detail`} className="border-b border-border/60 bg-background/60">
                             <td colSpan={9} className="p-3">
                               <div className="space-y-3">
+                                {/* Customer Insights: Answers & Questions */}
+                                <div className="rounded-lg border border-border/80 bg-card p-3.5 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <p className="label-caps text-[var(--brass)] font-semibold">
+                                      Customer Insights & Answers
+                                    </p>
+                                    {lead.utm_source ? (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        Source: {lead.utm_source}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 text-xs">
+                                    <div className="rounded border border-border/40 bg-muted/30 p-2.5">
+                                      <span className="font-semibold text-muted-foreground block text-[10px] uppercase tracking-wider mb-1">
+                                        Who they are (Profile)
+                                      </span>
+                                      <span className="font-medium text-foreground leading-snug">
+                                        {lead.profile_type || "Not specified"}
+                                      </span>
+                                    </div>
+                                    <div className="rounded border border-border/40 bg-muted/30 p-2.5">
+                                      <span className="font-semibold text-muted-foreground block text-[10px] uppercase tracking-wider mb-1">
+                                        Stated Situation / Challenge
+                                      </span>
+                                      <span className="font-medium text-foreground leading-snug">
+                                        {lead.pain_point || "Not specified"}
+                                      </span>
+                                    </div>
+                                    <div className="rounded border border-[var(--brass)]/30 bg-[var(--brass)]/10 p-2.5 sm:col-span-2 lg:col-span-1">
+                                      <span className="font-semibold text-[var(--brass)] block text-[10px] uppercase tracking-wider mb-1">
+                                        Biggest Money Question (to answer live)
+                                      </span>
+                                      <span className="font-medium text-foreground leading-snug">
+                                        {lead.question ? `"${lead.question}"` : "None submitted yet"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
                                 <div>
                                   <p className="label-caps text-[var(--brass)]">
                                     Exactly what {lead.email} received
@@ -662,6 +811,121 @@ function AdminPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Edit Contact Dialog */}
+            <Dialog open={editingLead !== null} onOpenChange={(open) => !open && setEditingLead(null)}>
+              <DialogContent className="sm:max-w-md bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle>Edit Contact Details</DialogTitle>
+                </DialogHeader>
+                {editingLead ? (
+                  <form onSubmit={handleSaveEdit} className="space-y-4 pt-2">
+                    <div>
+                      <Label htmlFor="edit-name" className="text-xs font-medium">
+                        Full Name
+                      </Label>
+                      <Input
+                        id="edit-name"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="mt-1 bg-background"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-email" className="text-xs font-medium">
+                        Email Address
+                      </Label>
+                      <Input
+                        id="edit-email"
+                        type="email"
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        className="mt-1 bg-background"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-phone" className="text-xs font-medium">
+                        Phone / WhatsApp (E.164)
+                      </Label>
+                      <Input
+                        id="edit-phone"
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        placeholder="+9198XXXXXXXX"
+                        className="mt-1 bg-background"
+                      />
+                      <p className="mt-1 text-[11px] text-muted-foreground leading-normal">
+                        Indian mobile format: 10 digits with +91 (e.g. <code>+919029877071</code>). Any extra leading zero (e.g. <code>+9109029...</code>) will be stripped automatically on save.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="edit-status" className="text-xs font-medium">
+                          Status
+                        </Label>
+                        <select
+                          id="edit-status"
+                          value={editStatus}
+                          onChange={(e) => setEditStatus(e.target.value)}
+                          className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
+                        >
+                          <option value="registered">registered</option>
+                          <option value="attended">attended</option>
+                          <option value="no_show">no_show</option>
+                          <option value="dropped_off">dropped_off</option>
+                          <option value="subscribed">subscribed</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-session" className="text-xs font-medium">
+                          Session Date
+                        </Label>
+                        <Input
+                          id="edit-session"
+                          value={editSessionDate}
+                          onChange={(e) => setEditSessionDate(e.target.value)}
+                          placeholder="YYYY-MM-DD"
+                          className="mt-1 bg-background"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border border-border p-3 bg-muted/20">
+                      <div>
+                        <Label htmlFor="edit-consent" className="cursor-pointer text-xs font-medium">
+                          WhatsApp Consent
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Lead opted-in for WhatsApp updates
+                        </p>
+                      </div>
+                      <Switch
+                        id="edit-consent"
+                        checked={editConsent}
+                        onCheckedChange={setEditConsent}
+                      />
+                    </div>
+                    <DialogFooter className="gap-2 pt-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setEditingLead(null)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={savingEdit}
+                        className="bg-primary text-primary-foreground hover:bg-[var(--highlight)]"
+                      >
+                        {savingEdit ? "Saving..." : "Save changes"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                ) : null}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* ---------------------------- AUTOMATION ---------------------------- */}

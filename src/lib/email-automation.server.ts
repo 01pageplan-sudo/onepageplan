@@ -220,22 +220,7 @@ async function sendEmailUsingProvider(args: {
     return payload?.id ?? null;
   }
 
-  const zeptoKey = process.env["ZEPTOMAIL_API_KEY"] || process.env["ZEPTOMAIL_SEND_MAIL_TOKEN"];
-  if (zeptoKey) {
-    const { sendZeptoEmail } = await import("./zeptomail.server");
-    const result = await sendZeptoEmail({
-      to: args.to,
-      subject: args.subject,
-      htmlBody: args.html,
-      textBody: args.text,
-    });
-    if (!result.ok) {
-      throw new Error(`ZeptoMail failed: ${result.error}`);
-    }
-    return result.messageId ?? "zeptomail_sent";
-  }
-
-  throw new Error("Neither RESEND_API_KEY nor ZEPTOMAIL_API_KEY is configured on the server.");
+  throw new Error("RESEND_API_KEY is not configured on the server. Resend is the active email provider.");
 }
 
 export function firstName(fullName: string) {

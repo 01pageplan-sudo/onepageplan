@@ -117,8 +117,8 @@ export function RegistrationModal({
     if (fullName.trim().length < 2) next.fullName = "Please enter your name.";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email.trim()))
       next.email = "Please enter a valid email address.";
-    if (whatsappConsent && !/^\d{10}$/.test(phone))
-      next.phone = "Enter exactly 10 digits so I can send the link on WhatsApp.";
+    if (whatsappConsent && !/^[6-9]\d{9}$/.test(phone))
+      next.phone = "Enter a valid 10-digit Indian mobile number (e.g. 98200XXXXX).";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -401,9 +401,14 @@ export function RegistrationModal({
                       inputMode="numeric"
                       type="tel"
                       value={phone}
-                      onChange={(event) =>
-                        setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))
-                      }
+                      onChange={(event) => {
+                        let val = event.target.value.replace(/\D/g, "");
+                        if (val.startsWith("91") && val.length > 10) {
+                          val = val.slice(2);
+                        }
+                        val = val.replace(/^0+/, "").slice(0, 10);
+                        setPhone(val);
+                      }}
                       className="w-full bg-transparent px-3 py-2 text-sm outline-none"
                       autoComplete="tel-national"
                     />

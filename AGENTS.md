@@ -20,9 +20,17 @@
   - Tab A: **Webinar Analytics** (Live metrics & terminal activity feed).
   - Tab B: **Communications** (Email & WhatsApp campaign tracking).
   - Leads management, Email automation sequence editor, and deliverability tools.
-- **WhatsApp Integration (AiSensy)**:
-  - Configuration details & step-by-step setup guide: see [`WHATSAPP_SETUP_GUIDE.md`](file:///c:/Projects/One-page-plan-landing-page/plan-one-page/WHATSAPP_SETUP_GUIDE.md).
-  - Environment flags: `WHATSAPP_ENABLED` (`false` by default, `true` in production), `AISENSY_API_KEY`, `AISENSY_CAMPAIGN_NAME`.
+- **Email Automation (Resend Only)**:
+  - Exclusively powered by **Resend** (no ZeptoMail).
+  - Environment flags: `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (defaults to `connect@onepageplan.in`), `RESEND_FROM_NAME` (`Milan Dodhia`).
+  - Sequence drips and transactional order invoices dispatched via `sendEmailViaResend` and automated scheduler.
+- **WhatsApp Integration (Direct Meta Cloud API v21.0)**:
+  - Connects directly to **Meta WhatsApp Cloud API** (no AiSensy / 3rd-party BSP).
+  - Environment flags: `WHATSAPP_ENABLED` (`true` in production), `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_BUSINESS_ACCOUNT_ID`.
+  - Approved Meta message templates: `webinar_confirmation`, `webinar_reminder_2h`, `webinar_reminder_15m`, `webinar_live_now`, `webinar_missed`, `course_purchase_confirmat`, `3p_direct_integration_test`.
+- **Contact Management & Sanitization**:
+  - Full inline contact editing in `/admin` Leads tab (Full Name, Email, Phone, Status, Session Date, WhatsApp Consent).
+  - Indian mobile sanitization: automatic stripping of extraneous leading zero (`+9109029...` -> `+919029...`) and country-code paste deduplication.
 - **ChatGPT / OpenAI Ads Conversion Tracking**:
   - Web Pixel: Initialized in `src/routes/__root.tsx` with Pixel ID `LCLQYPUtFAeHU1BCs5buMR`.
   - Server-Side Conversion API: `src/lib/chatgpt-conversion.server.ts` and public endpoint `/api/public/chatgpt-conversion`.

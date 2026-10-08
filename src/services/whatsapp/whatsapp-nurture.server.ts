@@ -6,9 +6,9 @@ export const WHATSAPP_TEMPLATES: Record<string, string> = {
   "reminder-2h": process.env["WHATSAPP_TEMPLATE_REMINDER_2H"] || "webinar_reminder_2h",
   "reminder-15m": process.env["WHATSAPP_TEMPLATE_REMINDER_15M"] || "webinar_reminder_15m",
   live: process.env["WHATSAPP_TEMPLATE_LIVE"] || "webinar_live_now",
-  followup: process.env["WHATSAPP_TEMPLATE_FOLLOWUP"] || "webinar_followup",
+  followup: process.env["WHATSAPP_TEMPLATE_FOLLOWUP"] || "webinar_missed",
   "no-show": process.env["WHATSAPP_TEMPLATE_NO_SHOW"] || "webinar_missed",
-  purchase: process.env["WHATSAPP_TEMPLATE_PURCHASE"] || "course_purchase_confirmation",
+  purchase: process.env["WHATSAPP_TEMPLATE_PURCHASE"] || "course_purchase_confirmat",
 };
 
 export type WhatsAppLead = {

@@ -45,11 +45,24 @@ export function isQuestionRateLimited(ip: string): boolean {
   return hits.length > 5;
 }
 
+export function cleanIndianMobile(raw: string | undefined): string {
+  let val = (raw || "").replace(/\D/g, "");
+  if (val.startsWith("91") && val.length > 10) {
+    val = val.slice(2);
+  }
+  val = val.replace(/^0+/, "");
+  return val.slice(0, 10);
+}
+
 export function validate(input: RegistrationInput): string | null {
   if (!input.full_name || input.full_name.trim().length < 2) return "Please enter your name.";
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(input.email.trim())) return "Please enter a valid email.";
-  if (input.whatsapp_consent && !/^\d{10}$/.test(input.phone10))
-    return "Enter exactly 10 digits so I can send the link on WhatsApp.";
+  if (input.whatsapp_consent) {
+    const clean = cleanIndianMobile(input.phone10);
+    if (!/^[6-9]\d{9}$/.test(clean)) {
+      return "Enter a valid 10-digit Indian mobile number so I can send the link on WhatsApp.";
+    }
+  }
   if (!input.profile_type) return "Please tell us what describes you.";
   if (!input.pain_point) return "Please tell us your situation.";
   return null;
@@ -58,11 +71,12 @@ export function validate(input: RegistrationInput): string | null {
 export function buildRow(input: RegistrationInput) {
   const now = new Date().toISOString();
   const target = getNextSessionIST();
-  const hasPhone = /^\d{10}$/.test(input.phone10);
+  const cleanPhone = cleanIndianMobile(input.phone10);
+  const hasPhone = /^[6-9]\d{9}$/.test(cleanPhone);
   return {
     full_name: input.full_name.trim(),
     email: input.email.trim().toLowerCase(),
-    phone_e164: hasPhone ? `+91${input.phone10}` : "",
+    phone_e164: hasPhone ? `+91${cleanPhone}` : "",
     whatsapp_consent: input.whatsapp_consent === true,
     consent_at: input.whatsapp_consent === true ? now : null,
     voice_consent: input.voice_consent === true,
@@ -338,7 +352,7 @@ export async function sendConfirmationEmail(
         throw new Error(String(result.status ?? "not sent"));
       }
     } else {
-      throw new Error("No email provider configured (set RESEND_API_KEY).");
+      throw new Error("No email provider configured (set RESEND_API_KEY). Email delivery uses Resend only.");
     }
 
     await markDelivery(db, args.id, "email", true);

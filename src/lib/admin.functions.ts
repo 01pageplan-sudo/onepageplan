@@ -15,6 +15,7 @@ export type AdminLead = {
   voice_consent: boolean;
   profile_type: string | null;
   pain_point: string | null;
+  question?: string | null;
   status: string;
   session_date: string | null;
   utm_source: string | null;
@@ -133,9 +134,39 @@ export const adminDashboard = createServerFn({ method: "POST" })
         /* optional fallback */
       }
 
-      const mergedLeads = [...leadsList, ...extraNewsletterLeads].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      );
+      let questionsMap = new Map<string, string>();
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const client = supabaseAdmin || db;
+        const { data: qRows } = await client
+          .from("prework_questions")
+          .select("question, email, registration_id")
+          .order("created_at", { ascending: false });
+        if (qRows && Array.isArray(qRows)) {
+          for (const q of qRows) {
+            if (q.registration_id && !questionsMap.has(q.registration_id)) {
+              questionsMap.set(q.registration_id, q.question);
+            }
+            if (q.email && !questionsMap.has(q.email.toLowerCase())) {
+              questionsMap.set(q.email.toLowerCase(), q.question);
+            }
+          }
+        }
+      } catch {
+        /* prework_questions query error ignored */
+      }
+
+      const mergedLeads = [...leadsList, ...extraNewsletterLeads]
+        .map((lead) => ({
+          ...lead,
+          question:
+            questionsMap.get(lead.id) ||
+            (lead.email ? questionsMap.get(lead.email.toLowerCase()) : null) ||
+            null,
+        }))
+        .sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
 
       return {
         ok: true as const,
@@ -279,6 +310,86 @@ export const adminDeleteLead = createServerFn({ method: "POST" })
       };
     }
     return { ok: true as const };
+  });
+
+export const adminUpdateLead = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      id: string;
+      fullName: string;
+      email: string;
+      phone: string;
+      status?: string;
+      sessionDate?: string | null;
+      whatsappConsent?: boolean;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const { error: authError } = await createPublicServerClient().rpc("admin_get_email_settings", {
+      p_password: data.password,
+    });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    // Sanitize phone number (strip accidental leading 0s, +910, spaces, etc.)
+    let cleanPhone = (data.phone || "").trim().replace(/[^\d+]/g, "");
+    if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.slice(1);
+    // If starts with 910... (e.g. 910902987707)
+    if (cleanPhone.startsWith("910") && cleanPhone.length > 10) {
+      cleanPhone = `91${cleanPhone.slice(3)}`;
+    } else if (cleanPhone.startsWith("0")) {
+      cleanPhone = cleanPhone.replace(/^0+/, "");
+    }
+    // If exactly 10 digits, prepend 91 for Indian mobile
+    if (cleanPhone.length === 10) {
+      cleanPhone = `91${cleanPhone}`;
+    }
+    const finalPhoneE164 = cleanPhone ? `+${cleanPhone}` : "";
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const updatePayload: Record<string, unknown> = {
+      full_name: data.fullName.trim(),
+      email: data.email.trim().toLowerCase(),
+      phone_e164: finalPhoneE164,
+    };
+    if (typeof data.whatsappConsent === "boolean") {
+      updatePayload["whatsapp_consent"] = data.whatsappConsent;
+    }
+    if (data.status) {
+      updatePayload["status"] = data.status;
+    }
+    if (data.sessionDate !== undefined) {
+      updatePayload["session_date"] = data.sessionDate;
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from("registrations")
+      .update(updatePayload as never)
+      .eq("id", data.id);
+
+    if (updateError) {
+      // Fallback: try updating newsletter_subscribers if registration not found
+      await supabaseAdmin
+        .from("newsletter_subscribers")
+        .update({ email: data.email.trim().toLowerCase() } as never)
+        .eq("id", data.id);
+    }
+
+    return {
+      ok: true as const,
+      lead: {
+        id: data.id,
+        full_name: data.fullName.trim(),
+        email: data.email.trim().toLowerCase(),
+        phone_e164: finalPhoneE164,
+        status: data.status,
+        session_date: data.sessionDate,
+        whatsapp_consent: data.whatsappConsent,
+      },
+    };
   });
 
 export const adminSaveSettings = createServerFn({ method: "POST" })
@@ -1559,16 +1670,30 @@ export const adminToggleMessagingSettings = createServerFn({ method: "POST" })
     }
 
     try {
-      const { error } = await db
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const client = supabaseAdmin || db;
+      const { error } = await client
         .from("commerce_settings" as never)
-        .update({
-          messaging_test_mode: data.testMode,
-          test_recipient_email: data.testEmail || "dodhia.milan@gmail.com",
-          test_recipient_phone: data.testPhone || "+919820000000",
-        } as never)
-        .eq("id" as never, 1);
+        .upsert(
+          {
+            id: 1,
+            messaging_test_mode: data.testMode,
+            test_recipient_email: data.testEmail || "dodhia.milan@gmail.com",
+            test_recipient_phone: data.testPhone || "+919167434636",
+          } as never,
+          { onConflict: "id" },
+        );
 
-      if (error) return { ok: false as const, error: error.message };
+      if (error) {
+        if (error.message.includes("commerce_settings")) {
+          return {
+            ok: false as const,
+            error:
+              "The table 'public.commerce_settings' does not exist in Supabase yet. Please execute the provided setup SQL in your Supabase SQL Editor.",
+          };
+        }
+        return { ok: false as const, error: error.message };
+      }
       return { ok: true as const };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
