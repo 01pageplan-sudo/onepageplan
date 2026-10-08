@@ -153,7 +153,32 @@ export async function sendChatGPTConversionEvents(
       };
     }
 
+    console.log(`[ChatGPT CAPI] Upstream response (${response.status}):`, typeof parsed === "string" ? parsed.slice(0, 300) : JSON.stringify(parsed));
     console.log(`[ChatGPT CAPI] Successfully sent ${formattedEvents.length} event(s)`);
+
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("app_config").upsert(
+        {
+          key: "chatgpt_last_dispatch",
+          value: JSON.stringify({
+            event_id: formattedEvents[0]?.id,
+            timestamp_ms: formattedEvents[0]?.timestamp_ms,
+            source_url: formattedEvents[0]?.source_url,
+            action_source: formattedEvents[0]?.action_source,
+            oppref_present: Boolean(formattedEvents[0]?.oppref),
+            validate_only: options?.validate_only ?? false,
+            upstream_status: response.status,
+            upstream_response: parsed,
+            recorded_at: new Date().toISOString(),
+          }),
+        },
+        { onConflict: "key" },
+      );
+    } catch {
+      /* audit persistence ignored if unavailable */
+    }
+
     return {
       ok: true,
       status: response.status,

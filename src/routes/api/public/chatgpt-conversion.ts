@@ -18,6 +18,21 @@ export const Route = createFileRoute("/api/public/chatgpt-conversion")({
         const hasKey = getChatGPTConversionApiKey().length > 0;
         const pixelId = getChatGPTPixelId();
 
+        let lastDispatch: unknown = null;
+        try {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { data } = await supabaseAdmin
+            .from("app_config")
+            .select("value")
+            .eq("key", "chatgpt_last_dispatch")
+            .maybeSingle();
+          if (data?.value) {
+            lastDispatch = JSON.parse(data.value);
+          }
+        } catch {
+          /* ignore */
+        }
+
         return new Response(
           JSON.stringify({
             status: "active",
@@ -25,6 +40,7 @@ export const Route = createFileRoute("/api/public/chatgpt-conversion")({
             service: "ChatGPT / OpenAI Ads Conversion API Relay",
             configured: hasKey,
             pixel_id: pixelId,
+            last_dispatch: lastDispatch,
             timestamp: new Date().toISOString(),
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
