@@ -42,6 +42,16 @@ function useTrackRegistrationOnce(registrationId: string | undefined) {
     }
     track("CompleteRegistration", { content_name: "money_reality_masterclass" });
     track("Lead");
+
+    // ChatGPT / OpenAI Ads Browser Pixel
+    try {
+      const win = window as unknown as { oaiq?: (...args: unknown[]) => void };
+      if (typeof win.oaiq === "function") {
+        win.oaiq("measure", "registration_completed", {}, { event_id: registrationId });
+      }
+    } catch {
+      /* pixel error tolerated */
+    }
   }, [registrationId]);
 }
 
