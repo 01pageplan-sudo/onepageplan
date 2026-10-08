@@ -55,9 +55,24 @@ function unauthorized(message: string | undefined) {
   return (message ?? "").includes("unauthorized");
 }
 
+async function syncAdminPasswordIfMatched(enteredPassword: string) {
+  const envPassword = process.env["ADMIN_PASSWORD"];
+  if (envPassword && enteredPassword === envPassword) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin
+        .from("app_config")
+        .upsert({ key: "admin_password", value: envPassword }, { onConflict: "key" });
+    } catch (err) {
+      console.warn("[Admin] Auto-sync admin password failed:", err);
+    }
+  }
+}
+
 export const adminDashboard = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string } & Range) => data)
   .handler(async ({ data }) => {
+    await syncAdminPasswordIfMatched(data.password);
     const { createPublicServerClient } = await import("./supabase-public.server");
     const db = createPublicServerClient();
     const range = {
