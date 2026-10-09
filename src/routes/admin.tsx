@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { BackToHome, Wordmark } from "@/components/site/Header";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Loader2, LogOut } from "lucide-react";
 import {
   adminDashboard,
   adminDeleteLead,
@@ -144,8 +144,19 @@ function toCsv(rows: AdminLead[]) {
 }
 
 function AdminPage() {
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("opp_admin_password") || "";
+    }
+    return "";
+  });
   const [authed, setAuthed] = useState(false);
+  const [sessionChecking, setSessionChecking] = useState(() => {
+    if (typeof window !== "undefined") {
+      return Boolean(localStorage.getItem("opp_admin_password"));
+    }
+    return false;
+  });
   const [leads, setLeads] = useState<AdminLead[]>([]);
   const [sends, setSends] = useState<AdminSend[]>([]);
   const [settings, setSettings] = useState<AdminSettings | null>(null);
@@ -180,11 +191,13 @@ function AdminPage() {
   const [editConsent, setEditConsent] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
-  async function loadCommerce() {
+  async function loadCommerce(customPwd?: string) {
+    const pwd = customPwd || password;
+    if (!pwd) return;
     setCommerceLoading(true);
     setCommerceError("");
     try {
-      const result = await adminGetCommerceDashboard({ data: { password } });
+      const result = await adminGetCommerceDashboard({ data: { password: pwd } });
       if (result.ok) {
         setCommerceData(result.data);
       } else {
@@ -228,29 +241,69 @@ function AdminPage() {
     }
   }
 
-  async function load(nextRange: RangeKey = range) {
+  async function load(nextRange: RangeKey = range, customPassword?: string) {
+    const pwd = customPassword ?? password;
+    if (!pwd) return;
     setLoading(true);
     setError("");
     try {
       const bounds = rangeBounds(nextRange);
-      const result = await adminDashboard({ data: { password, ...bounds } });
+      const result = await adminDashboard({ data: { password: pwd, ...bounds } });
       if (!result.ok) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("opp_admin_password");
+        }
         setError(result.error ?? "Could not load.");
+        setAuthed(false);
         return;
       }
+      if (typeof window !== "undefined") {
+        localStorage.setItem("opp_admin_password", pwd);
+      }
+      setPassword(pwd);
       setAuthed(true);
       setLeads(result.leads);
       setSends(result.sends);
       setSettings(result.settings);
       setStats(result.stats);
       setTemplates(result.templates ?? {});
-      void loadCommerce();
+      void loadCommerce(pwd);
     } catch {
       setError("Could not load the dashboard.");
     } finally {
       setLoading(false);
     }
   }
+
+  function handleLogout() {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("opp_admin_password");
+    }
+    setPassword("");
+    setAuthed(false);
+    setLeads([]);
+    setSends([]);
+    setSettings(null);
+    setNotice("Signed out of admin console.");
+  }
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedPwd = localStorage.getItem("opp_admin_password");
+      if (savedPwd) {
+        setPassword(savedPwd);
+        void (async () => {
+          try {
+            await load(range, savedPwd);
+          } finally {
+            setSessionChecking(false);
+          }
+        })();
+      } else {
+        setSessionChecking(false);
+      }
+    }
+  }, []);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -487,6 +540,15 @@ function AdminPage() {
   }
 
   if (!authed) {
+    if (sessionChecking) {
+      return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <p className="text-xs text-muted-foreground font-medium">Restoring admin session...</p>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b border-border">
@@ -500,7 +562,7 @@ function AdminPage() {
             className="max-w-sm space-y-4"
             onSubmit={(event) => {
               event.preventDefault();
-              void load();
+              void load(range, password);
             }}
           >
             <h1 className="text-2xl font-bold">Admin</h1>
@@ -512,11 +574,12 @@ function AdminPage() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 className="mt-1.5 bg-card"
+                autoFocus
               />
             </div>
             {error ? <p className="text-xs text-destructive">{error}</p> : null}
             <Button type="submit" disabled={loading} className="bg-primary text-primary-foreground">
-              {loading ? "Checking" : "Open"}
+              {loading ? "Checking..." : "Open"}
             </Button>
           </form>
         </main>
@@ -529,7 +592,18 @@ function AdminPage() {
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
           <Wordmark />
-          <BackToHome />
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-xs text-muted-foreground hover:text-foreground h-8 gap-1.5"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
+            </Button>
+            <BackToHome />
+          </div>
         </div>
       </header>
 
