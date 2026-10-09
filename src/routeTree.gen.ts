@@ -53,6 +53,7 @@ import { Route as ApiPublicZeptomailWebhookRouteImport } from './routes/api/publ
 import { Route as ApiRazorpayCreateOrderRouteImport } from './routes/api/razorpay/create-order'
 import { Route as ApiRazorpayVerifyPaymentRouteImport } from './routes/api/razorpay/verify-payment'
 import { Route as ApiWebhooksOppwebinarRouteImport } from './routes/api/webhooks/oppwebinar'
+import { Route as ApiPublicHooksWhatsappWebhookRouteImport } from './routes/api/public/hooks/whatsapp-webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -283,6 +284,12 @@ const ApiWebhooksOppwebinarRoute = ApiWebhooksOppwebinarRouteImport.update({
   path: '/api/webhooks/oppwebinar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksWhatsappWebhookRoute =
+  ApiPublicHooksWhatsappWebhookRouteImport.update({
+    id: '/api/public/hooks/whatsapp-webhook',
+    path: '/api/public/hooks/whatsapp-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -329,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/api/razorpay/create-order': typeof ApiRazorpayCreateOrderRoute
   '/api/razorpay/verify-payment': typeof ApiRazorpayVerifyPaymentRoute
   '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
+  '/api/public/hooks/whatsapp-webhook': typeof ApiPublicHooksWhatsappWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -375,6 +383,7 @@ export interface FileRoutesByTo {
   '/api/razorpay/create-order': typeof ApiRazorpayCreateOrderRoute
   '/api/razorpay/verify-payment': typeof ApiRazorpayVerifyPaymentRoute
   '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
+  '/api/public/hooks/whatsapp-webhook': typeof ApiPublicHooksWhatsappWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -422,6 +431,7 @@ export interface FileRoutesById {
   '/api/razorpay/create-order': typeof ApiRazorpayCreateOrderRoute
   '/api/razorpay/verify-payment': typeof ApiRazorpayVerifyPaymentRoute
   '/api/webhooks/oppwebinar': typeof ApiWebhooksOppwebinarRoute
+  '/api/public/hooks/whatsapp-webhook': typeof ApiPublicHooksWhatsappWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -470,6 +480,7 @@ export interface FileRouteTypes {
     | '/api/razorpay/create-order'
     | '/api/razorpay/verify-payment'
     | '/api/webhooks/oppwebinar'
+    | '/api/public/hooks/whatsapp-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -516,6 +527,7 @@ export interface FileRouteTypes {
     | '/api/razorpay/create-order'
     | '/api/razorpay/verify-payment'
     | '/api/webhooks/oppwebinar'
+    | '/api/public/hooks/whatsapp-webhook'
   id:
     | '__root__'
     | '/'
@@ -562,6 +574,7 @@ export interface FileRouteTypes {
     | '/api/razorpay/create-order'
     | '/api/razorpay/verify-payment'
     | '/api/webhooks/oppwebinar'
+    | '/api/public/hooks/whatsapp-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -608,6 +621,7 @@ export interface RootRouteChildren {
   ApiRazorpayCreateOrderRoute: typeof ApiRazorpayCreateOrderRoute
   ApiRazorpayVerifyPaymentRoute: typeof ApiRazorpayVerifyPaymentRoute
   ApiWebhooksOppwebinarRoute: typeof ApiWebhooksOppwebinarRoute
+  ApiPublicHooksWhatsappWebhookRoute: typeof ApiPublicHooksWhatsappWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -920,6 +934,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksOppwebinarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/whatsapp-webhook': {
+      id: '/api/public/hooks/whatsapp-webhook'
+      path: '/api/public/hooks/whatsapp-webhook'
+      fullPath: '/api/public/hooks/whatsapp-webhook'
+      preLoaderRoute: typeof ApiPublicHooksWhatsappWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -978,6 +999,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRazorpayCreateOrderRoute: ApiRazorpayCreateOrderRoute,
   ApiRazorpayVerifyPaymentRoute: ApiRazorpayVerifyPaymentRoute,
   ApiWebhooksOppwebinarRoute: ApiWebhooksOppwebinarRoute,
+  ApiPublicHooksWhatsappWebhookRoute: ApiPublicHooksWhatsappWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

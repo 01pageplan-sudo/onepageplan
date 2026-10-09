@@ -218,6 +218,114 @@ export async function sendWhatsAppTemplate(
   }
 }
 
+export interface SendWhatsAppTextOptions {
+  to: string;
+  body: string;
+}
+
+/**
+ * Sends a direct text message via Meta WhatsApp Cloud API.
+ * Used for admin replies within the 24-hour customer service care window.
+ */
+export async function sendWhatsAppTextMessage(
+  options: SendWhatsAppTextOptions,
+): Promise<WhatsAppSendResult> {
+  let phoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"]?.trim().replace(/^["']|["']$/g, "");
+  let accessToken = process.env["WHATSAPP_ACCESS_TOKEN"]?.trim().replace(/^["']|["']$/g, "");
+
+  if (!phoneNumberId || !accessToken) {
+    try {
+      const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+      const db = createPublicServerClient();
+      if (!accessToken) {
+        const { data: tRow } = await db
+          .from("app_config" as never)
+          .select("value")
+          .eq("key" as never, "whatsapp_access_token" as never)
+          .maybeSingle();
+        if ((tRow as any)?.value) accessToken = String((tRow as any).value).trim().replace(/^["']|["']$/g, "");
+      }
+      if (!phoneNumberId) {
+        const { data: pRow } = await db
+          .from("app_config" as never)
+          .select("value")
+          .eq("key" as never, "whatsapp_phone_number_id" as never)
+          .maybeSingle();
+        if ((pRow as any)?.value) phoneNumberId = String((pRow as any).value).trim().replace(/^["']|["']$/g, "");
+      }
+    } catch {
+      // safe ignore
+    }
+  }
+
+  if (!phoneNumberId || !accessToken) {
+    console.warn("[WhatsApp Meta Text] Missing credentials");
+    return {
+      sent: false,
+      error: "WhatsApp credentials (WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN) are not configured.",
+    };
+  }
+
+  const normalizedTo = normaliseWhatsAppPhone(options.to);
+  if (!normalizedTo) {
+    return {
+      sent: false,
+      error: `Invalid destination phone number: "${options.to}"`,
+    };
+  }
+
+  const payload = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: normalizedTo,
+    type: "text",
+    text: {
+      preview_url: false,
+      body: options.body,
+    },
+  };
+
+  const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = (await res.json()) as Record<string, unknown>;
+
+    if (!res.ok || data["error"]) {
+      const errObj = (data["error"] as Record<string, unknown>) || {};
+      const errCode = (errObj["code"] as number) || 0;
+      const rawMessage = (errObj["message"] as string) || "Unknown error";
+      const userMessage = (errObj["error_user_msg"] as string) || "";
+      const errorMsg = userMessage || rawMessage;
+
+      console.error("[WhatsApp Meta Text] Send error:", {
+        to: normalizedTo,
+        code: errCode,
+        error: errorMsg,
+      });
+
+      return { sent: false, error: errorMsg };
+    }
+
+    const messages = data["messages"] as Array<Record<string, unknown>> | undefined;
+    const messageId = (messages?.[0]?.["id"] as string) || undefined;
+
+    return messageId ? { sent: true, messageId } : { sent: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[WhatsApp Meta Text] Network error:", message);
+    return { sent: false, error: message };
+  }
+}
+
 /**
  * Validates Meta Webhook SHA-256 HMAC signature (x-hub-signature-256).
  */
@@ -246,3 +354,4 @@ export function verifyMetaSignature(
     return false;
   }
 }
+
