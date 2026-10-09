@@ -1088,32 +1088,35 @@ GRANT EXECUTE ON FUNCTION public.compute_current_silver_pricing() TO anon, authe
 CREATE OR REPLACE FUNCTION public.record_successful_payment(
   p_email TEXT,
   p_amount NUMERIC,
-  p_currency TEXT,
   p_order_id TEXT,
   p_payment_id TEXT,
+  p_signature TEXT,
   p_notes JSONB DEFAULT '{}'::jsonb
 )
-RETURNS UUID
+RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_clean_email TEXT := lower(trim(p_email));
   v_reg_id UUID;
   v_payment_id UUID;
 BEGIN
   SELECT id INTO v_reg_id
   FROM public.registrations
-  WHERE lower(trim(email)) = lower(trim(p_email))
+  WHERE email = v_clean_email
   ORDER BY created_at DESC
   LIMIT 1;
 
   INSERT INTO public.payments (
     registration_id, email, amount, currency,
-    razorpay_order_id, razorpay_payment_id, notes, status
+    razorpay_order_id, razorpay_payment_id, razorpay_signature,
+    status, notes
   ) VALUES (
-    v_reg_id, lower(trim(p_email)), p_amount, coalesce(p_currency, 'INR'),
-    p_order_id, p_payment_id, coalesce(p_notes, '{}'::jsonb), 'captured'
+    v_reg_id, v_clean_email, p_amount, 'INR',
+    p_order_id, p_payment_id, p_signature,
+    'captured', coalesce(p_notes, '{}'::jsonb)
   )
   ON CONFLICT (razorpay_payment_id) DO UPDATE SET status = 'captured', updated_at = now()
   RETURNING id INTO v_payment_id;
@@ -1124,9 +1127,22 @@ BEGIN
         tags = array_append(coalesce(tags, '{}'::text[]), 'purchased'),
         updated_at = now()
     WHERE id = v_reg_id;
+
+    INSERT INTO public.lead_tags (registration_id, tag)
+    VALUES (v_reg_id, 'purchased')
+    ON CONFLICT (registration_id, tag) DO NOTHING;
+
+    DELETE FROM public.email_sends
+    WHERE registration_id = v_reg_id
+      AND status = 'pending'
+      AND template LIKE 'nurture%';
   END IF;
 
-  RETURN v_payment_id;
+  RETURN jsonb_build_object(
+    'ok', true,
+    'payment_id', v_payment_id,
+    'registration_id', v_reg_id
+  );
 END;
 $$;
 
@@ -1334,28 +1350,23 @@ GRANT EXECUTE ON FUNCTION public.record_email_provider_event(text, text, text, t
 
 -- Course access checker RPC
 CREATE OR REPLACE FUNCTION public.check_course_access(p_email TEXT)
-RETURNS JSONB
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-  v_grant RECORD;
 BEGIN
-  SELECT * INTO v_grant
-  FROM public.member_access_grants
-  WHERE lower(trim(email)) = lower(trim(p_email))
-    AND is_active = true
-    AND (expires_at IS NULL OR expires_at > now())
-  ORDER BY created_at DESC
-  LIMIT 1;
-
-  IF FOUND THEN
-    RETURN jsonb_build_object('has_access', true, 'product_id', v_grant.product_id);
-  END IF;
-
-  RETURN jsonb_build_object('has_access', false);
+  RETURN EXISTS (
+    SELECT 1 FROM public.member_access_grants
+    WHERE lower(trim(email)) = lower(trim(p_email))
+      AND is_active = true
+      AND (expires_at IS NULL OR expires_at > now())
+  ) OR EXISTS (
+    SELECT 1 FROM public.payments
+    WHERE lower(trim(email)) = lower(trim(p_email))
+      AND status = 'captured'
+  );
 END;
 $$;
 
