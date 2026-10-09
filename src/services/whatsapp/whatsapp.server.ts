@@ -67,8 +67,33 @@ export function normaliseWhatsAppPhone(phone: string, defaultCountryCode = "91")
 export async function sendWhatsAppTemplate(
   options: SendWhatsAppTemplateOptions,
 ): Promise<WhatsAppSendResult> {
-  const phoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"];
-  const accessToken = process.env["WHATSAPP_ACCESS_TOKEN"];
+  let phoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"]?.trim().replace(/^["']|["']$/g, "");
+  let accessToken = process.env["WHATSAPP_ACCESS_TOKEN"]?.trim().replace(/^["']|["']$/g, "");
+
+  if (!phoneNumberId || !accessToken) {
+    try {
+      const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+      const db = createPublicServerClient();
+      if (!accessToken) {
+        const { data: tRow } = await db
+          .from("app_config" as never)
+          .select("value")
+          .eq("key" as never, "whatsapp_access_token" as never)
+          .maybeSingle();
+        if ((tRow as any)?.value) accessToken = String((tRow as any).value).trim().replace(/^["']|["']$/g, "");
+      }
+      if (!phoneNumberId) {
+        const { data: pRow } = await db
+          .from("app_config" as never)
+          .select("value")
+          .eq("key" as never, "whatsapp_phone_number_id" as never)
+          .maybeSingle();
+        if ((pRow as any)?.value) phoneNumberId = String((pRow as any).value).trim().replace(/^["']|["']$/g, "");
+      }
+    } catch {
+      // non-fatal
+    }
+  }
 
   if (!phoneNumberId || !accessToken) {
     console.warn(
@@ -76,7 +101,7 @@ export async function sendWhatsAppTemplate(
     );
     return {
       sent: false,
-      error: "WhatsApp credentials (WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN) are not configured.",
+      error: "WhatsApp credentials (WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN) are not configured in Vercel or database.",
     };
   }
 
@@ -161,14 +186,21 @@ export async function sendWhatsAppTemplate(
 
     if (!response.ok) {
       const errObj = data["error"] as Record<string, unknown> | undefined;
-      const errorMsg =
-        (errObj?.["message"] as string) ||
-        (errObj?.["error_user_msg"] as string) ||
-        `HTTP ${response.status}: ${JSON.stringify(data).slice(0, 300)}`;
+      const errCode = (errObj?.["code"] as number) || response.status;
+      const rawMessage = (errObj?.["message"] as string) || (errObj?.["error_user_msg"] as string) || "";
+      let errorMsg = rawMessage || `HTTP ${response.status}: ${JSON.stringify(data).slice(0, 300)}`;
+
+      if (errCode === 190 || rawMessage.toLowerCase().includes("authentication error")) {
+        errorMsg =
+          "Meta Authentication Error (OAuth 190): The WHATSAPP_ACCESS_TOKEN is invalid or expired. Please generate a non-expiring System User Access Token in Meta Business Suite with 'whatsapp_business_messaging' permission and update WHATSAPP_ACCESS_TOKEN in Vercel.";
+      } else if (errCode === 100 || rawMessage.toLowerCase().includes("does not exist in the translated language")) {
+        errorMsg = `Meta Template Error: Template '${sanitizedTemplate}' (${requestedLang}) was not found in Meta WhatsApp Business Account or is not yet approved.`;
+      }
 
       console.error("[WhatsApp Meta] Send error:", {
         to: normalizedTo,
         template: sanitizedTemplate,
+        code: errCode,
         error: errorMsg,
       });
 

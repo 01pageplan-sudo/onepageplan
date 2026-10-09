@@ -45,22 +45,17 @@ export function isQuestionRateLimited(ip: string): boolean {
   return hits.length > 5;
 }
 
-export function cleanIndianMobile(raw: string | undefined): string {
-  let val = (raw || "").replace(/\D/g, "");
-  if (val.startsWith("91") && val.length > 10) {
-    val = val.slice(2);
-  }
-  val = val.replace(/^0+/, "");
-  return val.slice(0, 10);
-}
+import { isValidEmail, isValidIndianMobile, cleanIndianMobile } from "./validation";
+export { cleanIndianMobile };
 
 export function validate(input: RegistrationInput): string | null {
-  if (!input.full_name || input.full_name.trim().length < 2) return "Please enter your name.";
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(input.email.trim())) return "Please enter a valid email.";
-  if (input.whatsapp_consent) {
-    const clean = cleanIndianMobile(input.phone10);
-    if (!/^[6-9]\d{9}$/.test(clean)) {
-      return "Enter a valid 10-digit Indian mobile number so I can send the link on WhatsApp.";
+  if (!input.full_name || input.full_name.trim().length < 2) return "Please enter your full name.";
+  if (!isValidEmail(input.email)) {
+    return "Please enter a valid, active email address.";
+  }
+  if (input.whatsapp_consent || (input.phone10 && input.phone10.trim().length > 0)) {
+    if (!isValidIndianMobile(input.phone10)) {
+      return "Please enter a valid 10-digit Indian mobile number (e.g. 98200XXXXX).";
     }
   }
   if (!input.profile_type) return "Please tell us what describes you.";
@@ -72,7 +67,7 @@ export function buildRow(input: RegistrationInput) {
   const now = new Date().toISOString();
   const target = getNextSessionIST();
   const cleanPhone = cleanIndianMobile(input.phone10);
-  const hasPhone = /^[6-9]\d{9}$/.test(cleanPhone);
+  const hasPhone = isValidIndianMobile(cleanPhone);
   return {
     full_name: input.full_name.trim(),
     email: input.email.trim().toLowerCase(),
@@ -116,22 +111,39 @@ async function markDelivery(
   }
 }
 
-/** Checks if a registration already exists for this email and session. */
+/** Checks if a registration already exists for this email, session, or phone number. */
 export async function findExistingRegistration(
   db: Db,
   email: string,
   sessionDate: string,
+  phoneE164?: string,
 ) {
   try {
+    const cleanMail = email.trim().toLowerCase();
     const { data, error } = await db.rpc("lookup_registration_details_for_room", {
-      p_email: email.trim().toLowerCase(),
+      p_email: cleanMail,
       p_session_date: sessionDate,
     });
-    if (error) {
-      console.error("findExistingRegistration rpc error:", error);
-      return null;
+    if (!error && data && (data as any).full_name) {
+      return data as { full_name?: string; phone_e164?: string; id?: string } | null;
     }
-    return data as { full_name?: string; phone_e164?: string } | null;
+
+    // Secondary match: check if this phone number or email is already registered
+    const phone = (phoneE164 || "").trim();
+    if (phone) {
+      const { data: matchedRows } = await db
+        .from("registrations" as never)
+        .select("id, full_name, email, phone_e164, session_date")
+        .or(`email.eq.${cleanMail},phone_e164.eq.${phone}`)
+        .order("created_at" as never, { ascending: false })
+        .limit(1);
+
+      if (matchedRows && Array.isArray(matchedRows) && matchedRows.length > 0) {
+        return matchedRows[0] as { full_name?: string; phone_e164?: string; id?: string };
+      }
+    }
+
+    return null;
   } catch (err) {
     console.error("findExistingRegistration error:", err);
     return null;

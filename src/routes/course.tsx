@@ -574,6 +574,8 @@ function CoursePortalPage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(() => loaderData?.initialAccess ?? null);
   const [checking, setChecking] = useState(false);
   const [errorNotice, setErrorNotice] = useState("");
+  const [buyerName, setBuyerName] = useState("");
+  const [buyerPhone, setBuyerPhone] = useState("");
 
   const [memberTiers, setMemberTiers] = useState<{
     canViewMrc?: boolean;
@@ -1441,11 +1443,59 @@ function CoursePortalPage() {
                   ))}
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-2 space-y-4">
+                  <div className="rounded-lg border border-border bg-background/50 p-4 space-y-3">
+                    <p className="text-xs font-semibold text-foreground">
+                      Enter your details to unlock instant course access:
+                    </p>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-foreground flex items-center justify-between">
+                        <span>Email Address <span className="text-destructive">*</span></span>
+                        <span className="text-[10px] text-muted-foreground">Course access & receipt will be sent here</span>
+                      </label>
+                      <Input
+                        type="email"
+                        placeholder="yourname@gmail.com"
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        className="text-xs bg-card"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-foreground">
+                          Full Name
+                        </label>
+                        <Input
+                          placeholder="Your Name"
+                          value={buyerName}
+                          onChange={(e) => setBuyerName(e.target.value)}
+                          className="text-xs bg-card"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-foreground">
+                          WhatsApp Mobile
+                        </label>
+                        <Input
+                          placeholder="+91 98200XXXXX"
+                          value={buyerPhone}
+                          onChange={(e) => setBuyerPhone(e.target.value)}
+                          className="text-xs bg-card"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <RazorpayButton
                     label="Pay ₹6,000 & Unlock Instant Access →"
-                    email={activeEmail || emailInput}
+                    email={emailInput.trim()}
+                    name={buyerName.trim()}
+                    phone={buyerPhone.trim()}
                     onSuccess={() => {
+                      setActiveEmail(emailInput.trim().toLowerCase());
                       setHasAccess(true);
                     }}
                   />

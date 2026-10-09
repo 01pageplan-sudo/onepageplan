@@ -97,18 +97,31 @@ export function WebinarEmbed({
           </h1>
         </div>
 
-        {onClose && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="h-9 w-9 rounded-full bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-            title="Exit Fullscreen"
-          >
-            <X className="h-5 w-5" />
-            <span className="sr-only">Exit player</span>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {token && (
+            <a
+              href={`${WEBINAR_ORIGIN}/${webinarId}?token=${encodeURIComponent(token)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span>Launch in Full Window ↗</span>
+            </a>
+          )}
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-9 w-9 rounded-full bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+              title="Exit Fullscreen"
+            >
+              <X className="h-5 w-5" />
+              <span className="sr-only">Exit player</span>
+            </Button>
+          )}
+        </div>
       </header>
 
       {/* Main Content Area */}
@@ -150,16 +163,33 @@ export function WebinarEmbed({
         )}
 
         {!loading && !error && token && (
-          <iframe
-            src={embedUrl}
-            title="The Money Reality Masterclass Live Stream"
-            width="100%"
-            height="100%"
-            allow="autoplay; fullscreen; picture-in-picture"
-            allowFullScreen
-            className="h-full w-full border-0 overflow-hidden"
-            style={{ border: 0, outline: "none" }}
-          />
+          <>
+            <iframe
+              src={embedUrl}
+              title="The Money Reality Masterclass Live Stream"
+              width="100%"
+              height="100%"
+              allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; picture-in-picture"
+              allowFullScreen
+              className="h-full w-full border-0 overflow-hidden"
+              style={{ border: 0, outline: "none" }}
+            />
+
+            {/* Direct Window Fallback Pill for Embedding Restrictions */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+              <div className="flex items-center gap-2 bg-zinc-950/90 border border-zinc-800 rounded-full px-4 py-2 text-xs text-zinc-300 shadow-2xl backdrop-blur-md">
+                <span className="text-[11px] text-zinc-400">Stream restricted or not loading?</span>
+                <a
+                  href={`${WEBINAR_ORIGIN}/${webinarId}?token=${encodeURIComponent(token)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 flex items-center gap-1 ml-1"
+                >
+                  Open Webinar.gg in New Tab <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+          </>
         )}
       </main>
     </div>

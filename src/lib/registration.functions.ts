@@ -53,14 +53,14 @@ export const registerAttendee = createServerFn({ method: "POST" })
       const db = createPublicServerClient();
       const row = helpers.buildRow(data);
 
-      // Check if prospect is already registered for this session
-      const existing = await helpers.findExistingRegistration(db, row.email, row.session_date);
+      // Check if prospect is already registered by email or phone
+      const existing = await helpers.findExistingRegistration(db, row.email, row.session_date, row.phone_e164);
       if (existing) {
-        // Update contact preferences silently without re-sending confirmation email or WhatsApp
+        // Update contact preferences silently without re-sending duplicate confirmation emails/WhatsApps
         const saved = await helpers.upsertRegistration(db, row);
         return {
           ok: true as const,
-          registrationId: saved?.id ?? null,
+          registrationId: saved?.id ?? (existing as any).id ?? null,
           alreadyRegistered: true as const,
         };
       }

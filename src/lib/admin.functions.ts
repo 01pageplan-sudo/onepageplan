@@ -334,25 +334,49 @@ export const adminUpdateLead = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Wrong password." };
     }
 
-    // Sanitize phone number (strip accidental leading 0s, +910, spaces, etc.)
-    let cleanPhone = (data.phone || "").trim().replace(/[^\d+]/g, "");
-    if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.slice(1);
-    // If starts with 910... (e.g. 910902987707)
-    if (cleanPhone.startsWith("910") && cleanPhone.length > 10) {
-      cleanPhone = `91${cleanPhone.slice(3)}`;
-    } else if (cleanPhone.startsWith("0")) {
-      cleanPhone = cleanPhone.replace(/^0+/, "");
+    const { isValidEmail, isValidIndianMobile, cleanIndianMobile } = await import("./validation");
+
+    const cleanEmail = data.email.trim().toLowerCase();
+    if (!isValidEmail(cleanEmail)) {
+      return { ok: false as const, error: "Please enter a valid, active email address." };
     }
-    // If exactly 10 digits, prepend 91 for Indian mobile
-    if (cleanPhone.length === 10) {
-      cleanPhone = `91${cleanPhone}`;
+
+    let finalPhoneE164 = "";
+    if (data.phone && data.phone.trim() !== "") {
+      const digits10 = cleanIndianMobile(data.phone);
+      if (!isValidIndianMobile(digits10)) {
+        return { ok: false as const, error: "Please enter a valid 10-digit Indian mobile number." };
+      }
+      finalPhoneE164 = `+91${digits10}`;
     }
-    const finalPhoneE164 = cleanPhone ? `+${cleanPhone}` : "";
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Ensure email or phone is not already assigned to another contact
+    let query = supabaseAdmin
+      .from("registrations")
+      .select("id, email, phone_e164")
+      .neq("id", data.id);
+
+    if (finalPhoneE164) {
+      query = query.or(`email.eq.${cleanEmail},phone_e164.eq.${finalPhoneE164}`);
+    } else {
+      query = query.eq("email", cleanEmail);
+    }
+
+    const { data: duplicateLead } = await query.limit(1).maybeSingle();
+    if (duplicateLead) {
+      if (duplicateLead.email === cleanEmail) {
+        return { ok: false as const, error: `Another contact already exists with email '${cleanEmail}'.` };
+      }
+      if (duplicateLead.phone_e164 === finalPhoneE164) {
+        return { ok: false as const, error: `Another contact already exists with mobile '${finalPhoneE164}'.` };
+      }
+    }
+
     const updatePayload: Record<string, unknown> = {
       full_name: data.fullName.trim(),
-      email: data.email.trim().toLowerCase(),
+      email: cleanEmail,
       phone_e164: finalPhoneE164,
     };
     if (typeof data.whatsappConsent === "boolean") {
@@ -1398,20 +1422,139 @@ export const adminBulkUploadMembers = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Wrong password." };
     }
 
+    if (!data.users || !Array.isArray(data.users) || data.users.length === 0) {
+      return { ok: false as const, error: "No users provided for bulk upload." };
+    }
+
+    // Try RPC first
     try {
       const { data: result, error } = await (db.rpc as any)("bulk_upload_members", {
         p_users: data.users,
         p_admin: "admin",
       });
 
-      if (error) {
-        return { ok: false as const, error: error.message };
+      if (!error && result && typeof result.imported_count === "number") {
+        return { ok: true as const, importedCount: result.imported_count };
+      }
+    } catch {
+      // Fallback to direct table insertion below
+    }
+
+    // Fallback: Direct table operations via supabaseAdmin
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      // Fetch active cohorts for linking
+      const { data: allCohorts } = await supabaseAdmin
+        .from("cohorts" as never)
+        .select("id, cohort_number, start_date")
+        .order("start_date" as never, { ascending: true });
+
+      const defaultCohort = (allCohorts && Array.isArray(allCohorts))
+        ? ((allCohorts as any[]).find((c) => new Date(c.start_date) > new Date()) || allCohorts[0])
+        : null;
+
+      let importedCount = 0;
+
+      for (const item of data.users) {
+        const email = String(item["email"] || "").trim().toLowerCase();
+        if (!email || !email.includes("@")) continue;
+
+        const name = String(item["name"] || "").trim();
+        const phone = String(item["phone"] || "").trim();
+        const rawTier = String(item["tier"] || "silver").trim().toLowerCase();
+        const tier = (rawTier === "mrc" || rawTier === "money_reality_check")
+          ? "money_reality_check"
+          : (rawTier === "gold" ? "gold" : (rawTier === "diamond" ? "diamond" : "silver"));
+        const notes = String(item["notes"] || "Bulk upload import").trim();
+        const cohortNum = item["cohort_number"] ? Number(item["cohort_number"]) : null;
+
+        let cohortId: string | null = null;
+        if (cohortNum && allCohorts && Array.isArray(allCohorts)) {
+          const match = (allCohorts as any[]).find((c) => c.cohort_number === cohortNum);
+          if (match) cohortId = match.id;
+        }
+        if (!cohortId && defaultCohort && tier !== "money_reality_check") {
+          cohortId = defaultCohort.id;
+        }
+
+        // 1. Insert manual grant
+        const { data: grantRow, error: grantErr } = await supabaseAdmin
+          .from("manual_grants" as never)
+          .insert({
+            email,
+            name: name || null,
+            phone: phone || null,
+            product_id: tier,
+            reason_note: notes,
+            granted_by: "admin",
+          } as never)
+          .select("id")
+          .single();
+
+        const grantId = grantRow ? (grantRow as any).id : null;
+
+        // 2. Insert member_access_grants
+        await supabaseAdmin
+          .from("member_access_grants" as never)
+          .insert({
+            email,
+            access_tier: tier,
+            source_type: "bulk_upload",
+            manual_grant_id: grantId,
+            status: "active",
+            cohort_id: cohortId,
+          } as never);
+
+        // If Gold or Diamond, also grant subordinate tiers
+        if (tier === "gold") {
+          await supabaseAdmin
+            .from("member_access_grants" as never)
+            .insert({
+              email,
+              access_tier: "silver",
+              source_type: "included_in_tier",
+              parent_product: "gold",
+              manual_grant_id: grantId,
+              status: "active",
+              cohort_id: cohortId,
+            } as never);
+        } else if (tier === "diamond") {
+          await supabaseAdmin
+            .from("member_access_grants" as never)
+            .insert({
+              email,
+              access_tier: "gold",
+              source_type: "included_in_tier",
+              parent_product: "diamond",
+              manual_grant_id: grantId,
+              status: "active",
+            } as never);
+          await supabaseAdmin
+            .from("member_access_grants" as never)
+            .insert({
+              email,
+              access_tier: "silver",
+              source_type: "included_in_tier",
+              parent_product: "diamond",
+              manual_grant_id: grantId,
+              status: "active",
+              cohort_id: cohortId,
+            } as never);
+        }
+
+        // 3. Mark registrations status as purchased if lead exists
+        await supabaseAdmin
+          .from("registrations" as never)
+          .update({ status: "purchased" } as never)
+          .eq("email" as never, email);
+
+        importedCount++;
       }
 
-      return { ok: true as const, importedCount: result?.imported_count || 0 };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { ok: false as const, error: msg };
+      return { ok: true as const, importedCount };
+    } catch (err: any) {
+      return { ok: false as const, error: err?.message || "Error processing bulk upload." };
     }
   });
 

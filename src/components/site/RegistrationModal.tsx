@@ -18,6 +18,7 @@ import {
 import { track } from "@/lib/analytics";
 import { registerAttendee, subscribeNewsletter } from "@/lib/registration.functions";
 import { isSaturdayPost630PMIST } from "@/lib/session";
+import { isValidEmail, isValidIndianMobile, cleanIndianMobile } from "@/lib/validation";
 
 const PROFILE_OPTIONS = [
   "Salaried professional, mid to senior level",
@@ -129,11 +130,14 @@ export function RegistrationModal({
 
   function validateStep3() {
     const next: FieldErrors = {};
-    if (fullName.trim().length < 2) next.fullName = "Please enter your name.";
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email.trim()))
-      next.email = "Please enter a valid email address.";
-    if (whatsappConsent && !/^[6-9]\d{9}$/.test(phone))
-      next.phone = "Enter a valid 10-digit Indian mobile number (e.g. 98200XXXXX).";
+    if (fullName.trim().length < 2) next.fullName = "Please enter your full name.";
+    if (!isValidEmail(email))
+      next.email = "Please enter a valid, active email address.";
+    if (whatsappConsent || phone.trim().length > 0) {
+      if (!isValidIndianMobile(phone)) {
+        next.phone = "Enter a valid 10-digit Indian mobile number (e.g. 98200XXXXX).";
+      }
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -145,9 +149,9 @@ export function RegistrationModal({
     try {
       const result = await registerAttendee({
         data: {
-          full_name: fullName,
-          email,
-          phone10: phone,
+          full_name: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          phone10: cleanIndianMobile(phone),
           whatsapp_consent: whatsappConsent,
           voice_consent: voiceConsent,
           profile_type: profileType,
