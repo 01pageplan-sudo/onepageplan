@@ -35,6 +35,7 @@ import {
   adminUploadAttendanceCsv,
   adminSyncMetaTemplates,
   adminSyncResendDelivery,
+  adminSendTestMessage,
   type AdminSend,
   type AdminWhatsAppStats,
 } from "@/lib/admin.functions";
@@ -203,6 +204,11 @@ export function CommunicationsPanel({
   });
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // Instant Test Message Dispatch State
+  const [testRecipient, setTestRecipient] = useState<string>(() => testEmail);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testFeedback, setTestFeedback] = useState<{ ok: boolean; message: string } | null>(null);
+
   // Email Delivery filter and sync state
   const [emailFilter, setEmailFilter] = useState<"dispatched" | "all" | "queued" | "failed">("dispatched");
   const [syncingResend, setSyncingResend] = useState(false);
@@ -333,17 +339,63 @@ export function CommunicationsPanel({
   }, [password, subTab]);
 
   const activeTemplate = useMemo(() => {
-    if (!msgData?.templates) return null;
-    return msgData.templates.find((t) => t.key === selectedTemplateKey) || null;
-  }, [msgData, selectedTemplateKey]);
+    return currentTemplates.find((t: any) => t.key === selectedTemplateKey) || currentTemplates[0] || null;
+  }, [currentTemplates, selectedTemplateKey]);
+
+  useEffect(() => {
+    if (activeTemplate) {
+      if (!selectedTemplateKey) setSelectedTemplateKey(activeTemplate.key);
+      setTestRecipient((prev) => (!prev || prev === testEmail || prev === testPhone)
+        ? (activeTemplate.channel === "whatsapp" ? testPhone : testEmail)
+        : prev
+      );
+    }
+  }, [activeTemplate, testPhone, testEmail]);
 
   const handleSelectTemplate = (key: string) => {
     setSelectedTemplateKey(key);
-    const tmpl = msgData?.templates?.find((t) => t.key === key);
+    const tmpl = currentTemplates.find((t: any) => t.key === key);
     if (tmpl) {
       setEditSubject(tmpl.subject || "");
       setEditBody(tmpl.body || "");
       setEditActive(tmpl.is_active ?? true);
+      setTestRecipient(tmpl.channel === "whatsapp" ? testPhone : testEmail);
+      setTestFeedback(null);
+    }
+  };
+
+  const handleSendTestMessage = async () => {
+    if (!password || !selectedTemplateKey || !testRecipient.trim()) return;
+    setSendingTest(true);
+    setTestFeedback(null);
+
+    try {
+      const res = await adminSendTestMessage({
+        data: {
+          password,
+          templateKey: selectedTemplateKey,
+          recipient: testRecipient.trim(),
+        },
+      });
+
+      if (res.ok) {
+        setTestFeedback({
+          ok: true,
+          message: res.info || `Test message dispatched successfully. ID: ${res.messageId || "OK"}`,
+        });
+      } else {
+        setTestFeedback({
+          ok: false,
+          message: res.error || "Failed to send test message.",
+        });
+      }
+    } catch (err: any) {
+      setTestFeedback({
+        ok: false,
+        message: err?.message || "An unexpected error occurred while sending test message.",
+      });
+    } finally {
+      setSendingTest(false);
     }
   };
 
@@ -524,15 +576,13 @@ export function CommunicationsPanel({
   };
 
 const DEFAULT_FALLBACK_TEMPLATES = [
-  { key: "webinar_confirmation", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_confirmation", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nYour registration for The One Page Plan masterclass is confirmed.\n\nDate & Time: 7:00 PM IST\nLive Room: {{2}}\n\nSee you inside!" },
-  { key: "webinar_reminder_2h", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_reminder_2h", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nQuick reminder: We go live in 2 hours for The One Page Plan masterclass at 7:00 PM IST.\n\nRoom link:\n{{2}}\n\nPlease join 5 minutes early." },
-  { key: "webinar_reminder_15m", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_reminder_15m", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nWe start in 15 minutes! The room is open.\n\nTap below to join:\n{{2}}" },
-  { key: "webinar_live_now", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_live_now", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nWe are LIVE right now! Milan Dodhia has started the session.\n\nJoin here:\n{{2}}" },
-  { key: "webinar_missed", channel: "whatsapp", category: "marketing", meta_template_name: "webinar_missed", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nWe missed you at today's masterclass. To help you evaluate your portfolio, Money Reality Check is available.\n\nDetails:\n{{2}}" },
-  { key: "course_purchase_confirmat", channel: "whatsapp", category: "transactional", meta_template_name: "course_purchase_confirmat", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nYour enrollment is confirmed.\n\nYour diagnostic sessions and tools are unlocked here:\n{{2}}\n\nDownload receipt: {{3}}" },
-  { key: "payment_failed_recovery", channel: "whatsapp", category: "transactional", meta_template_name: "payment_failed_recovery", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nWe noticed your payment was not completed. Nothing was charged to your account.\n\nYou can resume checkout here:\n{{2}}" },
-  { key: "mrm_reality_check_followup", channel: "whatsapp", category: "marketing", meta_template_name: "mrm_reality_check_followup", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nThank you for attending The Money Reality Masterclass. To measure your own family's real returns step by step, Money Reality Check is available for ₹601.\n\nDetails: {{2}}" },
-  { key: "3p_direct_integration_test", channel: "whatsapp", category: "transactional", meta_template_name: "3p_direct_integration_test", meta_approval_status: "APPROVED", is_active: true, body: "Test dispatch from Meta WhatsApp Cloud API: Hello {{1}}, system operational." },
+  { key: "webinar_confirmation", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_confirmation", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nYour seat for The One Page Plan masterclass is confirmed.\n\nDate & Time: 7:00 PM IST\nLive Room: {{2}}\n\nSee you inside!" },
+  { key: "webinar_reminder_2h", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_reminder_2h", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nWe start The One Page Plan masterclass in 2 hours at 7:00 PM IST.\n\nRoom link:\n{{2}}\n\nPlease join 5 minutes early." },
+  { key: "webinar_reminder_15m", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_reminder_15m", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nThe Money Reality room is open! Milan Dodhia is starting in 15 minutes.\n\nTap below to enter:\n{{2}}" },
+  { key: "webinar_live_now", channel: "whatsapp", category: "marketing", meta_template_name: "webinar_live_now", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nThe Money Reality session is LIVE right now! Milan Dodhia has started the presentation.\n\nJoin here:\n{{2}}" },
+  { key: "webinar_missed", channel: "whatsapp", category: "marketing", meta_template_name: "webinar_missed", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nYou registered for today's masterclass but missed the live session. To measure your own numbers, Money Reality Check is available.\n\nDetails:\n{{2}}" },
+  { key: "course_purchase_confirmat", channel: "whatsapp", category: "transactional", meta_template_name: "course_purchase_confirmat", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nThank you for joining. Your enrollment is confirmed.\n\nYour diagnostic sessions and tools are unlocked here:\n{{2}}\n\nDownload receipt: {{3}}\n\nWarmly,\nMilan Dodhia" },
+  { key: "3p_direct_integration_test", channel: "whatsapp", category: "transactional", meta_template_name: "3p_direct_integration_test", meta_approval_status: "APPROVED", is_active: true, body: "Welcome! This is a test message from Milan Dodhia: Hello {{1}}, your WhatsApp Cloud API integration is operational." },
 ];
 
   const currentTemplates = useMemo(() => {
@@ -932,6 +982,72 @@ const DEFAULT_FALLBACK_TEMPLATES = [
                       </div>
                     </div>
                   ) : null}
+
+                  {/* Direct Test Dispatch Card */}
+                  <div className="pt-4 border-t border-border">
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                            <Send className="h-3.5 w-3.5 text-primary" />
+                            Send Direct Test Message
+                          </p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Dispatch this {activeTemplate.channel === "whatsapp" ? "WhatsApp template via Meta Cloud API" : "email preview via Resend"} immediately to verify delivery.
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                          {activeTemplate.channel === "whatsapp" ? "WhatsApp Test" : "Email Test"}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <div className="flex-1">
+                          <Input
+                            value={testRecipient}
+                            onChange={(e) => {
+                              setTestRecipient(e.target.value);
+                              setTestFeedback(null);
+                            }}
+                            placeholder={activeTemplate.channel === "whatsapp" ? "+919820000000" : "name@example.com"}
+                            className="text-xs bg-background h-9"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={handleSendTestMessage}
+                          disabled={sendingTest || !testRecipient.trim()}
+                          className="text-xs gap-1.5 h-9 shrink-0 font-medium"
+                        >
+                          {sendingTest ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Send className="h-3.5 w-3.5" />
+                          )}
+                          Send Test Now
+                        </Button>
+                      </div>
+
+                      {testFeedback ? (
+                        <div
+                          className={`flex items-start gap-2 p-2.5 rounded text-xs border ${
+                            testFeedback.ok
+                              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                              : "bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-400"
+                          }`}
+                        >
+                          {testFeedback.ok ? (
+                            <Check className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+                          )}
+                          <div className="flex-1 text-[11px] font-mono break-all">
+                            {testFeedback.message}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="rounded-lg border border-border bg-card p-12 text-center text-xs text-muted-foreground">

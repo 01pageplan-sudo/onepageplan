@@ -32,7 +32,7 @@ export interface MetaFetchResult {
   templates: TemplateDefinition[];
 }
 
-// Built-in approved Meta templates for the webinar & commerce system
+// Built-in approved Meta templates for the webinar & commerce system (exactly the 7 approved in Meta WhatsApp Manager)
 const CORE_META_TEMPLATES: TemplateDefinition[] = [
   {
     key: "webinar_confirmation",
@@ -41,7 +41,7 @@ const CORE_META_TEMPLATES: TemplateDefinition[] = [
     metaTemplateName: "webinar_confirmation",
     metaLanguage: "en",
     metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},\n\nYour registration for The One Page Plan masterclass is confirmed.\n\nDate & Time: 7:00 PM IST\nLive Room: {{2}}\n\nSee you inside!`,
+    body: `Hello {{1}},\n\nYour seat for The One Page Plan masterclass is confirmed.\n\nDate & Time: 7:00 PM IST\nLive Room: {{2}}\n\nSee you inside!`,
     variables: ["first_name", "room_url"],
     isActive: true,
   },
@@ -52,7 +52,7 @@ const CORE_META_TEMPLATES: TemplateDefinition[] = [
     metaTemplateName: "webinar_reminder_2h",
     metaLanguage: "en",
     metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},\n\nQuick reminder: We go live in 2 hours for The One Page Plan masterclass at 7:00 PM IST.\n\nRoom link:\n{{2}}\n\nPlease join 5 minutes early.`,
+    body: `Hello {{1}},\n\nWe start The One Page Plan masterclass in 2 hours at 7:00 PM IST.\n\nRoom link:\n{{2}}\n\nPlease join 5 minutes early.`,
     variables: ["first_name", "room_url"],
     isActive: true,
   },
@@ -63,18 +63,18 @@ const CORE_META_TEMPLATES: TemplateDefinition[] = [
     metaTemplateName: "webinar_reminder_15m",
     metaLanguage: "en",
     metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},\n\nWe start in 15 minutes! The room is open.\n\nTap below to join:\n{{2}}`,
+    body: `Hello {{1}},\n\nThe Money Reality room is open! Milan Dodhia is starting in 15 minutes.\n\nTap below to enter:\n{{2}}`,
     variables: ["first_name", "room_url"],
     isActive: true,
   },
   {
     key: "webinar_live_now",
     channel: "whatsapp",
-    category: "transactional",
+    category: "marketing",
     metaTemplateName: "webinar_live_now",
     metaLanguage: "en",
     metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},\n\nWe are LIVE right now! Milan Dodhia has started the session.\n\nJoin here:\n{{2}}`,
+    body: `Hello {{1}},\n\nThe Money Reality session is LIVE right now! Milan Dodhia has started the presentation.\n\nJoin here:\n{{2}}`,
     variables: ["first_name", "room_url"],
     isActive: true,
   },
@@ -85,7 +85,7 @@ const CORE_META_TEMPLATES: TemplateDefinition[] = [
     metaTemplateName: "webinar_missed",
     metaLanguage: "en",
     metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},\n\nWe missed you at today's masterclass. To help you evaluate your portfolio, Money Reality Check is available.\n\nDetails:\n{{2}}`,
+    body: `Hello {{1}},\n\nYou registered for today's masterclass but missed the live session. To measure your own numbers, Money Reality Check is available.\n\nDetails:\n{{2}}`,
     variables: ["first_name", "mrc_url"],
     isActive: true,
   },
@@ -96,30 +96,8 @@ const CORE_META_TEMPLATES: TemplateDefinition[] = [
     metaTemplateName: "course_purchase_confirmat",
     metaLanguage: "en",
     metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},\n\nYour enrollment is confirmed.\n\nYour diagnostic sessions and tools are unlocked here:\n{{2}}\n\nDownload receipt: {{3}}\n\nWarmly,\nMilan Dodhia`,
+    body: `Hello {{1}},\n\nThank you for joining. Your enrollment is confirmed.\n\nYour diagnostic sessions and tools are unlocked here:\n{{2}}\n\nDownload receipt: {{3}}\n\nWarmly,\nMilan Dodhia`,
     variables: ["first_name", "member_area_url", "invoice_url"],
-    isActive: true,
-  },
-  {
-    key: "payment_failed_recovery",
-    channel: "whatsapp",
-    category: "transactional",
-    metaTemplateName: "payment_failed_recovery",
-    metaLanguage: "en",
-    metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},\n\nWe noticed your payment for {{2}} was not completed. Nothing was charged to your account.\n\nYou can resume checkout here:\n{{3}}`,
-    variables: ["first_name", "product_name", "checkout_url"],
-    isActive: true,
-  },
-  {
-    key: "mrm_reality_check_followup",
-    channel: "whatsapp",
-    category: "marketing",
-    metaTemplateName: "mrm_reality_check_followup",
-    metaLanguage: "en",
-    metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},\n\nThank you for attending The Money Reality Masterclass. To measure your own family's real returns step by step, Money Reality Check is available for ₹601.\n\nDetails: {{2}}`,
-    variables: ["first_name", "mrc_url"],
     isActive: true,
   },
   {
@@ -127,9 +105,9 @@ const CORE_META_TEMPLATES: TemplateDefinition[] = [
     channel: "whatsapp",
     category: "transactional",
     metaTemplateName: "3p_direct_integration_test",
-    metaLanguage: "en",
+    metaLanguage: "en_US",
     metaApprovalStatus: "APPROVED",
-    body: `Test dispatch from Meta WhatsApp Cloud API: Hello {{1}}, system operational.`,
+    body: `Welcome! This is a test message from Milan Dodhia: Hello {{1}}, your WhatsApp Cloud API integration is operational.`,
     variables: ["first_name"],
     isActive: true,
   },
@@ -414,16 +392,13 @@ export async function getUnifiedTemplateRegistry(): Promise<{
             body: row.body ?? existing.body,
             isActive: row.is_active ?? existing.isActive,
           });
-        } else {
+        } else if (row.channel === "email") {
           templateMap.set(row.key, {
             key: row.key,
             channel: row.channel,
             category: row.category,
             subject: row.subject,
             body: row.body,
-            metaTemplateName: row.meta_template_name,
-            metaLanguage: row.meta_language,
-            metaApprovalStatus: row.meta_approval_status,
             variables: Array.isArray(row.variables) ? row.variables : [],
             isActive: row.is_active ?? true,
           });

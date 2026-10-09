@@ -2065,6 +2065,141 @@ export const adminUploadAttendanceCsv = createServerFn({ method: "POST" })
     }
   });
 
+export const adminSendTestMessage = createServerFn({ method: "POST" })
+  .validator((data: { password: string; templateKey: string; recipient: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    if (!data.recipient || !data.recipient.trim()) {
+      return { ok: false as const, error: "Recipient address/phone cannot be empty." };
+    }
+
+    const { getUnifiedTemplateRegistry } = await import("./messaging/meta-templates.server");
+    const { templates } = await getUnifiedTemplateRegistry();
+    const template = templates.find((t) => t.key === data.templateKey);
+
+    if (!template) {
+      return { ok: false as const, error: `Template '${data.templateKey}' was not found in registry.` };
+    }
+
+    if (template.channel === "email") {
+      const { sendEmailViaResend } = await import("./email-automation.server");
+      const { renderMustacheWithConditionals } = await import("./messaging/template-registry.server");
+
+      const sampleVariables: Record<string, string> = {
+        first_name: "Milan",
+        name: "Milan Dodhia",
+        email: data.recipient.trim(),
+        amount_paid: "₹6,001",
+        cohort_name: "The Calm Money System (Cohort 1)",
+        cohort_start_date: "15 Oct 2026",
+        member_area_url: "https://onepageplan.in/course",
+        invoice_url: "https://onepageplan.in",
+        thursday_booking_url: "https://onepageplan.in",
+        community_url: "https://onepageplan.in",
+        upgrade_price: "₹18,000",
+        upgrade_end_date: "31 Oct 2026",
+        product_name: "The Calm Money System",
+        checkout_mrc_url: "https://onepageplan.in",
+        resume_checkout_url: "https://onepageplan.in",
+        session_date: "Saturday, 7:00 PM IST",
+        room_url: "https://onepageplan.in/room",
+        magic_link: "https://onepageplan.in/room",
+        unsubscribe_url: "https://onepageplan.in",
+      };
+
+      const renderedSubject = renderMustacheWithConditionals(template.subject || "The One Page Plan", sampleVariables);
+      const renderedBody = renderMustacheWithConditionals(template.body, sampleVariables);
+
+      const htmlBody = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #2D2C28; max-width: 600px; margin: 0 auto; padding: 24px;">
+  <div style="white-space: pre-line;">${renderedBody}</div>
+  <div style="margin-top: 32px; padding: 12px; background: #faf8f5; border: 1px dashed #d1c7b7; border-radius: 6px; font-size: 11px; color: #78716c;">
+    <strong>[TEST DISPATCH]</strong> Sent from Template Registry console to ${data.recipient.trim()}
+  </div>
+</body>
+</html>`;
+
+      const res = await sendEmailViaResend({
+        to: data.recipient.trim(),
+        subject: `[TEST] ${renderedSubject}`,
+        html: htmlBody,
+      });
+
+      if (!res.sent) {
+        return { ok: false as const, error: res.error || "Failed to dispatch test email via Resend." };
+      }
+
+      return {
+        ok: true as const,
+        channel: "email" as const,
+        messageId: res.id,
+        recipient: data.recipient.trim(),
+        info: `Test email sent to ${data.recipient.trim()} (Resend ID: ${res.id || "OK"})`,
+      };
+    }
+
+    if (template.channel === "whatsapp") {
+      const { sendWhatsAppTemplate, normaliseWhatsAppPhone } = await import("@/services/whatsapp/whatsapp.server");
+      const normalized = normaliseWhatsAppPhone(data.recipient.trim());
+      if (!normalized) {
+        return {
+          ok: false as const,
+          error: `Invalid WhatsApp phone: '${data.recipient}'. Please include country code e.g. +919820000000.`,
+        };
+      }
+
+      // Map parameters based on approved Meta templates
+      let bodyParams: string[] = ["Milan"];
+      if (template.key === "3p_direct_integration_test") {
+        bodyParams = ["Milan"];
+      } else if (
+        template.key === "webinar_confirmation" ||
+        template.key === "webinar_reminder_2h" ||
+        template.key === "webinar_reminder_15m" ||
+        template.key === "webinar_live_now"
+      ) {
+        bodyParams = ["Milan", "https://onepageplan.in/room"];
+      } else if (template.key === "webinar_missed") {
+        bodyParams = ["Milan", "https://onepageplan.in"];
+      } else if (template.key === "course_purchase_confirmat") {
+        bodyParams = ["Milan", "https://onepageplan.in/course", "https://onepageplan.in"];
+      }
+
+      const metaTemplateName = template.metaTemplateName || template.key;
+      const lang = template.key === "3p_direct_integration_test" ? "en_US" : (template.metaLanguage || "en");
+
+      const res = await sendWhatsAppTemplate({
+        to: normalized,
+        templateName: metaTemplateName,
+        languageCode: lang,
+        bodyParameters: bodyParams,
+      });
+
+      if (!res.sent) {
+        return { ok: false as const, error: res.error || "Meta WhatsApp Cloud API failed to send test message." };
+      }
+
+      return {
+        ok: true as const,
+        channel: "whatsapp" as const,
+        messageId: res.messageId,
+        recipient: `+${normalized}`,
+        info: `Test WhatsApp sent to +${normalized} (Meta ID: ${res.messageId || "OK"})`,
+      };
+    }
+
+    return { ok: false as const, error: "Unsupported channel." };
+  });
+
 
 
 

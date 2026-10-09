@@ -64,28 +64,6 @@ Milan Dodhia`,
     variables: ["first_name", "amount_paid", "member_area_url", "invoice_url", "thursday_booking_url", "community_url", "upgrade_price", "upgrade_end_date"],
   },
   {
-    key: "mrc_confirmation_wa",
-    channel: "whatsapp",
-    category: "transactional",
-    metaTemplateName: "course_purchase_confirmat",
-    metaLanguage: "en",
-    metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},
-
-Your enrollment in Money Reality Check is confirmed.
-
-Your 12 diagnostic sessions and 4 tools are unlocked here:
-{{2}}
-
-Download receipt: {{3}}
-
-Reply to this chat anytime if you need help.
-
-Warmly,
-Milan Dodhia`,
-    variables: ["first_name", "member_area_url", "invoice_url"],
-  },
-  {
     key: "silver_confirmation_email",
     channel: "email",
     category: "transactional",
@@ -111,26 +89,6 @@ Start by testing your login and exploring Module 0 before our cohort kicks off.
 Warmly,
 Milan Dodhia`,
     variables: ["first_name", "amount_paid", "cohort_name", "cohort_start_date", "member_area_url", "invoice_url", "bonus_booking_url"],
-  },
-  {
-    key: "silver_confirmation_wa",
-    channel: "whatsapp",
-    category: "transactional",
-    metaTemplateName: "course_purchase_confirmat",
-    metaLanguage: "en",
-    metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},
-
-Welcome to The Calm Money System. Your enrollment is confirmed.
-
-Cohort: {{2}} (Starts {{3}})
-Portal Access: {{4}}
-
-Download Tax Invoice: {{5}}
-
-Warmly,
-Milan Dodhia`,
-    variables: ["first_name", "cohort_name", "cohort_start_date", "member_area_url", "invoice_url"],
   },
   {
     key: "silver_upgrade_confirmation_email",
@@ -411,25 +369,6 @@ Explore Money Reality Check:
 Milan Dodhia`,
     variables: ["first_name", "checkout_mrc_url"],
   },
-  {
-    key: "mrm_reality_check_followup_wa",
-    channel: "whatsapp",
-    category: "marketing",
-    metaTemplateName: "mrm_reality_check_followup",
-    metaLanguage: "en",
-    metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},
-
-Thank you for attending The Money Reality Masterclass.
-
-To measure your own family's real returns step by step, Money Reality Check is available for ₹601.
-
-Details and instant access:
-{{2}}
-
-Milan Dodhia`,
-    variables: ["first_name", "checkout_mrc_url"],
-  },
 
   // 5. PAYMENT FAILURE / ABANDONED CHECKOUT INTIMATION (1 Message)
   {
@@ -448,25 +387,7 @@ If this was an interruption or your bank app timed out, you can resume your chec
 
 If you have any questions or faced an issue with the payment gateway, simply reply to this email.
 
-Milan Dodhia`,
-    variables: ["first_name", "product_name", "resume_checkout_url"],
-  },
-  {
-    key: "payment_failed_intimation_wa",
-    channel: "whatsapp",
-    category: "transactional",
-    metaTemplateName: "payment_failed_recovery",
-    metaLanguage: "en",
-    metaApprovalStatus: "APPROVED",
-    body: `Hello {{1}},
-
-We noticed your payment for {{2}} was not completed. Nothing was charged to your account.
-
-You can resume your checkout anytime here:
-{{3}}
-
-Reply here if you need any assistance.
-
+Warmly,
 Milan Dodhia`,
     variables: ["first_name", "product_name", "resume_checkout_url"],
   },
