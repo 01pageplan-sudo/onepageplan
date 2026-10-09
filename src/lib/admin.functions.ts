@@ -2356,15 +2356,40 @@ export const adminGetWebinarConfig = createServerFn({ method: "POST" })
 
     try {
       let activeWebinarId = (process.env["WEBINAR_GG_WEBINAR_ID"] || "").trim() || "cmthk6y4001kos60ybxfkbc67";
-      const { data: row } = await db
-        .from("app_config" as never)
-        .select("value")
-        .eq("key" as never, "webinar_id" as never)
-        .maybeSingle();
-      if ((row as any)?.value && typeof (row as any).value === "string") {
-        const val = (row as any).value.trim();
-        if (val) activeWebinarId = val;
+
+      // 1. Try reading from app_config
+      try {
+        const { data: row } = await db
+          .from("app_config" as never)
+          .select("value")
+          .eq("key" as never, "webinar_id" as never)
+          .maybeSingle();
+        if ((row as any)?.value && typeof (row as any).value === "string") {
+          const val = (row as any).value.trim();
+          if (val) activeWebinarId = val;
+        }
+      } catch {
+        /* fallback */
       }
+
+      // 2. If activeWebinarId is still default or empty, check email_settings joining_link
+      if (activeWebinarId === "cmthk6y4001kos60ybxfkbc67") {
+        try {
+          const { data: settings } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+          if ((settings as any)?.joining_link) {
+            const link = String((settings as any).joining_link).trim();
+            const match = link.match(/(?:room|embed)\/([a-zA-Z0-9]+)/i);
+            if (match && match[1]) {
+              activeWebinarId = match[1];
+            } else if (/^[a-zA-Z0-9]{15,40}$/.test(link)) {
+              activeWebinarId = link;
+            }
+          }
+        } catch {
+          /* fallback */
+        }
+      }
+
       return { ok: true as const, webinarId: activeWebinarId };
     } catch (err: any) {
       return { ok: false as const, error: err?.message || "Failed to load webinar config." };
@@ -2387,12 +2412,62 @@ export const adminUpdateWebinarId = createServerFn({ method: "POST" })
       if (!cleanId) {
         return { ok: false as const, error: "Webinar ID cannot be blank." };
       }
-      const { error } = await db.from("app_config" as never).upsert(
+
+      // Tier 1: Try dedicated admin_save_webinar_id RPC
+      const { error: rpcErr } = await db.rpc("admin_save_webinar_id" as never, {
+        p_password: data.password,
+        p_webinar_id: cleanId,
+      } as never);
+
+      if (!rpcErr) {
+        return { ok: true as const, webinarId: cleanId };
+      }
+
+      // Tier 2: Try admin_set_app_config RPC
+      const { error: setCfgErr } = await db.rpc("admin_set_app_config" as never, {
+        p_password: data.password,
+        p_key: "webinar_id",
+        p_value: cleanId,
+      } as never);
+
+      if (!setCfgErr) {
+        // Also keep email_settings joining_link synced
+        await db.rpc("admin_save_email_settings" as never, {
+          p_password: data.password,
+          p: { joining_link: `https://webinar.gg/room/${cleanId}` } as never,
+        } as never);
+        return { ok: true as const, webinarId: cleanId };
+      }
+
+      // Tier 3: Direct app_config upsert (allowed once public anon RLS policy is applied)
+      const { error: upsertErr } = await db.from("app_config" as never).upsert(
         { key: "webinar_id", value: cleanId } as never,
         { onConflict: "key" } as never,
       );
-      if (error) return { ok: false as const, error: error.message };
-      return { ok: true as const, webinarId: cleanId };
+
+      if (!upsertErr) {
+        // Also keep email_settings joining_link synced
+        await db.rpc("admin_save_email_settings" as never, {
+          p_password: data.password,
+          p: { joining_link: `https://webinar.gg/room/${cleanId}` } as never,
+        } as never);
+        return { ok: true as const, webinarId: cleanId };
+      }
+
+      // Tier 4: Fallback to existing admin_save_email_settings (guaranteed to work in existing DB)
+      const { error: emailCfgErr } = await db.rpc("admin_save_email_settings" as never, {
+        p_password: data.password,
+        p: { joining_link: `https://webinar.gg/room/${cleanId}` } as never,
+      } as never);
+
+      if (!emailCfgErr) {
+        return { ok: true as const, webinarId: cleanId };
+      }
+
+      return {
+        ok: false as const,
+        error: upsertErr?.message || rpcErr?.message || "Failed to update webinar ID.",
+      };
     } catch (err: any) {
       return { ok: false as const, error: err?.message || "Failed to update webinar ID." };
     }

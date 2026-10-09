@@ -16,14 +16,30 @@ export const Route = createFileRoute("/api/get-webinar-token")({
 
         try {
           const { createPublicServerClient } = await import("@/lib/supabase-public.server");
-          const { data: wRow } = await createPublicServerClient()
+          const client = createPublicServerClient();
+          const { data: wRow } = await client
             .from("app_config" as never)
             .select("value")
             .eq("key" as never, "webinar_id" as never)
             .maybeSingle();
-          if ((wRow as any)?.value && typeof (wRow as any).value === "string") {
-            const val = (wRow as any).value.trim();
-            if (val) webinarId = val;
+          if ((wRow as any)?.value && typeof (wRow as any).value === "string" && (wRow as any).value.trim()) {
+            webinarId = (wRow as any).value.trim();
+          } else {
+            // Check email_settings joining_link
+            const { data: eRow } = await client
+              .from("email_settings" as never)
+              .select("joining_link")
+              .eq("id" as never, 1 as never)
+              .maybeSingle();
+            if ((eRow as any)?.joining_link) {
+              const link = String((eRow as any).joining_link).trim();
+              const match = link.match(/(?:room|embed)\/([a-zA-Z0-9]+)/i);
+              if (match && match[1]) {
+                webinarId = match[1];
+              } else if (/^[a-zA-Z0-9]{15,40}$/.test(link)) {
+                webinarId = link;
+              }
+            }
           }
         } catch {
           /* fallback to env */
