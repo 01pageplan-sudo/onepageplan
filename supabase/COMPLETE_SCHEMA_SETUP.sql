@@ -1154,8 +1154,8 @@ GRANT EXECUTE ON FUNCTION public.record_successful_payment(TEXT, NUMERIC, TEXT, 
 -- WhatsApp send event recorder RPC
 CREATE OR REPLACE FUNCTION public.record_whatsapp_event(
   p_wamid TEXT,
-  p_event TEXT,
-  p_event_time TIMESTAMPTZ,
+  p_status TEXT,
+  p_timestamp TIMESTAMPTZ DEFAULT now(),
   p_error TEXT DEFAULT NULL
 )
 RETURNS BOOLEAN
@@ -1164,18 +1164,24 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_event TEXT := lower(trim(p_event));
+  v_status TEXT := lower(trim(p_status));
 BEGIN
+  IF p_wamid IS NULL OR trim(p_wamid) = '' THEN
+    RETURN false;
+  END IF;
+
   UPDATE public.whatsapp_sends
   SET
     status = CASE
-      WHEN v_event = 'read' THEN 'read'
-      WHEN v_event = 'delivered' AND status NOT IN ('read', 'clicked') THEN 'delivered'
-      WHEN v_event = 'failed' THEN 'failed'
-      ELSE status
+      WHEN v_status = 'read' THEN 'read'
+      WHEN v_status = 'delivered' AND status NOT IN ('read', 'clicked') THEN 'delivered'
+      WHEN v_status = 'failed' THEN 'failed'
+      WHEN v_status = 'clicked' THEN 'clicked'
+      ELSE v_status
     END,
-    delivered_at = CASE WHEN v_event = 'delivered' AND delivered_at IS NULL THEN coalesce(p_event_time, now()) ELSE delivered_at END,
-    read_at = CASE WHEN v_event = 'read' AND read_at IS NULL THEN coalesce(p_event_time, now()) ELSE read_at END,
+    delivered_at = CASE WHEN v_status = 'delivered' AND delivered_at IS NULL THEN coalesce(p_timestamp, now()) ELSE delivered_at END,
+    read_at = CASE WHEN v_status = 'read' AND read_at IS NULL THEN coalesce(p_timestamp, now()) ELSE read_at END,
+    clicked_at = CASE WHEN v_status = 'clicked' AND clicked_at IS NULL THEN coalesce(p_timestamp, now()) ELSE clicked_at END,
     error = coalesce(p_error, error),
     updated_at = now()
   WHERE provider_message_id = trim(p_wamid);
