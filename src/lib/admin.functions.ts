@@ -1606,6 +1606,73 @@ export const adminSaveDiscountCode = createServerFn({ method: "POST" })
     }
   });
 
+export const adminToggleDiscountCode = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      id: string;
+      isActive: boolean;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const { error } = await db
+        .from("discount_codes" as never)
+        .update({ is_active: data.isActive } as never)
+        .eq("id" as never, data.id as never);
+
+      if (error) {
+        return { ok: false as const, error: error.message };
+      }
+
+      return { ok: true as const };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminDeleteDiscountCode = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      password: string;
+      id: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const { error } = await db
+        .from("discount_codes" as never)
+        .delete()
+        .eq("id" as never, data.id as never);
+
+      if (error) {
+        return { ok: false as const, error: error.message };
+      }
+
+      return { ok: true as const };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
 export const adminSaveReferralPartner = createServerFn({ method: "POST" })
   .inputValidator(
     (data: {

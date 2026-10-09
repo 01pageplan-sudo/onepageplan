@@ -15,6 +15,10 @@ import {
   Link as LinkIcon,
   HelpCircle,
   FileText,
+  Trash2,
+  Power,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +32,8 @@ import {
   adminRunReconciliation,
   adminBulkUploadMembers,
   adminSaveDiscountCode,
+  adminToggleDiscountCode,
+  adminDeleteDiscountCode,
   adminSaveReferralPartner,
   adminSaveCompletionTemplate,
   adminRollbackCompletionTemplate,
@@ -139,6 +145,9 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
   const [newDiscountType, setNewDiscountType] = useState<"fixed" | "percentage">("fixed");
   const [newDiscountValue, setNewDiscountValue] = useState(500);
   const [newDiscountAppliesTo, setNewDiscountAppliesTo] = useState<string>("all");
+  const [newDiscountMaxUses, setNewDiscountMaxUses] = useState<string>("");
+  const [newDiscountExpiresAt, setNewDiscountExpiresAt] = useState<string>("");
+  const [copiedDiscountCode, setCopiedDiscountCode] = useState<string | null>(null);
 
   // Referral partner form state
   const [newPartnerCode, setNewPartnerCode] = useState("");
@@ -310,6 +319,8 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
           discountType: newDiscountType,
           discountValue: Number(newDiscountValue),
           appliesToProducts: [newDiscountAppliesTo],
+          maxUses: newDiscountMaxUses ? Number(newDiscountMaxUses) : null,
+          expiresAt: newDiscountExpiresAt ? new Date(newDiscountExpiresAt).toISOString() : null,
           isActive: true,
         },
       });
@@ -317,6 +328,8 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
         showNotice(`Discount code ${newDiscountCode.toUpperCase()} created.`);
         setNewDiscountCode("");
         setNewDiscountAppliesTo("all");
+        setNewDiscountMaxUses("");
+        setNewDiscountExpiresAt("");
         onRefresh();
       } else {
         showNotice(res.error || "Failed to create discount code.", "error");
@@ -326,6 +339,65 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle Toggle Discount Code (Activate / Deactivate)
+  const handleToggleDiscount = async (id: string, currentStatus: boolean, code: string) => {
+    setLoading(true);
+    try {
+      const res = await adminToggleDiscountCode({
+        data: {
+          password,
+          id,
+          isActive: !currentStatus,
+        },
+      });
+      if (res.ok) {
+        showNotice(`Discount code "${code}" is now ${!currentStatus ? "Active" : "Deactivated"}.`);
+        onRefresh();
+      } else {
+        showNotice(res.error || "Failed to update discount code.", "error");
+      }
+    } catch (err: any) {
+      showNotice(err?.message || "Error toggling discount code.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Delete Discount Code
+  const handleDeleteDiscount = async (id: string, code: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete discount code "${code}"? Customers will no longer be able to use it.`,
+    );
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      const res = await adminDeleteDiscountCode({
+        data: {
+          password,
+          id,
+        },
+      });
+      if (res.ok) {
+        showNotice(`Discount code "${code}" has been permanently deleted.`);
+        onRefresh();
+      } else {
+        showNotice(res.error || "Failed to delete discount code.", "error");
+      }
+    } catch (err: any) {
+      showNotice(err?.message || "Error deleting discount code.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Copy code to clipboard
+  const handleCopyDiscountCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedDiscountCode(code);
+    setTimeout(() => setCopiedDiscountCode(null), 2000);
   };
 
   // Handle Create Referral Partner
@@ -1266,19 +1338,19 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
             <h3 className="text-sm font-bold flex items-center gap-2 text-foreground">
               <Tag className="h-4 w-4 text-emerald-600" /> Create New Discount Code
             </h3>
-            <form onSubmit={handleCreateDiscount} className="grid gap-3 sm:grid-cols-4 text-xs">
+            <form onSubmit={handleCreateDiscount} className="grid gap-3 sm:grid-cols-3 text-xs">
               <div>
                 <Label className="text-xs">Coupon Code *</Label>
                 <Input
                   required
                   value={newDiscountCode}
                   onChange={(e) => setNewDiscountCode(e.target.value)}
-                  placeholder="e.g. VIP500"
+                  placeholder="e.g. FESTIVE500"
                   className="h-8 text-xs uppercase font-mono mt-1"
                 />
               </div>
               <div>
-                <Label className="text-xs">Type</Label>
+                <Label className="text-xs">Discount Type</Label>
                 <select
                   value={newDiscountType}
                   onChange={(e) => setNewDiscountType(e.target.value as any)}
@@ -1289,10 +1361,11 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                 </select>
               </div>
               <div>
-                <Label className="text-xs">Value ({newDiscountType === "fixed" ? "₹" : "%"})</Label>
+                <Label className="text-xs">Value ({newDiscountType === "fixed" ? "₹" : "%"}) *</Label>
                 <Input
                   type="number"
                   required
+                  min={1}
                   value={newDiscountValue}
                   onChange={(e) => setNewDiscountValue(Number(e.target.value))}
                   className="h-8 text-xs mt-1"
@@ -1312,7 +1385,27 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                   <option value="money_reality_check">📊 Money Reality Check</option>
                 </select>
               </div>
-              <div className="sm:col-span-4">
+              <div>
+                <Label className="text-xs">Max Uses (Optional)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={newDiscountMaxUses}
+                  onChange={(e) => setNewDiscountMaxUses(e.target.value)}
+                  placeholder="Leave empty for unlimited"
+                  className="h-8 text-xs mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Auto-Expires At (Optional)</Label>
+                <Input
+                  type="datetime-local"
+                  value={newDiscountExpiresAt}
+                  onChange={(e) => setNewDiscountExpiresAt(e.target.value)}
+                  className="h-8 text-xs mt-1"
+                />
+              </div>
+              <div className="sm:col-span-3">
                 <Button type="submit" disabled={loading} size="sm" className="w-full">
                   Create Coupon Code
                 </Button>
@@ -1328,65 +1421,157 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                   <th className="p-3 font-semibold">Type</th>
                   <th className="p-3 font-semibold">Value</th>
                   <th className="p-3 font-semibold">Applies To</th>
-                  <th className="p-3 font-semibold">Usage Count</th>
+                  <th className="p-3 font-semibold">Usage & Limits</th>
                   <th className="p-3 font-semibold">Status</th>
+                  <th className="p-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y border-border">
                 {data.discountCodes.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                    <td colSpan={7} className="p-6 text-center text-muted-foreground">
                       No discount codes created yet.
                     </td>
                   </tr>
                 ) : (
-                  data.discountCodes.map((d) => (
-                    <tr key={d.id}>
-                      <td className="p-3 font-mono font-bold text-foreground">{d.code}</td>
-                      <td className="p-3 text-muted-foreground uppercase">{d.discount_type}</td>
-                      <td className="p-3 font-semibold">
-                        {d.discount_type === "fixed" ? `₹${d.discount_value}` : `${d.discount_value}%`}
-                      </td>
-                      <td className="p-3">
-                        {d.applies_to_products?.includes("all") || !d.applies_to_products?.length ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400">
-                            All Products
-                          </span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {d.applies_to_products.map((p) => {
-                              let label = p;
-                              let color = "bg-zinc-500/15 text-zinc-700 dark:text-zinc-300";
-                              if (p === "silver") {
-                                label = "Silver";
-                                color = "bg-slate-500/15 text-slate-800 dark:text-slate-300";
-                              } else if (p === "gold") {
-                                label = "Gold";
-                                color = "bg-amber-500/15 text-amber-800 dark:text-amber-400";
-                              } else if (p === "diamond") {
-                                label = "Diamond";
-                                color = "bg-purple-500/15 text-purple-800 dark:text-purple-400";
-                              } else if (p === "money_reality_check") {
-                                label = "MRC";
-                                color = "bg-emerald-500/15 text-emerald-800 dark:text-emerald-400";
-                              }
-                              return (
-                                <span key={p} className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${color}`}>
-                                  {label}
-                                </span>
-                              );
-                            })}
+                  data.discountCodes.map((d) => {
+                    const isExpired = d.expires_at ? new Date(d.expires_at).getTime() < Date.now() : false;
+                    const isLimitReached = d.max_uses ? d.used_count >= d.max_uses : false;
+
+                    return (
+                      <tr key={d.id} className="hover:bg-muted/20 transition-colors">
+                        <td className="p-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-foreground tracking-wide">{d.code}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyDiscountCode(d.code)}
+                              className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
+                              title="Copy code to clipboard"
+                            >
+                              {copiedDiscountCode === d.code ? (
+                                <Check className="h-3 w-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </button>
                           </div>
-                        )}
-                      </td>
-                      <td className="p-3 font-mono">{d.used_count} uses</td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700">
-                          {d.is_active ? "Active" : "Disabled"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="p-3 text-muted-foreground uppercase">{d.discount_type}</td>
+                        <td className="p-3 font-semibold">
+                          {d.discount_type === "fixed" ? `₹${d.discount_value}` : `${d.discount_value}%`}
+                        </td>
+                        <td className="p-3">
+                          {d.applies_to_products?.includes("all") || !d.applies_to_products?.length ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400">
+                              All Products
+                            </span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {d.applies_to_products.map((p) => {
+                                let label = p;
+                                let color = "bg-zinc-500/15 text-zinc-700 dark:text-zinc-300";
+                                if (p === "silver") {
+                                  label = "Silver";
+                                  color = "bg-slate-500/15 text-slate-800 dark:text-slate-300";
+                                } else if (p === "gold") {
+                                  label = "Gold";
+                                  color = "bg-amber-500/15 text-amber-800 dark:text-amber-400";
+                                } else if (p === "diamond") {
+                                  label = "Diamond";
+                                  color = "bg-purple-500/15 text-purple-800 dark:text-purple-400";
+                                } else if (p === "money_reality_check") {
+                                  label = "MRC";
+                                  color = "bg-emerald-500/15 text-emerald-800 dark:text-emerald-400";
+                                }
+                                return (
+                                  <span key={p} className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${color}`}>
+                                    {label}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <div className="space-y-0.5">
+                            <div className="font-mono text-xs text-foreground">
+                              {d.used_count} used {d.max_uses ? `/ ${d.max_uses} max` : "(Unlimited)"}
+                            </div>
+                            {d.expires_at ? (
+                              <div className={`text-[10px] ${isExpired ? "text-rose-600 font-semibold" : "text-muted-foreground"}`}>
+                                {isExpired ? "Expired on: " : "Expires: "}
+                                {new Date(d.expires_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                              </div>
+                            ) : (
+                              <div className="text-[10px] text-muted-foreground">No expiration date</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          {!d.is_active ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-500/15 text-zinc-600 dark:text-zinc-400">
+                              Deactivated
+                            </span>
+                          ) : isExpired ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-400">
+                              Expired
+                            </span>
+                          ) : isLimitReached ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400">
+                              Limit Reached
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
+                              Active
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {d.is_active ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={loading}
+                                onClick={() => handleToggleDiscount(d.id, true, d.code)}
+                                className="h-7 px-2.5 text-xs text-amber-700 border-amber-300/80 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-700/80 dark:text-amber-400 dark:hover:bg-amber-950/40"
+                                title="Deactivate code to stop customer use"
+                              >
+                                <Power className="h-3 w-3 mr-1" />
+                                Deactivate
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={loading}
+                                onClick={() => handleToggleDiscount(d.id, false, d.code)}
+                                className="h-7 px-2.5 text-xs text-emerald-700 border-emerald-300/80 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-700/80 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                                title="Reactivate code"
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                Activate
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              disabled={loading}
+                              onClick={() => handleDeleteDiscount(d.id, d.code)}
+                              className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              title="Permanently delete code"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
