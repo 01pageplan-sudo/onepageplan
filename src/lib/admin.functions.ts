@@ -2481,6 +2481,18 @@ export const adminSendTestMessage = createServerFn({ method: "POST" })
         return { ok: false as const, error: res.error || "Meta WhatsApp Cloud API failed to send test message." };
       }
 
+      // Log into whatsapp_sends so the outbound message appears in WhatsApp Inbox thread
+      try {
+        await (db as any).from("whatsapp_sends").insert({
+          phone: `+${normalized}`,
+          template_name: metaTemplateName,
+          status: "delivered",
+          provider_message_id: res.messageId || null,
+        });
+      } catch (err) {
+        console.warn("[adminSendTestMessage] Could not log to whatsapp_sends:", err);
+      }
+
       return {
         ok: true as const,
         channel: "whatsapp" as const,
