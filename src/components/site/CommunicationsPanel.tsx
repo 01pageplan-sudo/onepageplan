@@ -144,6 +144,16 @@ function WhatsAppStatusBadge({ status }: { status: string }) {
   }
 }
 
+const DEFAULT_FALLBACK_TEMPLATES = [
+  { key: "webinar_confirmation", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_confirmation", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nYour seat for The One Page Plan masterclass is confirmed.\n\nDate & Time: 7:00 PM IST\nLive Room: {{2}}\n\nSee you inside!" },
+  { key: "webinar_reminder_2h", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_reminder_2h", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nWe start The One Page Plan masterclass in 2 hours at 7:00 PM IST.\n\nRoom link:\n{{2}}\n\nPlease join 5 minutes early." },
+  { key: "webinar_reminder_15m", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_reminder_15m", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nThe Money Reality room is open! Milan Dodhia is starting in 15 minutes.\n\nTap below to enter:\n{{2}}" },
+  { key: "webinar_live_now", channel: "whatsapp", category: "marketing", meta_template_name: "webinar_live_now", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nThe Money Reality session is LIVE right now! Milan Dodhia has started the presentation.\n\nJoin here:\n{{2}}" },
+  { key: "webinar_missed", channel: "whatsapp", category: "marketing", meta_template_name: "webinar_missed", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nYou registered for today's masterclass but missed the live session. To measure your own numbers, Money Reality Check is available.\n\nDetails:\n{{2}}" },
+  { key: "course_purchase_confirmat", channel: "whatsapp", category: "transactional", meta_template_name: "course_purchase_confirmat", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nThank you for joining. Your enrollment is confirmed.\n\nYour diagnostic sessions and tools are unlocked here:\n{{2}}\n\nDownload receipt: {{3}}\n\nWarmly,\nMilan Dodhia" },
+  { key: "3p_direct_integration_test", channel: "whatsapp", category: "transactional", meta_template_name: "3p_direct_integration_test", meta_approval_status: "APPROVED", is_active: true, body: "Welcome! This is a test message from Milan Dodhia: Hello {{1}}, your WhatsApp Cloud API integration is operational." },
+];
+
 export function CommunicationsPanel({
   sends = [],
   password = "",
@@ -337,6 +347,16 @@ export function CommunicationsPanel({
       void loadWhatsAppStats();
     }
   }, [password, subTab]);
+
+  const currentTemplates = useMemo(() => {
+    if (msgData?.templates && msgData.templates.length > 0) return msgData.templates;
+    return DEFAULT_FALLBACK_TEMPLATES;
+  }, [msgData?.templates]);
+
+  const filteredTemplates = useMemo(() => {
+    if (templateFilter === "all") return currentTemplates;
+    return currentTemplates.filter((t: any) => t.channel === templateFilter);
+  }, [currentTemplates, templateFilter]);
 
   const activeTemplate = useMemo(() => {
     return currentTemplates.find((t: any) => t.key === selectedTemplateKey) || currentTemplates[0] || null;
@@ -574,26 +594,6 @@ export function CommunicationsPanel({
     link.click();
     document.body.removeChild(link);
   };
-
-const DEFAULT_FALLBACK_TEMPLATES = [
-  { key: "webinar_confirmation", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_confirmation", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nYour seat for The One Page Plan masterclass is confirmed.\n\nDate & Time: 7:00 PM IST\nLive Room: {{2}}\n\nSee you inside!" },
-  { key: "webinar_reminder_2h", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_reminder_2h", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nWe start The One Page Plan masterclass in 2 hours at 7:00 PM IST.\n\nRoom link:\n{{2}}\n\nPlease join 5 minutes early." },
-  { key: "webinar_reminder_15m", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_reminder_15m", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nThe Money Reality room is open! Milan Dodhia is starting in 15 minutes.\n\nTap below to enter:\n{{2}}" },
-  { key: "webinar_live_now", channel: "whatsapp", category: "marketing", meta_template_name: "webinar_live_now", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nThe Money Reality session is LIVE right now! Milan Dodhia has started the presentation.\n\nJoin here:\n{{2}}" },
-  { key: "webinar_missed", channel: "whatsapp", category: "marketing", meta_template_name: "webinar_missed", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nYou registered for today's masterclass but missed the live session. To measure your own numbers, Money Reality Check is available.\n\nDetails:\n{{2}}" },
-  { key: "course_purchase_confirmat", channel: "whatsapp", category: "transactional", meta_template_name: "course_purchase_confirmat", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nThank you for joining. Your enrollment is confirmed.\n\nYour diagnostic sessions and tools are unlocked here:\n{{2}}\n\nDownload receipt: {{3}}\n\nWarmly,\nMilan Dodhia" },
-  { key: "3p_direct_integration_test", channel: "whatsapp", category: "transactional", meta_template_name: "3p_direct_integration_test", meta_approval_status: "APPROVED", is_active: true, body: "Welcome! This is a test message from Milan Dodhia: Hello {{1}}, your WhatsApp Cloud API integration is operational." },
-];
-
-  const currentTemplates = useMemo(() => {
-    if (msgData?.templates && msgData.templates.length > 0) return msgData.templates;
-    return DEFAULT_FALLBACK_TEMPLATES;
-  }, [msgData?.templates]);
-
-  const filteredTemplates = useMemo(() => {
-    if (templateFilter === "all") return currentTemplates;
-    return currentTemplates.filter((t: any) => t.channel === templateFilter);
-  }, [currentTemplates, templateFilter]);
 
   const dispatchedSends = useMemo(() => {
     return sends
