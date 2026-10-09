@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   DollarSign,
   Download,
@@ -75,7 +75,32 @@ interface CommercePanelProps {
 export function CommercePanel({ password, data, onRefresh }: CommercePanelProps) {
   const [subTab, setSubTab] = useState<
     "orders" | "settings" | "manual" | "upload" | "discounts" | "referrals" | "templates" | "reconciliation"
-  >("orders");
+  >(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("opp_commerce_subtab");
+      if (
+        saved &&
+        ["orders", "settings", "manual", "upload", "discounts", "referrals", "templates", "reconciliation"].includes(saved)
+      ) {
+        return saved as any;
+      }
+    }
+    return "orders";
+  });
+
+  const changeSubTab = (tab: typeof subTab) => {
+    setSubTab(tab);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("opp_commerce_subtab", tab);
+    }
+  };
+
+  const [localDiscounts, setLocalDiscounts] = useState<AdminDiscountCode[]>(data.discountCodes || []);
+  const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalDiscounts(data.discountCodes || []);
+  }, [data.discountCodes]);
 
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -343,25 +368,38 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
 
   // Handle Toggle Discount Code (Activate / Deactivate)
   const handleToggleDiscount = async (id: string, currentStatus: boolean, code: string) => {
-    setLoading(true);
+    const nextStatus = !currentStatus;
+    // Optimistic local update
+    setLocalDiscounts((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, is_active: nextStatus } : d))
+    );
+    setActionInProgressId(id);
     try {
       const res = await adminToggleDiscountCode({
         data: {
           password,
           id,
-          isActive: !currentStatus,
+          isActive: nextStatus,
         },
       });
       if (res.ok) {
-        showNotice(`Discount code "${code}" is now ${!currentStatus ? "Active" : "Deactivated"}.`);
+        showNotice(`Discount code "${code}" is now ${nextStatus ? "Active" : "Deactivated"}.`);
         onRefresh();
       } else {
+        // Rollback
+        setLocalDiscounts((prev) =>
+          prev.map((d) => (d.id === id ? { ...d, is_active: currentStatus } : d))
+        );
         showNotice(res.error || "Failed to update discount code.", "error");
       }
     } catch (err: any) {
+      // Rollback
+      setLocalDiscounts((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, is_active: currentStatus } : d))
+      );
       showNotice(err?.message || "Error toggling discount code.", "error");
     } finally {
-      setLoading(false);
+      setActionInProgressId(null);
     }
   };
 
@@ -372,7 +410,10 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
     );
     if (!confirmed) return;
 
-    setLoading(true);
+    const previousDiscounts = localDiscounts;
+    // Optimistic local update
+    setLocalDiscounts((prev) => prev.filter((d) => d.id !== id));
+    setActionInProgressId(id);
     try {
       const res = await adminDeleteDiscountCode({
         data: {
@@ -384,12 +425,16 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
         showNotice(`Discount code "${code}" has been permanently deleted.`);
         onRefresh();
       } else {
+        // Rollback
+        setLocalDiscounts(previousDiscounts);
         showNotice(res.error || "Failed to delete discount code.", "error");
       }
     } catch (err: any) {
+      // Rollback
+      setLocalDiscounts(previousDiscounts);
       showNotice(err?.message || "Error deleting discount code.", "error");
     } finally {
-      setLoading(false);
+      setActionInProgressId(null);
     }
   };
 
@@ -648,14 +693,14 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
           { id: "settings", label: "Commerce Settings" },
           { id: "manual", label: `Manual Grants (${data.manualGrants.length})` },
           { id: "upload", label: "Upload Existing Users" },
-          { id: "discounts", label: `Discount Codes (${data.discountCodes.length})` },
+          { id: "discounts", label: `Discount Codes (${localDiscounts.length})` },
           { id: "referrals", label: `Referral Tracking (${data.referralPartners.length})` },
           { id: "templates", label: `Completion Templates (${data.completionTemplates?.length || 0})` },
           { id: "reconciliation", label: `Reconciliation (${data.reconciliationFlags.length})` },
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setSubTab(tab.id as any)}
+            onClick={() => changeSubTab(tab.id as any)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               subTab === tab.id
                 ? "bg-primary text-primary-foreground shadow-xs"
@@ -1427,14 +1472,14 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                 </tr>
               </thead>
               <tbody className="divide-y border-border">
-                {data.discountCodes.length === 0 ? (
+                {localDiscounts.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-6 text-center text-muted-foreground">
                       No discount codes created yet.
                     </td>
                   </tr>
                 ) : (
-                  data.discountCodes.map((d) => {
+                  localDiscounts.map((d) => {
                     const isExpired = d.expires_at ? new Date(d.expires_at).getTime() < Date.now() : false;
                     const isLimitReached = d.max_uses ? d.used_count >= d.max_uses : false;
 
@@ -1534,12 +1579,16 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                disabled={loading}
+                                disabled={loading || actionInProgressId === d.id}
                                 onClick={() => handleToggleDiscount(d.id, true, d.code)}
                                 className="h-7 px-2.5 text-xs text-amber-700 border-amber-300/80 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-700/80 dark:text-amber-400 dark:hover:bg-amber-950/40"
                                 title="Deactivate code to stop customer use"
                               >
-                                <Power className="h-3 w-3 mr-1" />
+                                {actionInProgressId === d.id ? (
+                                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                ) : (
+                                  <Power className="h-3 w-3 mr-1" />
+                                )}
                                 Deactivate
                               </Button>
                             ) : (
@@ -1547,12 +1596,16 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                disabled={loading}
+                                disabled={loading || actionInProgressId === d.id}
                                 onClick={() => handleToggleDiscount(d.id, false, d.code)}
                                 className="h-7 px-2.5 text-xs text-emerald-700 border-emerald-300/80 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-700/80 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
                                 title="Reactivate code"
                               >
-                                <Check className="h-3 w-3 mr-1" />
+                                {actionInProgressId === d.id ? (
+                                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                ) : (
+                                  <Check className="h-3 w-3 mr-1" />
+                                )}
                                 Activate
                               </Button>
                             )}
@@ -1560,12 +1613,16 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                               type="button"
                               size="sm"
                               variant="ghost"
-                              disabled={loading}
+                              disabled={loading || actionInProgressId === d.id}
                               onClick={() => handleDeleteDiscount(d.id, d.code)}
                               className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                               title="Permanently delete code"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              {actionInProgressId === d.id ? (
+                                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
                             </Button>
                           </div>
                         </td>

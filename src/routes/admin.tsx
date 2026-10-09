@@ -179,6 +179,27 @@ function AdminPage() {
   const [commerceData, setCommerceData] = useState<any>(null);
   const [commerceLoading, setCommerceLoading] = useState(false);
   const [commerceError, setCommerceError] = useState("");
+  const [adminTab, setAdminTab] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("opp_admin_tab");
+      if (
+        saved &&
+        [
+          "analytics",
+          "commerce",
+          "communications",
+          "leads",
+          "automation",
+          "templates",
+          "delivery",
+          "webinar",
+        ].includes(saved)
+      ) {
+        return saved;
+      }
+    }
+    return "analytics";
+  });
   const [syncingResend, setSyncingResend] = useState(false);
   const [deliveryFilter, setDeliveryFilter] = useState<"dispatched" | "all" | "queued" | "failed">("dispatched");
 
@@ -191,10 +212,20 @@ function AdminPage() {
   const [editConsent, setEditConsent] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
-  async function loadCommerce(customPwd?: string) {
+  function handleTabChange(val: string) {
+    setAdminTab(val);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("opp_admin_tab", val);
+    }
+    if (val === "commerce" && !commerceData) {
+      void loadCommerce();
+    }
+  }
+
+  async function loadCommerce(customPwd?: string, silent = false) {
     const pwd = customPwd || password;
     if (!pwd) return;
-    setCommerceLoading(true);
+    if (!silent) setCommerceLoading(true);
     setCommerceError("");
     try {
       const result = await adminGetCommerceDashboard({ data: { password: pwd } });
@@ -206,7 +237,7 @@ function AdminPage() {
     } catch (err: any) {
       setCommerceError(err?.message ?? "Could not load commerce dashboard.");
     } finally {
-      setCommerceLoading(false);
+      if (!silent) setCommerceLoading(false);
     }
   }
 
@@ -267,7 +298,7 @@ function AdminPage() {
       setSettings(result.settings);
       setStats(result.stats);
       setTemplates(result.templates ?? {});
-      void loadCommerce(pwd);
+      void loadCommerce(pwd, Boolean(commerceData));
     } catch {
       setError("Could not load the dashboard.");
     } finally {
@@ -634,10 +665,8 @@ function AdminPage() {
         {notice ? <p className="text-sm text-[var(--brass)]">{notice}</p> : null}
 
         <Tabs
-          defaultValue="analytics"
-          onValueChange={(val) => {
-            if (val === "commerce" && !commerceData) void loadCommerce();
-          }}
+          value={adminTab}
+          onValueChange={handleTabChange}
         >
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="analytics">Webinar analytics</TabsTrigger>
@@ -1321,7 +1350,7 @@ function AdminPage() {
 
           {/* ----------------------------- COMMERCE ------------------------------ */}
           <TabsContent value="commerce" className="pt-5">
-            {commerceLoading ? (
+            {commerceLoading && !commerceData ? (
               <div className="rounded-lg border border-border bg-card p-12 text-center space-y-3">
                 <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary" />
                 <p className="text-sm text-muted-foreground">Loading Commerce Console...</p>
@@ -1330,7 +1359,7 @@ function AdminPage() {
               <CommercePanel
                 password={password}
                 data={commerceData}
-                onRefresh={() => void loadCommerce()}
+                onRefresh={() => void loadCommerce(undefined, true)}
               />
             ) : (
               <div className="rounded-lg border border-border bg-card p-8 text-center space-y-3">
