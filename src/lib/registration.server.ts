@@ -213,9 +213,10 @@ export async function sendOption2WelcomeEmail(
   const zeptoKey = process.env["ZEPTOMAIL_API_KEY"] || process.env["ZEPTOMAIL_SEND_MAIL_TOKEN"];
   const resendKey = process.env["RESEND_API_KEY"];
 
+  let resendEmailId: string | null = null;
   try {
     if (resendKey) {
-      await fetch("https://api.resend.com/emails", {
+      const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           authorization: `Bearer ${resendKey}`,
@@ -223,6 +224,8 @@ export async function sendOption2WelcomeEmail(
         },
         body: JSON.stringify({ from, to: [args.email], subject, html, text }),
       });
+      const data = (await res.json().catch(() => null)) as { id?: string } | null;
+      resendEmailId = data?.id ?? null;
     } else if (zeptoKey) {
       const { sendZeptoEmail } = await import("./zeptomail.server");
       await sendZeptoEmail({
@@ -245,6 +248,7 @@ export async function sendOption2WelcomeEmail(
         template: "s2_01_stock_tip",
         status: "sent",
         sent_at: new Date().toISOString(),
+        provider_id: resendEmailId,
         idempotency_key: `${args.id}:s2_01:${Date.now()}`,
       } as never);
     } catch {

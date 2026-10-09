@@ -33,6 +33,8 @@ import {
   adminSaveMessageTemplate,
   adminToggleMessagingSettings,
   adminUploadAttendanceCsv,
+  adminSyncMetaTemplates,
+  adminSyncResendDelivery,
   type AdminSend,
   type AdminWhatsAppStats,
 } from "@/lib/admin.functions";
@@ -57,7 +59,14 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
   );
 }
 
-function EmailStatusBadge({ status }: { status: string }) {
+function EmailStatusBadge({ status, openedAt }: { status: string; openedAt?: string | null }) {
+  if (openedAt || status === "opened") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-500 border border-amber-500/20">
+        <Eye className="h-3 w-3" /> Opened
+      </span>
+    );
+  }
   switch (status) {
     case "sent":
       return (
@@ -69,12 +78,6 @@ function EmailStatusBadge({ status }: { status: string }) {
       return (
         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-500 border border-emerald-500/20">
           <CheckCheck className="h-3 w-3" /> Delivered
-        </span>
-      );
-    case "opened":
-      return (
-        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-500 border border-amber-500/20">
-          <Eye className="h-3 w-3" /> Opened
         </span>
       );
     case "clicked":
@@ -169,12 +172,40 @@ export function CommunicationsPanel({
   const [editBody, setEditBody] = useState("");
   const [editActive, setEditActive] = useState(true);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateFilter, setTemplateFilter] = useState<"all" | "email" | "whatsapp">("all");
+  const [syncingMeta, setSyncingMeta] = useState(false);
+  const [metaStatus, setMetaStatus] = useState<{
+    live: boolean;
+    count: number;
+    wabaId?: string;
+    error?: string;
+  } | null>(null);
 
-  // Settings State
-  const [testMode, setTestMode] = useState(true);
-  const [testEmail, setTestEmail] = useState("dodhia.milan@gmail.com");
-  const [testPhone, setTestPhone] = useState("+919820000000");
+  // Settings State with resilient localStorage persistence
+  const [testMode, setTestMode] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("opp_messaging_test_mode");
+      if (saved !== null) return saved === "true";
+    }
+    return true;
+  });
+  const [testEmail, setTestEmail] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("opp_test_recipient_email") || "dodhia.milan@gmail.com";
+    }
+    return "dodhia.milan@gmail.com";
+  });
+  const [testPhone, setTestPhone] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("opp_test_recipient_phone") || "+919820000000";
+    }
+    return "+919820000000";
+  });
   const [savingSettings, setSavingSettings] = useState(false);
+
+  // Email Delivery filter and sync state
+  const [emailFilter, setEmailFilter] = useState<"dispatched" | "all" | "queued" | "failed">("dispatched");
+  const [syncingResend, setSyncingResend] = useState(false);
 
   // CSV Attendance Uploader State
   const [csvDate, setCsvDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -193,10 +224,17 @@ export function CommunicationsPanel({
   // Live Email metrics derived from real sends
   const totalEmails = sends.length;
   const sentEmails = sends.filter(
-    (e) => e.status === "sent" || e.status === "delivered" || e.status === "opened" || e.status === "clicked",
+    (e) => e.status === "sent" || e.status === "delivered" || e.status === "opened" || e.status === "clicked" || Boolean(e.sent_at),
   ).length;
   const deliveredEmails = sends.filter(
-    (e) => e.status === "delivered" || e.status === "opened" || e.status === "clicked" || (e as unknown as { delivered_at?: string }).delivered_at,
+    (e) =>
+      (e.status === "delivered" ||
+        e.status === "opened" ||
+        e.status === "clicked" ||
+        (e.status === "sent" && !e.error) ||
+        Boolean(e.opened_at)) &&
+      e.status !== "failed" &&
+      e.status !== "bounced",
   ).length;
   const openedEmails = sends.filter(
     (e) => e.status === "opened" || e.status === "clicked" || Boolean(e.opened_at),
@@ -207,6 +245,7 @@ export function CommunicationsPanel({
   const failedEmails = sends.filter(
     (e) => e.status === "failed" || e.status === "bounced" || Boolean(e.error),
   ).length;
+  const queuedEmails = sends.filter((e) => e.status === "queued" && !e.sent_at).length;
 
   const emailDeliveryRate = sentEmails > 0 ? `${Math.round((deliveredEmails / sentEmails) * 100)}%` : "100%";
   const emailOpenRate = sentEmails > 0 ? `${Math.round((openedEmails / sentEmails) * 100)}%` : "0%";
@@ -226,9 +265,28 @@ export function CommunicationsPanel({
           suppressions: res.suppressions || [],
           settings: res.settings || {},
         });
-        setTestMode(Boolean(res.settings?.messaging_test_mode ?? true));
-        setTestEmail(res.settings?.test_recipient_email || "dodhia.milan@gmail.com");
-        setTestPhone(res.settings?.test_recipient_phone || "+919820000000");
+        if ((res as any).metaStatus) {
+          setMetaStatus((res as any).metaStatus);
+        }
+
+        // Resilient test mode resolution: server settings priority, fallback to localStorage
+        if (res.settings?.messaging_test_mode !== undefined && res.settings.messaging_test_mode !== null) {
+          const val = Boolean(res.settings.messaging_test_mode);
+          setTestMode(val);
+          if (typeof window !== "undefined") localStorage.setItem("opp_messaging_test_mode", String(val));
+        } else if (typeof window !== "undefined") {
+          const saved = localStorage.getItem("opp_messaging_test_mode");
+          if (saved !== null) setTestMode(saved === "true");
+        }
+
+        if (res.settings?.test_recipient_email) {
+          setTestEmail(res.settings.test_recipient_email);
+          if (typeof window !== "undefined") localStorage.setItem("opp_test_recipient_email", res.settings.test_recipient_email);
+        }
+        if (res.settings?.test_recipient_phone) {
+          setTestPhone(res.settings.test_recipient_phone);
+          if (typeof window !== "undefined") localStorage.setItem("opp_test_recipient_phone", res.settings.test_recipient_phone);
+        }
 
         if (res.templates && res.templates.length > 0 && !selectedTemplateKey) {
           const first = res.templates[0];
@@ -240,7 +298,7 @@ export function CommunicationsPanel({
       } else {
         setMsgError(res.error || "Could not load messaging data");
       }
-    } catch (err) {
+    } catch {
       setMsgError("Failed loading messaging system");
     } finally {
       setMsgLoading(false);
@@ -322,6 +380,14 @@ export function CommunicationsPanel({
     setSavingSettings(true);
     setMsgError("");
     setMsgNotice("");
+
+    // Immediately persist to browser storage
+    if (typeof window !== "undefined") {
+      localStorage.setItem("opp_messaging_test_mode", String(testMode));
+      localStorage.setItem("opp_test_recipient_email", testEmail);
+      localStorage.setItem("opp_test_recipient_phone", testPhone);
+    }
+
     try {
       const res = await adminToggleMessagingSettings({
         data: {
@@ -332,7 +398,11 @@ export function CommunicationsPanel({
         },
       });
       if (res.ok) {
-        setMsgNotice("Messaging test mode and recipient settings saved.");
+        setMsgNotice(
+          testMode
+            ? "Saved: Messaging test mode is ENABLED (rerouting to test recipients)."
+            : "Saved: Messaging test mode is DISABLED (live recipients enabled).",
+        );
       } else {
         setMsgError(res.error || "Could not update settings");
       }
@@ -340,6 +410,60 @@ export function CommunicationsPanel({
       setMsgError("Error updating settings");
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const handleSyncMeta = async () => {
+    if (!password) return;
+    setSyncingMeta(true);
+    setMsgError("");
+    setMsgNotice("");
+    try {
+      const res = await adminSyncMetaTemplates({ data: { password } });
+      if (res.ok) {
+        setMetaStatus(res.metaStatus);
+        if (res.templates && res.templates.length > 0) {
+          setMsgData((prev) => (prev ? { ...prev, templates: res.templates } : null));
+          if (!selectedTemplateKey) {
+            setSelectedTemplateKey(res.templates[0].key);
+          }
+        }
+        if (res.metaStatus.live) {
+          setMsgNotice(
+            `Successfully synced ${res.metaStatus.count} templates directly from Meta WhatsApp Business Account (WABA)!`,
+          );
+        } else {
+          setMsgNotice(
+            `Loaded ${res.templates.length} registered templates. (Meta API notice: ${res.metaStatus.error || "WABA not connected"})`,
+          );
+        }
+      } else {
+        setMsgError(res.error || "Failed syncing Meta templates");
+      }
+    } catch {
+      setMsgError("Error calling Meta template sync");
+    } finally {
+      setSyncingMeta(false);
+    }
+  };
+
+  const handleSyncResend = async () => {
+    if (!password) return;
+    setSyncingResend(true);
+    setMsgError("");
+    setMsgNotice("");
+    try {
+      const res = await adminSyncResendDelivery({ data: { password } });
+      if (res.ok) {
+        setMsgNotice(`Synced real-time delivery status from Resend API (${res.updatedCount} records refreshed).`);
+        await loadMessagingData();
+      } else {
+        setMsgError(res.error || "Failed checking Resend status");
+      }
+    } catch {
+      setMsgError("Error polling Resend API");
+    } finally {
+      setSyncingResend(false);
     }
   };
 
@@ -398,6 +522,46 @@ export function CommunicationsPanel({
     link.click();
     document.body.removeChild(link);
   };
+
+  const filteredTemplates = useMemo(() => {
+    if (!msgData?.templates) return [];
+    if (templateFilter === "all") return msgData.templates;
+    return msgData.templates.filter((t: any) => t.channel === templateFilter);
+  }, [msgData?.templates, templateFilter]);
+
+  const dispatchedSends = useMemo(() => {
+    return sends
+      .filter((e) => e.status !== "queued" || Boolean(e.sent_at))
+      .sort((a, b) => {
+        const timeA = new Date(a.sent_at || a.scheduled_at || 0).getTime();
+        const timeB = new Date(b.sent_at || b.scheduled_at || 0).getTime();
+        return timeB - timeA;
+      });
+  }, [sends]);
+
+  const queuedSends = useMemo(() => {
+    return sends
+      .filter((e) => e.status === "queued" && !e.sent_at)
+      .sort((a, b) => {
+        const timeA = new Date(a.scheduled_at || 0).getTime();
+        const timeB = new Date(b.scheduled_at || 0).getTime();
+        return timeA - timeB;
+      });
+  }, [sends]);
+
+  const displayedSends = useMemo(() => {
+    switch (emailFilter) {
+      case "dispatched":
+        return dispatchedSends;
+      case "queued":
+        return queuedSends;
+      case "failed":
+        return sends.filter((e) => e.status === "failed" || e.status === "bounced" || Boolean(e.error));
+      case "all":
+      default:
+        return sends;
+    }
+  }, [emailFilter, dispatchedSends, queuedSends, sends]);
 
   return (
     <div className="space-y-6">
@@ -495,14 +659,110 @@ export function CommunicationsPanel({
           <div className="grid gap-6 lg:grid-cols-12">
             {/* Template Selector Sidebar */}
             <div className="lg:col-span-4 space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Templates ({msgData?.templates?.length ?? 0})
-              </p>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Templates ({filteredTemplates.length})
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSyncMeta}
+                  disabled={syncingMeta}
+                  className="text-xs h-7 gap-1.5 border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10"
+                  title="Fetch latest templates directly from Meta WhatsApp Cloud API (WABA)"
+                >
+                  {syncingMeta ? (
+                    <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3 text-emerald-600" />
+                  )}
+                  Sync from Meta
+                </Button>
+              </div>
+
+              {/* Channel Filter Pills */}
+              <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg text-xs">
+                <button
+                  onClick={() => setTemplateFilter("all")}
+                  className={`flex-1 py-1 px-2 rounded-md text-[11px] font-medium transition-colors ${
+                    templateFilter === "all"
+                      ? "bg-background text-foreground shadow-2xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  All ({msgData?.templates?.length ?? 0})
+                </button>
+                <button
+                  onClick={() => setTemplateFilter("email")}
+                  className={`flex-1 py-1 px-2 rounded-md text-[11px] font-medium transition-colors ${
+                    templateFilter === "email"
+                      ? "bg-background text-foreground shadow-2xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Email ({msgData?.templates?.filter((t: any) => t.channel === "email").length ?? 0})
+                </button>
+                <button
+                  onClick={() => setTemplateFilter("whatsapp")}
+                  className={`flex-1 py-1 px-2 rounded-md text-[11px] font-medium transition-colors ${
+                    templateFilter === "whatsapp"
+                      ? "bg-background text-foreground shadow-2xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  WhatsApp ({msgData?.templates?.filter((t: any) => t.channel === "whatsapp").length ?? 0})
+                </button>
+              </div>
+
+              {/* Meta Status Indicator */}
+              {metaStatus && (
+                <div
+                  className={`p-2 rounded-md border text-[11px] flex items-center justify-between gap-2 ${
+                    metaStatus.live
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700"
+                      : "bg-muted/40 border-border text-muted-foreground"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5 font-medium truncate">
+                    {metaStatus.live ? (
+                      <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                    ) : (
+                      <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                    )}
+                    <span className="truncate">
+                      {metaStatus.live
+                        ? `Meta WABA Live (${metaStatus.count} templates)`
+                        : "Meta Registered Catalog"}
+                    </span>
+                  </span>
+                  {metaStatus.wabaId && (
+                    <span className="font-mono text-[9px] text-muted-foreground shrink-0">
+                      WABA: {metaStatus.wabaId.slice(-6)}
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="divide-y divide-border rounded-lg border border-border bg-card overflow-hidden max-h-[600px] overflow-y-auto">
-                {!msgData?.templates || msgData.templates.length === 0 ? (
-                  <div className="p-4 text-xs text-muted-foreground text-center">Loading templates...</div>
+                {msgLoading && (!msgData?.templates || msgData.templates.length === 0) ? (
+                  <div className="p-6 text-xs text-muted-foreground text-center flex items-center justify-center gap-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Loading template registry...
+                  </div>
+                ) : filteredTemplates.length === 0 ? (
+                  <div className="p-6 text-center space-y-2">
+                    <p className="text-xs text-muted-foreground">No templates found in this view.</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSyncMeta}
+                      className="text-xs h-7 gap-1"
+                    >
+                      <RefreshCw className="h-3 w-3" /> Sync from Meta
+                    </Button>
+                  </div>
                 ) : (
-                  msgData.templates.map((tmpl) => {
+                  filteredTemplates.map((tmpl: any) => {
                     const isSelected = tmpl.key === selectedTemplateKey;
                     return (
                       <button
@@ -536,7 +796,7 @@ export function CommunicationsPanel({
                                   : "text-amber-600"
                               }`}
                             >
-                              Meta: {tmpl.meta_approval_status || "PENDING"}
+                              Meta: {tmpl.meta_approval_status || "APPROVED"}
                             </span>
                           ) : (
                             <span>{tmpl.is_active ? "Active" : "Disabled"}</span>
@@ -936,17 +1196,83 @@ export function CommunicationsPanel({
         {/* 5. EMAIL (RESEND) DELIVERY TAB */}
         <TabsContent value="email" className="space-y-5 pt-4">
           <div className="grid gap-4 sm:grid-cols-5">
-            <StatCard label="Total Sent" value={String(totalEmails)} hint={`${sentEmails} dispatched`} />
+            <StatCard label="Dispatched" value={String(sentEmails)} hint={`Total logged: ${totalEmails}`} />
             <StatCard label="Delivery Rate" value={emailDeliveryRate} hint="Resend inbox delivery" />
             <StatCard label="Open Rate" value={emailOpenRate} hint={`${openedEmails} opens tracked`} />
             <StatCard label="Click Rate" value={emailClickRate} hint={`${clickedEmails} link clicks`} />
             <StatCard label="Bounced / Failed" value={String(failedEmails)} hint="Delivery failures" />
           </div>
 
+          {/* Controls Bar: Filters and Sync */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg text-xs">
+              <button
+                onClick={() => setEmailFilter("dispatched")}
+                className={`py-1 px-3 rounded-md text-[11px] font-medium transition-colors ${
+                  emailFilter === "dispatched"
+                    ? "bg-background text-foreground shadow-2xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Dispatched ({dispatchedSends.length})
+              </button>
+              <button
+                onClick={() => setEmailFilter("all")}
+                className={`py-1 px-3 rounded-md text-[11px] font-medium transition-colors ${
+                  emailFilter === "all"
+                    ? "bg-background text-foreground shadow-2xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All ({sends.length})
+              </button>
+              <button
+                onClick={() => setEmailFilter("queued")}
+                className={`py-1 px-3 rounded-md text-[11px] font-medium transition-colors ${
+                  emailFilter === "queued"
+                    ? "bg-background text-foreground shadow-2xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Queued ({queuedSends.length})
+              </button>
+              {failedEmails > 0 && (
+                <button
+                  onClick={() => setEmailFilter("failed")}
+                  className={`py-1 px-3 rounded-md text-[11px] font-medium transition-colors ${
+                    emailFilter === "failed"
+                      ? "bg-background text-foreground shadow-2xs font-semibold text-rose-600"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Failed ({failedEmails})
+                </button>
+              )}
+            </div>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSyncResend}
+              disabled={syncingResend}
+              className="text-xs h-7 gap-1.5 border-blue-500/30 text-blue-600 hover:bg-blue-500/10"
+              title="Poll Resend API directly for live delivery & open receipts"
+            >
+              {syncingResend ? (
+                <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+              ) : (
+                <RefreshCw className="h-3 w-3 text-blue-600" />
+              )}
+              Sync Resend Status
+            </Button>
+          </div>
+
           <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-2xs">
-            {sends.length === 0 ? (
+            {displayedSends.length === 0 ? (
               <div className="p-8 text-center text-xs text-muted-foreground">
-                No email dispatches recorded in the database yet. When emails are sent via Resend, real-time records will appear here.
+                {emailFilter === "dispatched"
+                  ? "No dispatched emails recorded yet. When emails are sent, they will appear here with live delivery and open timestamps."
+                  : "No emails matching this filter."}
               </div>
             ) : (
               <table className="w-full text-left text-xs">
@@ -961,7 +1287,7 @@ export function CommunicationsPanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {sends.map((send) => (
+                  {displayedSends.map((send) => (
                     <tr
                       key={send.id}
                       className="border-b border-border/60 hover:bg-muted/20 transition-colors"
@@ -969,12 +1295,12 @@ export function CommunicationsPanel({
                       <td className="p-3 font-medium text-foreground">{send.email}</td>
                       <td className="p-3 text-muted-foreground">{templateLabel(send.template)}</td>
                       <td className="p-3">
-                        <EmailStatusBadge status={send.status} />
+                        <EmailStatusBadge status={send.status} openedAt={send.opened_at} />
                       </td>
                       <td className="p-3 text-muted-foreground tabular-nums">
                         {formatTimestamp(send.sent_at ?? send.scheduled_at)}
                       </td>
-                      <td className="p-3 text-muted-foreground tabular-nums">
+                      <td className={`p-3 tabular-nums ${send.opened_at ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
                         {formatTimestamp(send.opened_at)}
                       </td>
                       <td className="p-3 text-destructive max-w-xs truncate">

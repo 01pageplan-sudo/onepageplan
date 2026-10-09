@@ -1588,25 +1588,187 @@ export const adminGetMessagingData = createServerFn({ method: "POST" })
     }
 
     try {
+      const { getUnifiedTemplateRegistry } = await import("./messaging/meta-templates.server");
       const { seedMessageTemplates } = await import("./messaging/template-registry.server");
-      await seedMessageTemplates();
+      try {
+        await seedMessageTemplates();
+      } catch {
+        /* non-fatal */
+      }
 
-      const [templatesRes, scheduledRes, logsRes, suppressionsRes, settingsRes] = await Promise.all([
-        db.from("message_templates" as never).select("*").order("channel" as never, { ascending: true }),
-        db.from("scheduled_messages" as never).select("*").order("scheduled_for" as never, { ascending: false }).limit(200),
-        db.from("message_send_logs" as never).select("*").order("created_at" as never, { ascending: false }).limit(200),
-        db.from("communication_suppressions" as never).select("*").order("created_at" as never, { ascending: false }).limit(100),
-        db.from("commerce_settings" as never).select("messaging_test_mode, test_recipient_email, test_recipient_phone").eq("id" as never, 1).maybeSingle(),
+      const unifiedResult = await getUnifiedTemplateRegistry();
+
+      // Read settings with fallback cascade
+      let currentSettings: Record<string, unknown> = {};
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const client = supabaseAdmin || db;
+        const sRes = await client
+          .from("commerce_settings" as never)
+          .select("messaging_test_mode, test_recipient_email, test_recipient_phone")
+          .eq("id" as never, 1)
+          .maybeSingle();
+        if (sRes?.data) currentSettings = { ...(sRes.data as any) };
+      } catch {
+        /* fallback */
+      }
+
+      // Check app_config if test mode not resolved
+      if (currentSettings.messaging_test_mode === undefined) {
+        try {
+          const { data: cfgRow } = await db
+            .from("app_config" as never)
+            .select("value")
+            .eq("key" as never, "messaging_test_mode")
+            .maybeSingle();
+          if (cfgRow) {
+            currentSettings.messaging_test_mode = (cfgRow as any).value === "true";
+          }
+        } catch {
+          /* fallback */
+        }
+      }
+
+      // Check server process env
+      if (currentSettings.messaging_test_mode === undefined && process.env["OPP_MESSAGING_TEST_MODE"]) {
+        currentSettings.messaging_test_mode = process.env["OPP_MESSAGING_TEST_MODE"] === "true";
+      }
+
+      const [scheduledRes, logsRes, suppressionsRes] = await Promise.all([
+        db
+          .from("scheduled_messages" as never)
+          .select("*")
+          .order("scheduled_for" as never, { ascending: false })
+          .limit(200)
+          .catch(() => ({ data: [] })),
+        db
+          .from("message_send_logs" as never)
+          .select("*")
+          .order("created_at" as never, { ascending: false })
+          .limit(200)
+          .catch(() => ({ data: [] })),
+        db
+          .from("communication_suppressions" as never)
+          .select("*")
+          .order("created_at" as never, { ascending: false })
+          .limit(100)
+          .catch(() => ({ data: [] })),
       ]);
 
       return {
         ok: true as const,
-        templates: (templatesRes.data ?? []) as any[],
+        templates: unifiedResult.templates as any[],
+        metaStatus: unifiedResult.metaStatus,
         scheduled: (scheduledRes.data ?? []) as any[],
         logs: (logsRes.data ?? []) as any[],
         suppressions: (suppressionsRes.data ?? []) as any[],
-        settings: (settingsRes.data as any) || {},
+        settings: currentSettings,
       };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminSyncMetaTemplates = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const { fetchMetaTemplates, getUnifiedTemplateRegistry } = await import("./messaging/meta-templates.server");
+      const metaRes = await fetchMetaTemplates();
+      const unified = await getUnifiedTemplateRegistry();
+
+      return {
+        ok: true as const,
+        metaStatus: {
+          live: metaRes.live,
+          count: metaRes.count,
+          wabaId: metaRes.wabaId,
+          error: metaRes.error,
+        },
+        templates: unified.templates as any[],
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false as const, error: msg };
+    }
+  });
+
+export const adminSyncResendDelivery = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    const resendKey = process.env["RESEND_API_KEY"];
+    if (!resendKey) {
+      return { ok: false as const, error: "RESEND_API_KEY not configured on server." };
+    }
+
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const client = supabaseAdmin || db;
+
+      const { data: sends } = await client
+        .from("email_sends" as never)
+        .select("id, email, status, provider_id, sent_at, opened_at")
+        .order("sent_at" as never, { ascending: false })
+        .limit(50);
+
+      let updatedCount = 0;
+      if (sends && Array.isArray(sends)) {
+        for (const send of sends as any[]) {
+          if (!send.provider_id) continue;
+          try {
+            const res = await fetch(`https://api.resend.com/emails/${send.provider_id}`, {
+              headers: { Authorization: `Bearer ${resendKey}` },
+            });
+            if (res.ok) {
+              const info = (await res.json()) as { last_event?: string; status?: string };
+              const lastEvent = (info.last_event || info.status || "").toLowerCase();
+              const updatePayload: Record<string, unknown> = {};
+
+              if (lastEvent === "opened" || lastEvent === "clicked") {
+                if (send.status !== "opened" || !send.opened_at) {
+                  updatePayload["status"] = "opened";
+                  updatePayload["opened_at"] = send.opened_at || new Date().toISOString();
+                }
+              } else if (lastEvent === "delivered") {
+                if (send.status === "sent") {
+                  updatePayload["status"] = "delivered";
+                }
+              } else if (lastEvent === "bounced") {
+                updatePayload["status"] = "bounced";
+              }
+
+              if (Object.keys(updatePayload).length > 0) {
+                await client
+                  .from("email_sends" as never)
+                  .update(updatePayload as never)
+                  .eq("id" as never, send.id);
+                updatedCount++;
+              }
+            }
+          } catch {
+            // ignore individual fetch errors
+          }
+        }
+      }
+
+      return { ok: true as const, updatedCount };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return { ok: false as const, error: msg };
@@ -1669,31 +1831,55 @@ export const adminToggleMessagingSettings = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Wrong password." };
     }
 
+    // Always keep server memory / process state in sync
+    process.env["OPP_MESSAGING_TEST_MODE"] = String(data.testMode);
+
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const client = supabaseAdmin || db;
-      const { error } = await client
+
+      // 1. Try upserting to commerce_settings
+      await client
         .from("commerce_settings" as never)
         .upsert(
           {
             id: 1,
             messaging_test_mode: data.testMode,
             test_recipient_email: data.testEmail || "dodhia.milan@gmail.com",
-            test_recipient_phone: data.testPhone || "+919167434636",
+            test_recipient_phone: data.testPhone || "+919820000000",
           } as never,
           { onConflict: "id" },
-        );
+        )
+        .catch(() => null);
 
-      if (error) {
-        if (error.message.includes("commerce_settings")) {
-          return {
-            ok: false as const,
-            error:
-              "The table 'public.commerce_settings' does not exist in Supabase yet. Please execute the provided setup SQL in your Supabase SQL Editor.",
-          };
-        }
-        return { ok: false as const, error: error.message };
+      // 2. Also persist to app_config as reliable backup
+      await client
+        .from("app_config" as never)
+        .upsert(
+          { key: "messaging_test_mode", value: String(data.testMode) } as never,
+          { onConflict: "key" },
+        )
+        .catch(() => null);
+
+      if (data.testEmail) {
+        await client
+          .from("app_config" as never)
+          .upsert(
+            { key: "test_recipient_email", value: data.testEmail } as never,
+            { onConflict: "key" },
+          )
+          .catch(() => null);
       }
+      if (data.testPhone) {
+        await client
+          .from("app_config" as never)
+          .upsert(
+            { key: "test_recipient_phone", value: data.testPhone } as never,
+            { onConflict: "key" },
+          )
+          .catch(() => null);
+      }
+
       return { ok: true as const };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

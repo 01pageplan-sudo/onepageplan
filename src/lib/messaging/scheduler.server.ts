@@ -404,7 +404,27 @@ export async function processPendingMessages(limit = 25): Promise<{
     .maybeSingle();
 
   const settings = settingsRow as any;
-  const isTestMode = settings?.messaging_test_mode ?? true;
+  let isTestMode = settings?.messaging_test_mode;
+  if (isTestMode === undefined) {
+    try {
+      const { data: cfgRow } = await db
+        .from("app_config" as never)
+        .select("value")
+        .eq("key" as never, "messaging_test_mode")
+        .maybeSingle();
+      if (cfgRow) {
+        isTestMode = (cfgRow as any).value === "true";
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  if (isTestMode === undefined && process.env["OPP_MESSAGING_TEST_MODE"]) {
+    isTestMode = process.env["OPP_MESSAGING_TEST_MODE"] === "true";
+  }
+  if (isTestMode === undefined) {
+    isTestMode = true;
+  }
   const testEmail = settings?.test_recipient_email || "dodhia.milan@gmail.com";
   const testPhone = settings?.test_recipient_phone || "+919820000000";
 
