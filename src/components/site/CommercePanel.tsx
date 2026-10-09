@@ -138,6 +138,7 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
   const [newDiscountCode, setNewDiscountCode] = useState("");
   const [newDiscountType, setNewDiscountType] = useState<"fixed" | "percentage">("fixed");
   const [newDiscountValue, setNewDiscountValue] = useState(500);
+  const [newDiscountAppliesTo, setNewDiscountAppliesTo] = useState<string>("all");
 
   // Referral partner form state
   const [newPartnerCode, setNewPartnerCode] = useState("");
@@ -308,12 +309,14 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
           code: newDiscountCode.trim().toUpperCase(),
           discountType: newDiscountType,
           discountValue: Number(newDiscountValue),
+          appliesToProducts: [newDiscountAppliesTo],
           isActive: true,
         },
       });
       if (res.ok) {
         showNotice(`Discount code ${newDiscountCode.toUpperCase()} created.`);
         setNewDiscountCode("");
+        setNewDiscountAppliesTo("all");
         onRefresh();
       } else {
         showNotice(res.error || "Failed to create discount code.", "error");
@@ -1263,7 +1266,7 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
             <h3 className="text-sm font-bold flex items-center gap-2 text-foreground">
               <Tag className="h-4 w-4 text-emerald-600" /> Create New Discount Code
             </h3>
-            <form onSubmit={handleCreateDiscount} className="grid gap-3 sm:grid-cols-3 text-xs">
+            <form onSubmit={handleCreateDiscount} className="grid gap-3 sm:grid-cols-4 text-xs">
               <div>
                 <Label className="text-xs">Coupon Code *</Label>
                 <Input
@@ -1295,7 +1298,21 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                   className="h-8 text-xs mt-1"
                 />
               </div>
-              <div className="sm:col-span-3">
+              <div>
+                <Label className="text-xs">Applicable Product *</Label>
+                <select
+                  value={newDiscountAppliesTo}
+                  onChange={(e) => setNewDiscountAppliesTo(e.target.value)}
+                  className="w-full h-8 text-xs border border-border rounded-md px-2 bg-background text-foreground mt-1 font-medium"
+                >
+                  <option value="all">🌟 All Products (Universal)</option>
+                  <option value="silver">🥈 Silver (The Calm Money System)</option>
+                  <option value="gold">🥇 Gold Tier</option>
+                  <option value="diamond">💎 Diamond Tier</option>
+                  <option value="money_reality_check">📊 Money Reality Check</option>
+                </select>
+              </div>
+              <div className="sm:col-span-4">
                 <Button type="submit" disabled={loading} size="sm" className="w-full">
                   Create Coupon Code
                 </Button>
@@ -1310,14 +1327,15 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                   <th className="p-3 font-semibold">Code</th>
                   <th className="p-3 font-semibold">Type</th>
                   <th className="p-3 font-semibold">Value</th>
+                  <th className="p-3 font-semibold">Applies To</th>
                   <th className="p-3 font-semibold">Usage Count</th>
                   <th className="p-3 font-semibold">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y border-border">
                 {data.discountCodes.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                    <td colSpan={6} className="p-6 text-center text-muted-foreground">
                       No discount codes created yet.
                     </td>
                   </tr>
@@ -1328,6 +1346,38 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                       <td className="p-3 text-muted-foreground uppercase">{d.discount_type}</td>
                       <td className="p-3 font-semibold">
                         {d.discount_type === "fixed" ? `₹${d.discount_value}` : `${d.discount_value}%`}
+                      </td>
+                      <td className="p-3">
+                        {d.applies_to_products?.includes("all") || !d.applies_to_products?.length ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400">
+                            All Products
+                          </span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {d.applies_to_products.map((p) => {
+                              let label = p;
+                              let color = "bg-zinc-500/15 text-zinc-700 dark:text-zinc-300";
+                              if (p === "silver") {
+                                label = "Silver";
+                                color = "bg-slate-500/15 text-slate-800 dark:text-slate-300";
+                              } else if (p === "gold") {
+                                label = "Gold";
+                                color = "bg-amber-500/15 text-amber-800 dark:text-amber-400";
+                              } else if (p === "diamond") {
+                                label = "Diamond";
+                                color = "bg-purple-500/15 text-purple-800 dark:text-purple-400";
+                              } else if (p === "money_reality_check") {
+                                label = "MRC";
+                                color = "bg-emerald-500/15 text-emerald-800 dark:text-emerald-400";
+                              }
+                              return (
+                                <span key={p} className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${color}`}>
+                                  {label}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 font-mono">{d.used_count} uses</td>
                       <td className="p-3">

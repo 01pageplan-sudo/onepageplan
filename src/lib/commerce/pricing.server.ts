@@ -459,20 +459,64 @@ export async function computeOrderPricing(params: {
   // 4. Milestone pricing info
   const milestoneInfo = await getSilverMilestonePricing();
 
+  // Compute pre-discount base order amount first
+  const preDiscountPricing = computePurePricing({
+    product: params.product,
+    activeSilverCount: milestoneInfo.activeCount,
+    milestoneSchedule: settings.silver_milestones || [],
+    settings,
+    existingEntitlements,
+    mrcGrant,
+    completion,
+    discount: null,
+    referralCode: params.referralCode,
+  });
+
   // 5. Discount code validation
   let discount = null;
   if (params.discountCode && params.discountCode.trim()) {
-    const { data: dcRes } = await (db.rpc as any)("validate_discount_code", {
-      p_code: params.discountCode.trim().toUpperCase(),
-      p_product: params.product,
-      p_amount: 100000,
-    });
-    if (dcRes && dcRes.valid) {
-      discount = {
-        code: dcRes.code,
-        discount_amount: Number(dcRes.discount_amount) || 0,
-        final_amount: Number(dcRes.final_amount) || 0,
-      };
+    const cleanCode = params.discountCode.trim().toUpperCase();
+    const baseForDiscount = preDiscountPricing.amountCharged;
+
+    const { data: dcRow } = await db
+      .from("discount_codes" as never)
+      .select("*")
+      .ilike("code" as never, cleanCode as never)
+      .maybeSingle();
+
+    if (dcRow) {
+      const c = dcRow as any;
+      const isActive = Boolean(c.is_active);
+      const notExpired = !c.expires_at || new Date(c.expires_at).getTime() > Date.now();
+      const underMaxUses =
+        c.max_uses === null || c.max_uses === undefined || (Number(c.used_count) || 0) < c.max_uses;
+      const appliesTo = Array.isArray(c.applies_to_products)
+        ? c.applies_to_products.map((p: string) => String(p).toLowerCase().trim())
+        : ["all"];
+      const appliesToProduct =
+        appliesTo.includes("all") ||
+        appliesTo.includes(params.product.toLowerCase()) ||
+        (params.product === "silver" && appliesTo.includes("course"));
+
+      if (isActive && notExpired && underMaxUses && appliesToProduct) {
+        let discountAmount = 0;
+        if (c.discount_type === "percentage") {
+          discountAmount = Math.round((baseForDiscount * (Number(c.discount_value) || 0)) / 100);
+        } else {
+          discountAmount = Number(c.discount_value) || 0;
+        }
+
+        if (discountAmount >= baseForDiscount) {
+          discountAmount = Math.max(0, baseForDiscount - 1);
+        }
+
+        const finalAmount = Math.max(1, baseForDiscount - discountAmount);
+        discount = {
+          code: c.code,
+          discount_amount: discountAmount,
+          final_amount: finalAmount,
+        };
+      }
     }
   }
 

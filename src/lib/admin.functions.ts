@@ -2343,6 +2343,57 @@ export const adminSendTestMessage = createServerFn({ method: "POST" })
     return { ok: false as const, error: "Unsupported channel." };
   });
 
+export const adminGetWebinarConfig = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
 
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
 
+    try {
+      let activeWebinarId = (process.env["WEBINAR_GG_WEBINAR_ID"] || "").trim() || "cmthk6y4001kos60ybxfkbc67";
+      const { data: row } = await db
+        .from("app_config" as never)
+        .select("value")
+        .eq("key" as never, "webinar_id" as never)
+        .maybeSingle();
+      if ((row as any)?.value && typeof (row as any).value === "string") {
+        const val = (row as any).value.trim();
+        if (val) activeWebinarId = val;
+      }
+      return { ok: true as const, webinarId: activeWebinarId };
+    } catch (err: any) {
+      return { ok: false as const, error: err?.message || "Failed to load webinar config." };
+    }
+  });
 
+export const adminUpdateWebinarId = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string; webinarId: string }) => data)
+  .handler(async ({ data }) => {
+    const { createPublicServerClient } = await import("./supabase-public.server");
+    const db = createPublicServerClient();
+
+    const { error: authError } = await db.rpc("admin_get_email_settings", { p_password: data.password });
+    if (authError && unauthorized(authError.message)) {
+      return { ok: false as const, error: "Wrong password." };
+    }
+
+    try {
+      const cleanId = (data.webinarId || "").trim();
+      if (!cleanId) {
+        return { ok: false as const, error: "Webinar ID cannot be blank." };
+      }
+      const { error } = await db.from("app_config" as never).upsert(
+        { key: "webinar_id", value: cleanId } as never,
+        { onConflict: "key" } as never,
+      );
+      if (error) return { ok: false as const, error: error.message };
+      return { ok: true as const, webinarId: cleanId };
+    } catch (err: any) {
+      return { ok: false as const, error: err?.message || "Failed to update webinar ID." };
+    }
+  });

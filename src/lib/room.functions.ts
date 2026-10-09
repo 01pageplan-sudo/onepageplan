@@ -81,8 +81,23 @@ export const getJoinToken = createServerFn({ method: "POST" })
       const apiToken =
         process.env["WEBINAR_GG_API_TOKEN"] || process.env["WEBINAR_GG_API_KEY"] || "";
       // Same id in the join-token request and in the iframe src, always.
-      const webinarId =
+      let webinarId =
         (process.env["WEBINAR_GG_WEBINAR_ID"] || "").trim() || "cmthk6y4001kos60ybxfkbc67";
+
+      try {
+        const { createPublicServerClient } = await import("./supabase-public.server");
+        const { data: wRow } = await createPublicServerClient()
+          .from("app_config" as never)
+          .select("value")
+          .eq("key" as never, "webinar_id" as never)
+          .maybeSingle();
+        if ((wRow as any)?.value && typeof (wRow as any).value === "string") {
+          const val = (wRow as any).value.trim();
+          if (val) webinarId = val;
+        }
+      } catch {
+        /* fallback to env */
+      }
       if (!apiToken || !webinarId) {
         console.error("getJoinToken: WEBINAR_GG_API_TOKEN / WEBINAR_GG_WEBINAR_ID not set");
         await logWebinarCall({

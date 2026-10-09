@@ -39,6 +39,7 @@ import { Route as UpgradeSilverRouteImport } from './routes/upgrade.silver'
 import { Route as ApiCommerceCreateOrderRouteImport } from './routes/api/commerce/create-order'
 import { Route as ApiCommercePollOrderStatusRouteImport } from './routes/api/commerce/poll-order-status'
 import { Route as ApiCommerceReconcileRouteImport } from './routes/api/commerce/reconcile'
+import { Route as ApiCommerceValidateCouponRouteImport } from './routes/api/commerce/validate-coupon'
 import { Route as ApiCourseSubmitRewardRouteImport } from './routes/api/course/submit-reward'
 import { Route as ApiInvoicesTokenRouteImport } from './routes/api/invoices/$token'
 import { Route as ApiPublicChatgptConversionRouteImport } from './routes/api/public/chatgpt-conversion'
@@ -206,6 +207,12 @@ const ApiCommerceReconcileRoute = ApiCommerceReconcileRouteImport.update({
   path: '/api/commerce/reconcile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCommerceValidateCouponRoute =
+  ApiCommerceValidateCouponRouteImport.update({
+    id: '/api/commerce/validate-coupon',
+    path: '/api/commerce/validate-coupon',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiCourseSubmitRewardRoute = ApiCourseSubmitRewardRouteImport.update({
   id: '/api/course/submit-reward',
   path: '/api/course/submit-reward',
@@ -308,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/api/commerce/create-order': typeof ApiCommerceCreateOrderRoute
   '/api/commerce/poll-order-status': typeof ApiCommercePollOrderStatusRoute
   '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
+  '/api/commerce/validate-coupon': typeof ApiCommerceValidateCouponRoute
   '/api/course/submit-reward': typeof ApiCourseSubmitRewardRoute
   '/api/invoices/$token': typeof ApiInvoicesTokenRoute
   '/api/public/chatgpt-conversion': typeof ApiPublicChatgptConversionRoute
@@ -353,6 +361,7 @@ export interface FileRoutesByTo {
   '/api/commerce/create-order': typeof ApiCommerceCreateOrderRoute
   '/api/commerce/poll-order-status': typeof ApiCommercePollOrderStatusRoute
   '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
+  '/api/commerce/validate-coupon': typeof ApiCommerceValidateCouponRoute
   '/api/course/submit-reward': typeof ApiCourseSubmitRewardRoute
   '/api/invoices/$token': typeof ApiInvoicesTokenRoute
   '/api/public/chatgpt-conversion': typeof ApiPublicChatgptConversionRoute
@@ -399,6 +408,7 @@ export interface FileRoutesById {
   '/api/commerce/create-order': typeof ApiCommerceCreateOrderRoute
   '/api/commerce/poll-order-status': typeof ApiCommercePollOrderStatusRoute
   '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
+  '/api/commerce/validate-coupon': typeof ApiCommerceValidateCouponRoute
   '/api/course/submit-reward': typeof ApiCourseSubmitRewardRoute
   '/api/invoices/$token': typeof ApiInvoicesTokenRoute
   '/api/public/chatgpt-conversion': typeof ApiPublicChatgptConversionRoute
@@ -446,6 +456,7 @@ export interface FileRouteTypes {
     | '/api/commerce/create-order'
     | '/api/commerce/poll-order-status'
     | '/api/commerce/reconcile'
+    | '/api/commerce/validate-coupon'
     | '/api/course/submit-reward'
     | '/api/invoices/$token'
     | '/api/public/chatgpt-conversion'
@@ -491,6 +502,7 @@ export interface FileRouteTypes {
     | '/api/commerce/create-order'
     | '/api/commerce/poll-order-status'
     | '/api/commerce/reconcile'
+    | '/api/commerce/validate-coupon'
     | '/api/course/submit-reward'
     | '/api/invoices/$token'
     | '/api/public/chatgpt-conversion'
@@ -536,6 +548,7 @@ export interface FileRouteTypes {
     | '/api/commerce/create-order'
     | '/api/commerce/poll-order-status'
     | '/api/commerce/reconcile'
+    | '/api/commerce/validate-coupon'
     | '/api/course/submit-reward'
     | '/api/invoices/$token'
     | '/api/public/chatgpt-conversion'
@@ -581,6 +594,7 @@ export interface RootRouteChildren {
   ApiCommerceCreateOrderRoute: typeof ApiCommerceCreateOrderRoute
   ApiCommercePollOrderStatusRoute: typeof ApiCommercePollOrderStatusRoute
   ApiCommerceReconcileRoute: typeof ApiCommerceReconcileRoute
+  ApiCommerceValidateCouponRoute: typeof ApiCommerceValidateCouponRoute
   ApiCourseSubmitRewardRoute: typeof ApiCourseSubmitRewardRoute
   ApiInvoicesTokenRoute: typeof ApiInvoicesTokenRoute
   ApiPublicChatgptConversionRoute: typeof ApiPublicChatgptConversionRoute
@@ -808,6 +822,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCommerceReconcileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/commerce/validate-coupon': {
+      id: '/api/commerce/validate-coupon'
+      path: '/api/commerce/validate-coupon'
+      fullPath: '/api/commerce/validate-coupon'
+      preLoaderRoute: typeof ApiCommerceValidateCouponRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/course/submit-reward': {
       id: '/api/course/submit-reward'
       path: '/api/course/submit-reward'
@@ -943,6 +964,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCommerceCreateOrderRoute: ApiCommerceCreateOrderRoute,
   ApiCommercePollOrderStatusRoute: ApiCommercePollOrderStatusRoute,
   ApiCommerceReconcileRoute: ApiCommerceReconcileRoute,
+  ApiCommerceValidateCouponRoute: ApiCommerceValidateCouponRoute,
   ApiCourseSubmitRewardRoute: ApiCourseSubmitRewardRoute,
   ApiInvoicesTokenRoute: ApiInvoicesTokenRoute,
   ApiPublicChatgptConversionRoute: ApiPublicChatgptConversionRoute,

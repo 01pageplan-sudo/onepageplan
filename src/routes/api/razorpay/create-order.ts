@@ -17,6 +17,7 @@ export const Route = createFileRoute("/api/razorpay/create-order")({
             name?: string;
             phone?: string;
             product?: string;
+            discountCode?: string;
           };
 
           const email = (body.email || "").trim().toLowerCase();
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/api/razorpay/create-order")({
           const pricing = await computeOrderPricing({
             product,
             email,
+            discountCode: body.discountCode,
           });
 
           if (!pricing.ok) {
@@ -47,6 +49,7 @@ export const Route = createFileRoute("/api/razorpay/create-order")({
               email,
               name: body.name || "",
               pricing_rule: pricing.pricingRule,
+              discount_code: pricing.discountCodeApplied || "",
             },
           });
 
@@ -61,6 +64,8 @@ export const Route = createFileRoute("/api/razorpay/create-order")({
             pricing_rule_applied: pricing.pricingRule,
             base_price: pricing.basePrice,
             credit_applied: pricing.creditApplied,
+            discount_code_applied: pricing.discountCodeApplied || null,
+            discount_amount: pricing.discountAmount || 0,
             amount_charged: pricing.amountCharged,
             currency: "INR",
             buyer_name: body.name?.trim() || null,

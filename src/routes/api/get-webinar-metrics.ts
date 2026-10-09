@@ -18,10 +18,28 @@ export const Route = createFileRoute("/api/get-webinar-metrics")({
         const apiKey =
           process.env["WEBINAR_GG_API_KEY"] || process.env["WEBINAR_GG_API_TOKEN"] || "";
         const url = new URL(request.url);
-        const id =
-          (url.searchParams.get("id") || "").trim() ||
-          (process.env["WEBINAR_GG_WEBINAR_ID"] || "").trim() ||
-          "cmthk6y4001kos60ybxfkbc67";
+        let id = (url.searchParams.get("id") || "").trim();
+
+        if (!id) {
+          try {
+            const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+            const { data: wRow } = await createPublicServerClient()
+              .from("app_config" as never)
+              .select("value")
+              .eq("key" as never, "webinar_id" as never)
+              .maybeSingle();
+            if ((wRow as any)?.value && typeof (wRow as any).value === "string") {
+              const val = (wRow as any).value.trim();
+              if (val) id = val;
+            }
+          } catch {
+            /* fallback */
+          }
+        }
+
+        if (!id) {
+          id = (process.env["WEBINAR_GG_WEBINAR_ID"] || "").trim() || "cmthk6y4001kos60ybxfkbc67";
+        }
 
         if (!apiKey) {
           return Response.json({ error: "not_configured" }, { status: 500 });

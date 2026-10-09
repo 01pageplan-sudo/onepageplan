@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, MessageSquare, UserMinus, UserPlus, Calendar, History, Loader2 } from "lucide-react";
+import { Activity, MessageSquare, UserMinus, UserPlus, Calendar, History, Loader2, Link2, Check, AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   adminHistoricalWebinarLogs,
+  adminGetWebinarConfig,
+  adminUpdateWebinarId,
   type AdminWebinarHistoricalEvent,
   type AdminWebinarHistoricalSession,
 } from "@/lib/admin.functions";
@@ -60,6 +63,46 @@ export function WebinarAnalytics({ password = "" }: { password?: string }) {
   const [selectedSessionDate, setSelectedSessionDate] = useState<string>("");
   const [events, setEvents] = useState<AdminWebinarHistoricalEvent[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Active Webinar.gg room ID state
+  const [activeWebinarId, setActiveWebinarId] = useState<string>("");
+  const [newWebinarIdInput, setNewWebinarIdInput] = useState<string>("");
+  const [webinarIdSaving, setWebinarIdSaving] = useState(false);
+  const [webinarIdNotice, setWebinarIdNotice] = useState<{ text: string; error?: boolean } | null>(null);
+
+  const loadWebinarConfig = useCallback(async () => {
+    if (!password) return;
+    try {
+      const res = await adminGetWebinarConfig({ data: { password } });
+      if (res.ok && res.webinarId) {
+        setActiveWebinarId(res.webinarId);
+        setNewWebinarIdInput(res.webinarId);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [password]);
+
+  const handleSaveWebinarId = async () => {
+    const clean = newWebinarIdInput.trim();
+    if (!clean) return;
+    setWebinarIdSaving(true);
+    setWebinarIdNotice(null);
+    try {
+      const res = await adminUpdateWebinarId({ data: { password, webinarId: clean } });
+      if (res.ok) {
+        setActiveWebinarId(clean);
+        setWebinarIdNotice({ text: "Webinar room ID saved successfully! Live room /room is now using this ID." });
+        setTimeout(() => setWebinarIdNotice(null), 6000);
+      } else {
+        setWebinarIdNotice({ text: res.error || "Failed to update webinar ID.", error: true });
+      }
+    } catch (err: any) {
+      setWebinarIdNotice({ text: err?.message || "Failed to update webinar ID.", error: true });
+    } finally {
+      setWebinarIdSaving(false);
+    }
+  };
 
   // Load live API metrics from webinar.gg
   const loadLiveMetrics = useCallback(async () => {
@@ -124,8 +167,9 @@ export function WebinarAnalytics({ password = "" }: { password?: string }) {
     void loadLiveMetrics();
     if (password) {
       void loadHistory();
+      void loadWebinarConfig();
     }
-  }, [loadLiveMetrics, loadHistory, password]);
+  }, [loadLiveMetrics, loadHistory, loadWebinarConfig, password]);
 
   const handleSelectSession = (date: string) => {
     setSelectedSessionDate(date);
@@ -171,12 +215,70 @@ export function WebinarAnalytics({ password = "" }: { password?: string }) {
             onClick={() => {
               void loadLiveMetrics();
               void loadHistory(selectedSessionDate);
+              void loadWebinarConfig();
             }}
             className="text-xs h-8"
           >
             {loading || historyLoading ? "Refreshing..." : "Refresh"}
           </Button>
         </div>
+      </div>
+
+      {/* Active Webinar Room ID Configuration Card */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-2.5 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <span className="text-xs font-semibold text-foreground">
+                Active Webinar.gg Room ID:{" "}
+                <code className="font-mono text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded bg-muted text-xs">
+                  {activeWebinarId || "cmthk6y4001kos60ybxfkbc67"}
+                </code>
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Your website at <code>onepageplan.in/room</code> generates attendee join tokens for this Webinar ID.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Input
+              value={newWebinarIdInput}
+              onChange={(e) => setNewWebinarIdInput(e.target.value)}
+              placeholder="Paste new Webinar ID..."
+              className="h-8 text-xs font-mono w-60 bg-background"
+            />
+            <Button
+              size="sm"
+              disabled={webinarIdSaving || !newWebinarIdInput.trim() || newWebinarIdInput.trim() === activeWebinarId}
+              onClick={handleSaveWebinarId}
+              className="h-8 text-xs font-medium"
+            >
+              {webinarIdSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save ID"}
+            </Button>
+          </div>
+        </div>
+
+        {webinarIdNotice && (
+          <div
+            className={`text-xs px-3 py-1.5 rounded-md flex items-center gap-2 ${
+              webinarIdNotice.error
+                ? "bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20"
+                : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+            }`}
+          >
+            {webinarIdNotice.error ? (
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <Check className="h-3.5 w-3.5 shrink-0" />
+            )}
+            <span>{webinarIdNotice.text}</span>
+          </div>
+        )}
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}

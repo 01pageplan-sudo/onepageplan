@@ -23,6 +23,8 @@ import {
   PlayCircle,
   Eye,
   AlertCircle,
+  Tag,
+  Loader2,
 } from "lucide-react";
 
 import { Wordmark } from "@/components/site/Header";
@@ -576,6 +578,63 @@ function CoursePortalPage() {
   const [errorNotice, setErrorNotice] = useState("");
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
+
+  // Coupon code checkout state
+  const [couponInput, setCouponInput] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    code: string;
+    discountType: string;
+    discountValue: number;
+    discountAmount: number;
+    finalAmount: number;
+  } | null>(null);
+
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) {
+      setCouponError("Please enter a coupon code.");
+      return;
+    }
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const res = await fetch("/api/commerce/validate-coupon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          product: "silver",
+          baseAmount: 6000,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setCouponError(data.error || `Coupon "${code}" is invalid or expired.`);
+        setAppliedDiscount(null);
+      } else {
+        setAppliedDiscount({
+          code: data.code,
+          discountType: data.discountType,
+          discountValue: data.discountValue,
+          discountAmount: Number(data.discountAmount) || 0,
+          finalAmount: Number(data.finalAmount) || 6000,
+        });
+        setCouponError(null);
+      }
+    } catch {
+      setCouponError("Could not validate coupon. Please check connection.");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedDiscount(null);
+    setCouponInput("");
+    setCouponError(null);
+  };
 
   const [memberTiers, setMemberTiers] = useState<{
     canViewMrc?: boolean;
@@ -1423,8 +1482,24 @@ function CoursePortalPage() {
                     <p className="text-xs text-muted-foreground">One-time payment · Instant course unlock</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-3xl font-bold text-primary">₹6,000</span>
-                    <span className="text-xs text-muted-foreground block">one time</span>
+                    {appliedDiscount ? (
+                      <div>
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-sm line-through text-muted-foreground">₹6,000</span>
+                          <span className="text-3xl font-bold text-emerald-600">
+                            ₹{appliedDiscount.finalAmount.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        <span className="text-xs text-emerald-600 font-medium block">
+                          Coupon {appliedDiscount.code} applied (Saved ₹{appliedDiscount.discountAmount.toLocaleString("en-IN")})
+                        </span>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="text-3xl font-bold text-primary">₹6,000</span>
+                        <span className="text-xs text-muted-foreground block">one time</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1489,11 +1564,72 @@ function CoursePortalPage() {
                     </div>
                   </div>
 
+                  {/* Coupon Code Section */}
+                  <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5 text-primary" />
+                        <span>Have a Coupon Code?</span>
+                      </label>
+                      {appliedDiscount && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveCoupon}
+                          className="text-[11px] text-destructive hover:underline font-medium"
+                        >
+                          ✕ Remove coupon
+                        </button>
+                      )}
+                    </div>
+
+                    {!appliedDiscount ? (
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter coupon code (e.g. VIP500)"
+                          value={couponInput}
+                          onChange={(e) => {
+                            setCouponInput(e.target.value.toUpperCase());
+                            setCouponError(null);
+                          }}
+                          className="h-8 text-xs font-mono uppercase bg-background"
+                          disabled={couponLoading}
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={couponLoading || !couponInput.trim()}
+                          onClick={handleApplyCoupon}
+                          className="h-8 text-xs px-4 shrink-0 font-medium"
+                        >
+                          {couponLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Apply"}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                        <div className="flex items-center gap-2">
+                          <Check className="h-3.5 w-3.5" />
+                          <span className="font-mono font-bold">{appliedDiscount.code}</span>
+                          <span>applied</span>
+                        </div>
+                        <span className="font-semibold">-₹{appliedDiscount.discountAmount.toLocaleString("en-IN")} off</span>
+                      </div>
+                    )}
+
+                    {couponError && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1 mt-1">
+                        <AlertCircle className="h-3 w-3 shrink-0" />
+                        {couponError}
+                      </p>
+                    )}
+                  </div>
+
                   <RazorpayButton
-                    label="Pay ₹6,000 & Unlock Instant Access →"
+                    label={`Pay ₹${(appliedDiscount ? appliedDiscount.finalAmount : 6000).toLocaleString("en-IN")} & Unlock Instant Access →`}
                     email={emailInput.trim()}
                     name={buyerName.trim()}
                     phone={buyerPhone.trim()}
+                    discountCode={appliedDiscount?.code}
                     onSuccess={() => {
                       setActiveEmail(emailInput.trim().toLowerCase());
                       setHasAccess(true);

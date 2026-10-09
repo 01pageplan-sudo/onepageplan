@@ -11,8 +11,23 @@ export const Route = createFileRoute("/api/get-webinar-token")({
       POST: async ({ request }) => {
         const apiKey =
           process.env["WEBINAR_GG_API_KEY"] || process.env["WEBINAR_GG_API_TOKEN"] || "";
-        const webinarId =
+        let webinarId =
           (process.env["WEBINAR_GG_WEBINAR_ID"] || "").trim() || "cmthk6y4001kos60ybxfkbc67";
+
+        try {
+          const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+          const { data: wRow } = await createPublicServerClient()
+            .from("app_config" as never)
+            .select("value")
+            .eq("key" as never, "webinar_id" as never)
+            .maybeSingle();
+          if ((wRow as any)?.value && typeof (wRow as any).value === "string") {
+            const val = (wRow as any).value.trim();
+            if (val) webinarId = val;
+          }
+        } catch {
+          /* fallback to env */
+        }
 
         if (!apiKey) {
           console.error("get-webinar-token: WEBINAR_GG_API_KEY is not set");

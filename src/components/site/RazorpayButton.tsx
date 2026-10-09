@@ -17,6 +17,7 @@ interface RazorpayButtonProps {
   email?: string;
   name?: string;
   phone?: string;
+  discountCode?: string;
   onSuccess?: () => void;
 }
 
@@ -41,6 +42,7 @@ export function RazorpayButton({
   email = "",
   name = "",
   phone = "",
+  discountCode = "",
   onSuccess,
 }: RazorpayButtonProps) {
   const [loading, setLoading] = useState(false);
@@ -60,7 +62,12 @@ export function RazorpayButton({
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, phone }),
+        body: JSON.stringify({
+          email,
+          name,
+          phone,
+          discountCode: discountCode?.trim() || undefined,
+        }),
       });
 
       const orderData = (await orderRes.json()) as {

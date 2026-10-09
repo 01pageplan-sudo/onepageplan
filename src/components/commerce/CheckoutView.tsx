@@ -9,6 +9,8 @@ import {
   ArrowRight,
   Lock,
   UserCheck,
+  Tag,
+  Loader2,
 } from "lucide-react";
 import { Wordmark } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
@@ -73,6 +75,64 @@ export function CheckoutView({ product, isUpgrade = false, pagePath }: CheckoutV
   const [submitting, setSubmitting] = useState(false);
   const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Coupon state
+  const [couponInput, setCouponInput] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    code: string;
+    discountType: string;
+    discountValue: number;
+    discountAmount: number;
+    finalAmount: number;
+  } | null>(null);
+
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) {
+      setCouponError("Please enter a coupon code.");
+      return;
+    }
+    const base = data?.pricing?.amountCharged || 6000;
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const res = await fetch("/api/commerce/validate-coupon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          product,
+          baseAmount: base,
+        }),
+      });
+      const resData = await res.json();
+      if (!res.ok || !resData.valid) {
+        setCouponError(resData.error || `Coupon "${code}" is invalid or expired.`);
+        setAppliedDiscount(null);
+      } else {
+        setAppliedDiscount({
+          code: resData.code,
+          discountType: resData.discountType,
+          discountValue: resData.discountValue,
+          discountAmount: Number(resData.discountAmount) || 0,
+          finalAmount: Number(resData.finalAmount) || base,
+        });
+        setCouponError(null);
+      }
+    } catch {
+      setCouponError("Could not validate coupon. Please check connection.");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedDiscount(null);
+    setCouponInput("");
+    setCouponError(null);
+  };
 
   // 1. Initial Load: check localStorage for saved member email
   useEffect(() => {
@@ -198,6 +258,7 @@ export function CheckoutView({ product, isUpgrade = false, pagePath }: CheckoutV
           email: email.trim().toLowerCase(),
           name: name.trim(),
           phone: cleanPhone,
+          discountCode: appliedDiscount?.code || undefined,
           consents,
         }),
       });
@@ -446,7 +507,7 @@ export function CheckoutView({ product, isUpgrade = false, pagePath }: CheckoutV
 
   // MAIN ELIGIBLE / RENEWAL CHECKOUT VIEW
   const isRenewal = data.state === "renewal";
-  const displayAmount = data.pricing.amountCharged;
+  const displayAmount = appliedDiscount ? appliedDiscount.finalAmount : data.pricing.amountCharged;
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-between">
@@ -599,11 +660,31 @@ export function CheckoutView({ product, isUpgrade = false, pagePath }: CheckoutV
               </div>
             ) : (
               /* Standard Single Line Price */
-              <div className="flex justify-between items-baseline">
-                <span className="text-xs sm:text-sm font-medium text-muted-foreground">Total (inclusive of taxes):</span>
-                <span className="text-3xl font-bold text-primary tabular-nums">
-                  ₹{displayAmount.toLocaleString("en-IN")}
-                </span>
+              <div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-xs sm:text-sm font-medium text-muted-foreground">Total (inclusive of taxes):</span>
+                  <div className="text-right">
+                    {appliedDiscount ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm line-through text-muted-foreground">
+                          ₹{data.pricing.amountCharged.toLocaleString("en-IN")}
+                        </span>
+                        <span className="text-3xl font-bold text-emerald-600 tabular-nums">
+                          ₹{displayAmount.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-3xl font-bold text-primary tabular-nums">
+                        ₹{displayAmount.toLocaleString("en-IN")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {appliedDiscount && (
+                  <p className="text-right text-xs text-emerald-600 font-medium mt-0.5">
+                    Coupon {appliedDiscount.code} applied (Saved ₹{appliedDiscount.discountAmount.toLocaleString("en-IN")})
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -669,6 +750,66 @@ export function CheckoutView({ product, isUpgrade = false, pagePath }: CheckoutV
                   className="rounded-l-none text-xs h-9"
                 />
               </div>
+            </div>
+
+            {/* Coupon Code Section */}
+            <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5 text-primary" />
+                  <span>Have a Coupon Code?</span>
+                </label>
+                {appliedDiscount && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    className="text-[11px] text-destructive hover:underline font-medium"
+                  >
+                    ✕ Remove coupon
+                  </button>
+                )}
+              </div>
+
+              {!appliedDiscount ? (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter coupon code (e.g. VIP500)"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value.toUpperCase());
+                      setCouponError(null);
+                    }}
+                    className="h-8 text-xs font-mono uppercase bg-background"
+                    disabled={couponLoading}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={couponLoading || !couponInput.trim()}
+                    onClick={handleApplyCoupon}
+                    className="h-8 text-xs px-4 shrink-0 font-medium"
+                  >
+                    {couponLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Apply"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+                  <div className="flex items-center gap-2">
+                    <Check className="h-3.5 w-3.5" />
+                    <span className="font-mono font-bold">{appliedDiscount.code}</span>
+                    <span>applied</span>
+                  </div>
+                  <span className="font-semibold">-₹{appliedDiscount.discountAmount.toLocaleString("en-IN")} off</span>
+                </div>
+              )}
+
+              {couponError && (
+                <p className="text-[11px] text-destructive flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  {couponError}
+                </p>
+              )}
             </div>
 
             {/* CONSENTS */}
