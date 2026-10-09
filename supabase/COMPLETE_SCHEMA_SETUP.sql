@@ -1542,7 +1542,7 @@ GRANT EXECUTE ON FUNCTION public.grant_entitlement_on_capture(UUID) TO anon, aut
 CREATE OR REPLACE FUNCTION public.admin_email_stats(
   p_password text, p_from timestamptz DEFAULT NULL, p_to timestamptz DEFAULT NULL
 )
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
 DECLARE v jsonb;
 BEGIN
   PERFORM public.assert_admin(p_password);
@@ -1568,7 +1568,7 @@ BEGIN
   FROM public.email_sends e;
   RETURN v;
 END;
-$;
+$$;
 
 GRANT EXECUTE ON FUNCTION public.admin_email_stats(text, timestamptz, timestamptz) TO anon, authenticated, service_role;
 
