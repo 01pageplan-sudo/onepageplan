@@ -1151,6 +1151,16 @@ export const adminGetCommerceDashboard = createServerFn({ method: "POST" })
     const { getRazorpayMode } = await import("./commerce/razorpay.server");
     const { getSilverMilestonePricing } = await import("./commerce/pricing.server");
 
+    // Safe query runner so non-existent tables don't throw an unhandled rejection
+    const safeQuery = async <T>(promise: PromiseLike<{ data: T | null; error: any }>): Promise<{ data: T | null }> => {
+      try {
+        const res = await promise;
+        return { data: res.data ?? null };
+      } catch {
+        return { data: null };
+      }
+    };
+
     try {
       const [
         settingsRes,
@@ -1161,18 +1171,24 @@ export const adminGetCommerceDashboard = createServerFn({ method: "POST" })
         discountsRes,
         partnersRes,
         conversionsRes,
+        templatesRes,
         milestoneInfo,
       ] = await Promise.all([
-        db.from("commerce_settings" as never).select("*").eq("id" as never, 1 as never).maybeSingle(),
-        db.from("cohorts" as never).select("*").order("cohort_number" as never, { ascending: true } as never),
-        db.from("orders" as never).select("*").order("created_at" as never, { ascending: false } as never).limit(500),
-        db.from("manual_grants" as never).select("*").order("created_at" as never, { ascending: false } as never).limit(200),
-        db.from("reconciliation_flags" as never).select("*").order("flagged_at" as never, { ascending: false } as never),
-        db.from("discount_codes" as never).select("*").order("created_at" as never, { ascending: false } as never),
-        db.from("referral_partners" as never).select("*").order("created_at" as never, { ascending: false } as never),
-        db.from("referral_conversions" as never).select("*").order("created_at" as never, { ascending: false } as never).limit(200),
-        db.from("completion_page_templates" as never).select("*").order("slug" as never, { ascending: true } as never).order("version" as never, { ascending: false } as never),
-        getSilverMilestonePricing(),
+        safeQuery(db.from("commerce_settings" as never).select("*").eq("id" as never, 1 as never).maybeSingle()),
+        safeQuery(db.from("cohorts" as never).select("*").order("cohort_number" as never, { ascending: true } as never)),
+        safeQuery(db.from("orders" as never).select("*").order("created_at" as never, { ascending: false } as never).limit(500)),
+        safeQuery(db.from("manual_grants" as never).select("*").order("created_at" as never, { ascending: false } as never).limit(200)),
+        safeQuery(db.from("reconciliation_flags" as never).select("*").order("flagged_at" as never, { ascending: false } as never)),
+        safeQuery(db.from("discount_codes" as never).select("*").order("created_at" as never, { ascending: false } as never)),
+        safeQuery(db.from("referral_partners" as never).select("*").order("created_at" as never, { ascending: false } as never)),
+        safeQuery(db.from("referral_conversions" as never).select("*").order("created_at" as never, { ascending: false } as never).limit(200)),
+        safeQuery(db.from("completion_page_templates" as never).select("*").order("slug" as never, { ascending: true } as never).order("version" as never, { ascending: false } as never)),
+        getSilverMilestonePricing().catch(() => ({
+          activeCount: 0,
+          currentPrice: 6001,
+          nextThreshold: 100,
+          nextPrice: 7001,
+        })),
       ]);
 
       const orders = (ordersRes.data ?? []) as unknown as AdminCommerceOrder[];
@@ -1634,25 +1650,37 @@ export const adminGetMessagingData = createServerFn({ method: "POST" })
         currentSettings.messaging_test_mode = process.env["OPP_MESSAGING_TEST_MODE"] === "true";
       }
 
+      const safeQuery = async <T>(promise: PromiseLike<{ data: T | null; error: any }>): Promise<{ data: T | null }> => {
+        try {
+          const res = await promise;
+          return { data: res.data ?? null };
+        } catch {
+          return { data: null };
+        }
+      };
+
       const [scheduledRes, logsRes, suppressionsRes] = await Promise.all([
-        db
-          .from("scheduled_messages" as never)
-          .select("*")
-          .order("scheduled_for" as never, { ascending: false })
-          .limit(200)
-          .catch(() => ({ data: [] })),
-        db
-          .from("message_send_logs" as never)
-          .select("*")
-          .order("created_at" as never, { ascending: false })
-          .limit(200)
-          .catch(() => ({ data: [] })),
-        db
-          .from("communication_suppressions" as never)
-          .select("*")
-          .order("created_at" as never, { ascending: false })
-          .limit(100)
-          .catch(() => ({ data: [] })),
+        safeQuery(
+          db
+            .from("scheduled_messages" as never)
+            .select("*")
+            .order("scheduled_for" as never, { ascending: false })
+            .limit(200),
+        ),
+        safeQuery(
+          db
+            .from("message_send_logs" as never)
+            .select("*")
+            .order("created_at" as never, { ascending: false })
+            .limit(200),
+        ),
+        safeQuery(
+          db
+            .from("communication_suppressions" as never)
+            .select("*")
+            .order("created_at" as never, { ascending: false })
+            .limit(100),
+        ),
       ]);
 
       return {
@@ -1722,15 +1750,86 @@ export const adminSyncResendDelivery = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const client = supabaseAdmin || db;
 
-      const { data: sends } = await client
+      let updatedCount = 0;
+
+      // 1. Fetch recent emails list directly from Resend API
+      try {
+        const resendListRes = await fetch("https://api.resend.com/emails?limit=100", {
+          headers: { Authorization: `Bearer ${resendKey}` },
+        });
+
+        if (resendListRes.ok) {
+          const resendData = (await resendListRes.json()) as {
+            data?: Array<{ id: string; to: string[] | string; created_at: string; subject?: string }>;
+          };
+          const resendEmails = resendData.data || [];
+
+          for (const item of resendEmails) {
+            const resendId = item.id;
+            const recipient = Array.isArray(item.to) ? item.to[0]?.toLowerCase() : String(item.to || "").toLowerCase();
+            if (!resendId || !recipient) continue;
+
+            // Fetch detailed event status for this email from Resend
+            try {
+              const detailRes = await fetch(`https://api.resend.com/emails/${resendId}`, {
+                headers: { Authorization: `Bearer ${resendKey}` },
+              });
+              if (!detailRes.ok) continue;
+              const detail = (await detailRes.json()) as { last_event?: string; status?: string; created_at?: string };
+              const lastEvent = (detail.last_event || detail.status || "").toLowerCase();
+
+              // Match in email_sends table by provider_id OR by recipient email
+              const { data: matchedRows } = await client
+                .from("email_sends" as never)
+                .select("id, status, opened_at, delivered_at, provider_id, sent_at")
+                .or(`provider_id.eq.${resendId},email.ilike.${recipient}`)
+                .order("sent_at" as never, { ascending: false })
+                .limit(1);
+
+              if (matchedRows && matchedRows.length > 0) {
+                const target = matchedRows[0] as any;
+                const updatePayload: Record<string, unknown> = {
+                  provider_id: resendId,
+                };
+
+                if (lastEvent === "opened" || lastEvent === "clicked") {
+                  updatePayload["status"] = "opened";
+                  updatePayload["opened_at"] = target.opened_at || detail.created_at || new Date().toISOString();
+                  updatePayload["delivered_at"] = target.delivered_at || target.sent_at || new Date().toISOString();
+                } else if (lastEvent === "delivered") {
+                  if (target.status === "sent" || target.status === "queued") {
+                    updatePayload["status"] = "delivered";
+                    updatePayload["delivered_at"] = target.delivered_at || detail.created_at || new Date().toISOString();
+                  }
+                } else if (lastEvent === "bounced") {
+                  updatePayload["status"] = "bounced";
+                }
+
+                await client
+                  .from("email_sends" as never)
+                  .update(updatePayload as never)
+                  .eq("id" as never, target.id);
+                updatedCount++;
+              }
+            } catch {
+              // Ignore single item error
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[adminSyncResendDelivery] list fetch warning:", e);
+      }
+
+      // 2. Also check all DB sends that have a provider_id
+      const { data: dbSends } = await client
         .from("email_sends" as never)
         .select("id, email, status, provider_id, sent_at, opened_at")
+        .not("provider_id" as never, "is" as never, null as never)
         .order("sent_at" as never, { ascending: false })
         .limit(50);
 
-      let updatedCount = 0;
-      if (sends && Array.isArray(sends)) {
-        for (const send of sends as any[]) {
+      if (dbSends && Array.isArray(dbSends)) {
+        for (const send of dbSends as any[]) {
           if (!send.provider_id) continue;
           try {
             const res = await fetch(`https://api.resend.com/emails/${send.provider_id}`, {
@@ -1763,7 +1862,7 @@ export const adminSyncResendDelivery = createServerFn({ method: "POST" })
               }
             }
           } catch {
-            // ignore individual fetch errors
+            // ignore
           }
         }
       }
@@ -1839,45 +1938,57 @@ export const adminToggleMessagingSettings = createServerFn({ method: "POST" })
       const client = supabaseAdmin || db;
 
       // 1. Try upserting to commerce_settings
-      await client
-        .from("commerce_settings" as never)
-        .upsert(
-          {
-            id: 1,
-            messaging_test_mode: data.testMode,
-            test_recipient_email: data.testEmail || "dodhia.milan@gmail.com",
-            test_recipient_phone: data.testPhone || "+919820000000",
-          } as never,
-          { onConflict: "id" },
-        )
-        .catch(() => null);
+      try {
+        await client
+          .from("commerce_settings" as never)
+          .upsert(
+            {
+              id: 1,
+              messaging_test_mode: data.testMode,
+              test_recipient_email: data.testEmail || "dodhia.milan@gmail.com",
+              test_recipient_phone: data.testPhone || "+919820000000",
+            } as never,
+            { onConflict: "id" },
+          );
+      } catch {
+        // continue
+      }
 
       // 2. Also persist to app_config as reliable backup
-      await client
-        .from("app_config" as never)
-        .upsert(
-          { key: "messaging_test_mode", value: String(data.testMode) } as never,
-          { onConflict: "key" },
-        )
-        .catch(() => null);
+      try {
+        await client
+          .from("app_config" as never)
+          .upsert(
+            { key: "messaging_test_mode", value: String(data.testMode) } as never,
+            { onConflict: "key" },
+          );
+      } catch {
+        // continue
+      }
 
       if (data.testEmail) {
-        await client
-          .from("app_config" as never)
-          .upsert(
-            { key: "test_recipient_email", value: data.testEmail } as never,
-            { onConflict: "key" },
-          )
-          .catch(() => null);
+        try {
+          await client
+            .from("app_config" as never)
+            .upsert(
+              { key: "test_recipient_email", value: data.testEmail } as never,
+              { onConflict: "key" },
+            );
+        } catch {
+          // continue
+        }
       }
       if (data.testPhone) {
-        await client
-          .from("app_config" as never)
-          .upsert(
-            { key: "test_recipient_phone", value: data.testPhone } as never,
-            { onConflict: "key" },
-          )
-          .catch(() => null);
+        try {
+          await client
+            .from("app_config" as never)
+            .upsert(
+              { key: "test_recipient_phone", value: data.testPhone } as never,
+              { onConflict: "key" },
+            );
+        } catch {
+          // continue
+        }
       }
 
       return { ok: true as const };

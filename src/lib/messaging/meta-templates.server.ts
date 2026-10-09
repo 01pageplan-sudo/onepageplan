@@ -139,16 +139,39 @@ const CORE_META_TEMPLATES: TemplateDefinition[] = [
  * Calls Meta WhatsApp Cloud API to fetch live templates for the WhatsApp Business Account.
  */
 export async function fetchMetaTemplates(): Promise<MetaFetchResult> {
-  const token =
+  let token =
     process.env["WHATSAPP_ACCESS_TOKEN"]?.trim().replace(/^["']|["']$/g, "") || "";
   let wabaId =
     process.env["WHATSAPP_WABA_ID"]?.trim().replace(/^["']|["']$/g, "") ||
     process.env["WHATSAPP_BUSINESS_ACCOUNT_ID"]?.trim().replace(/^["']|["']$/g, "") ||
     "";
-  const phoneId =
+  let phoneId =
     process.env["WHATSAPP_PHONE_NUMBER_ID"]?.trim().replace(/^["']|["']$/g, "") || "";
   const apiVersion = process.env["WHATSAPP_API_VERSION"]?.trim() || "v21.0";
   const cleanVersion = apiVersion.startsWith("v") ? apiVersion : `v${apiVersion}`;
+
+  // Check app_config for stored settings if not in process.env
+  try {
+    const db = createPublicServerClient();
+    if (!token) {
+      const { data: tokenRow } = await db.from("app_config" as never).select("value").eq("key" as never, "whatsapp_access_token" as never).maybeSingle();
+      if ((tokenRow as any)?.value) token = (tokenRow as any).value;
+    }
+    if (!wabaId) {
+      const { data: wabaRow } = await db.from("app_config" as never).select("value").eq("key" as never, "whatsapp_waba_id" as never).maybeSingle();
+      if ((wabaRow as any)?.value) wabaId = (wabaRow as any).value;
+      if (!wabaId) {
+        const { data: bizRow } = await db.from("app_config" as never).select("value").eq("key" as never, "whatsapp_business_account_id" as never).maybeSingle();
+        if ((bizRow as any)?.value) wabaId = (bizRow as any).value;
+      }
+    }
+    if (!phoneId) {
+      const { data: phoneRow } = await db.from("app_config" as never).select("value").eq("key" as never, "whatsapp_phone_number_id" as never).maybeSingle();
+      if ((phoneRow as any)?.value) phoneId = (phoneRow as any).value;
+    }
+  } catch {
+    // Non-fatal
+  }
 
   if (!token) {
     return {
@@ -159,21 +182,52 @@ export async function fetchMetaTemplates(): Promise<MetaFetchResult> {
     };
   }
 
-  // If WABA ID is missing, attempt to discover it via Phone Number ID
+  // Auto-discovery strategy if WABA ID is missing:
+  // Strategy 1: Query phone number object for its parent whatsapp_business_account
   if (!wabaId && phoneId) {
     try {
       const phoneRes = await fetch(
-        `https://graph.facebook.com/${cleanVersion}/${phoneId}?fields=whatsapp_business_api_data`,
+        `https://graph.facebook.com/${cleanVersion}/${phoneId}?fields=whatsapp_business_account`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (phoneRes.ok) {
-        const phoneData = (await phoneRes.json()) as {
-          whatsapp_business_api_data?: { id?: string; account_id?: string };
-        };
-        wabaId =
-          phoneData.whatsapp_business_api_data?.id ||
-          phoneData.whatsapp_business_api_data?.account_id ||
-          "";
+        const phoneData = (await phoneRes.json()) as any;
+        wabaId = phoneData.whatsapp_business_account?.id || "";
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  // Strategy 2: Query /me/whatsapp_business_accounts
+  if (!wabaId) {
+    try {
+      const meRes = await fetch(
+        `https://graph.facebook.com/${cleanVersion}/me/whatsapp_business_accounts`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (meRes.ok) {
+        const meData = (await meRes.json()) as any;
+        wabaId = meData.data?.[0]?.id || "";
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  // Strategy 3: Query debug_token to extract granular_scopes for WABA ID
+  if (!wabaId) {
+    try {
+      const debugRes = await fetch(
+        `https://graph.facebook.com/debug_token?input_token=${token}&access_token=${token}`,
+      );
+      if (debugRes.ok) {
+        const debugData = (await debugRes.json()) as any;
+        const scopes = debugData?.data?.granular_scopes || [];
+        const wabaScope = scopes.find((s: any) => s.scope === "whatsapp_business_management" || s.scope === "whatsapp_business_messaging");
+        if (wabaScope?.target_ids?.[0]) {
+          wabaId = String(wabaScope.target_ids[0]);
+        }
       }
     } catch {
       // Fallback
@@ -184,7 +238,7 @@ export async function fetchMetaTemplates(): Promise<MetaFetchResult> {
     return {
       live: false,
       count: CORE_META_TEMPLATES.length,
-      error: "WHATSAPP_WABA_ID is not configured. Using registered catalog templates.",
+      error: "WHATSAPP_WABA_ID is not configured. Serving approved registered templates.",
       templates: CORE_META_TEMPLATES,
     };
   }
@@ -241,6 +295,29 @@ export async function fetchMetaTemplates(): Promise<MetaFetchResult> {
         isActive: t.status === "APPROVED",
       };
     });
+
+    // Asynchronously cache templates to database
+    try {
+      const db = createPublicServerClient();
+      for (const t of parsedTemplates) {
+        await db.from("message_templates" as never).upsert(
+          {
+            key: t.key,
+            channel: "whatsapp",
+            category: t.category,
+            meta_template_name: t.metaTemplateName,
+            meta_language: t.metaLanguage,
+            meta_approval_status: t.metaApprovalStatus,
+            body: t.body,
+            variables: t.variables,
+            is_active: t.isActive,
+          } as never,
+          { onConflict: "key" },
+        );
+      }
+    } catch {
+      // Non-fatal cache failure
+    }
 
     return {
       live: true,

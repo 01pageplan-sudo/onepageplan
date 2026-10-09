@@ -523,11 +523,27 @@ export function CommunicationsPanel({
     document.body.removeChild(link);
   };
 
+const DEFAULT_FALLBACK_TEMPLATES = [
+  { key: "webinar_confirmation", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_confirmation", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nYour registration for The One Page Plan masterclass is confirmed.\n\nDate & Time: 7:00 PM IST\nLive Room: {{2}}\n\nSee you inside!" },
+  { key: "webinar_reminder_2h", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_reminder_2h", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nQuick reminder: We go live in 2 hours for The One Page Plan masterclass at 7:00 PM IST.\n\nRoom link:\n{{2}}\n\nPlease join 5 minutes early." },
+  { key: "webinar_reminder_15m", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_reminder_15m", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nWe start in 15 minutes! The room is open.\n\nTap below to join:\n{{2}}" },
+  { key: "webinar_live_now", channel: "whatsapp", category: "transactional", meta_template_name: "webinar_live_now", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nWe are LIVE right now! Milan Dodhia has started the session.\n\nJoin here:\n{{2}}" },
+  { key: "webinar_missed", channel: "whatsapp", category: "marketing", meta_template_name: "webinar_missed", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nWe missed you at today's masterclass. To help you evaluate your portfolio, Money Reality Check is available.\n\nDetails:\n{{2}}" },
+  { key: "course_purchase_confirmat", channel: "whatsapp", category: "transactional", meta_template_name: "course_purchase_confirmat", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nYour enrollment is confirmed.\n\nYour diagnostic sessions and tools are unlocked here:\n{{2}}\n\nDownload receipt: {{3}}" },
+  { key: "payment_failed_recovery", channel: "whatsapp", category: "transactional", meta_template_name: "payment_failed_recovery", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nWe noticed your payment was not completed. Nothing was charged to your account.\n\nYou can resume checkout here:\n{{2}}" },
+  { key: "mrm_reality_check_followup", channel: "whatsapp", category: "marketing", meta_template_name: "mrm_reality_check_followup", meta_approval_status: "APPROVED", is_active: true, body: "Hello {{1}},\n\nThank you for attending The Money Reality Masterclass. To measure your own family's real returns step by step, Money Reality Check is available for ₹601.\n\nDetails: {{2}}" },
+  { key: "3p_direct_integration_test", channel: "whatsapp", category: "transactional", meta_template_name: "3p_direct_integration_test", meta_approval_status: "APPROVED", is_active: true, body: "Test dispatch from Meta WhatsApp Cloud API: Hello {{1}}, system operational." },
+];
+
+  const currentTemplates = useMemo(() => {
+    if (msgData?.templates && msgData.templates.length > 0) return msgData.templates;
+    return DEFAULT_FALLBACK_TEMPLATES;
+  }, [msgData?.templates]);
+
   const filteredTemplates = useMemo(() => {
-    if (!msgData?.templates) return [];
-    if (templateFilter === "all") return msgData.templates;
-    return msgData.templates.filter((t: any) => t.channel === templateFilter);
-  }, [msgData?.templates, templateFilter]);
+    if (templateFilter === "all") return currentTemplates;
+    return currentTemplates.filter((t: any) => t.channel === templateFilter);
+  }, [currentTemplates, templateFilter]);
 
   const dispatchedSends = useMemo(() => {
     return sends
@@ -690,7 +706,7 @@ export function CommunicationsPanel({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  All ({msgData?.templates?.length ?? 0})
+                  All ({currentTemplates.length})
                 </button>
                 <button
                   onClick={() => setTemplateFilter("email")}
@@ -700,7 +716,7 @@ export function CommunicationsPanel({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Email ({msgData?.templates?.filter((t: any) => t.channel === "email").length ?? 0})
+                  Email ({currentTemplates.filter((t: any) => t.channel === "email").length})
                 </button>
                 <button
                   onClick={() => setTemplateFilter("whatsapp")}
@@ -710,7 +726,7 @@ export function CommunicationsPanel({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  WhatsApp ({msgData?.templates?.filter((t: any) => t.channel === "whatsapp").length ?? 0})
+                  WhatsApp ({currentTemplates.filter((t: any) => t.channel === "whatsapp").length})
                 </button>
               </div>
 
@@ -1140,7 +1156,12 @@ export function CommunicationsPanel({
                 <Switch
                   id="toggle-test-mode"
                   checked={testMode}
-                  onCheckedChange={setTestMode}
+                  onCheckedChange={(val) => {
+                    setTestMode(val);
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("opp_messaging_test_mode", String(val));
+                    }
+                  }}
                 />
               </div>
 

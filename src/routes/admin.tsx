@@ -14,6 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { BackToHome, Wordmark } from "@/components/site/Header";
+import { RefreshCw } from "lucide-react";
 import {
   adminDashboard,
   adminDeleteLead,
@@ -24,6 +25,7 @@ import {
   adminSaveSettings,
   adminSendEmails,
   adminSetTag,
+  adminSyncResendDelivery,
   adminWebinarLogs,
   type AdminLead,
   type AdminSend,
@@ -164,6 +166,10 @@ function AdminPage() {
 
   const [webinarLogs, setWebinarLogs] = useState<AdminWebinarLog[]>([]);
   const [commerceData, setCommerceData] = useState<any>(null);
+  const [commerceLoading, setCommerceLoading] = useState(false);
+  const [commerceError, setCommerceError] = useState("");
+  const [syncingResend, setSyncingResend] = useState(false);
+  const [deliveryFilter, setDeliveryFilter] = useState<"dispatched" | "all" | "queued" | "failed">("dispatched");
 
   const [editingLead, setEditingLead] = useState<AdminLead | null>(null);
   const [editName, setEditName] = useState("");
@@ -175,11 +181,37 @@ function AdminPage() {
   const [savingEdit, setSavingEdit] = useState(false);
 
   async function loadCommerce() {
+    setCommerceLoading(true);
+    setCommerceError("");
     try {
       const result = await adminGetCommerceDashboard({ data: { password } });
-      if (result.ok) setCommerceData(result.data);
+      if (result.ok) {
+        setCommerceData(result.data);
+      } else {
+        setCommerceError(result.error ?? "Could not load commerce dashboard.");
+      }
+    } catch (err: any) {
+      setCommerceError(err?.message ?? "Could not load commerce dashboard.");
+    } finally {
+      setCommerceLoading(false);
+    }
+  }
+
+  async function handleSyncDelivery() {
+    setSyncingResend(true);
+    setNotice("");
+    try {
+      const res = await adminSyncResendDelivery({ data: { password } });
+      if (res.ok) {
+        setNotice(`Resend status synchronized: ${(res as any).updatedCount || 0} emails checked and updated.`);
+        await load();
+      } else {
+        setError(res.error || "Failed syncing with Resend.");
+      }
     } catch {
-      // Ignored
+      setError("Error syncing delivery status from Resend.");
+    } finally {
+      setSyncingResend(false);
     }
   }
 
@@ -244,7 +276,45 @@ function AdminPage() {
   }, [sends]);
 
   const number = (key: string) => Number(stats[key] ?? 0);
-  const openRate = number("sent") > 0 ? Math.round((number("opened") / number("sent")) * 100) : 0;
+  const sentSends = useMemo(
+    () => sends.filter((s) => s.status === "sent" || s.status === "delivered" || s.status === "opened" || Boolean(s.sent_at)),
+    [sends],
+  );
+  const openedSends = useMemo(
+    () => sends.filter((s) => s.status === "opened" || Boolean(s.opened_at)),
+    [sends],
+  );
+  const deliveredSends = useMemo(
+    () => sends.filter((s) => s.status === "delivered" || s.status === "opened" || (s.status === "sent" && !s.error) || Boolean(s.opened_at)),
+    [sends],
+  );
+  const queuedSends = useMemo(
+    () => sends.filter((s) => s.status === "queued" && !s.sent_at),
+    [sends],
+  );
+  const failedSends = useMemo(
+    () => sends.filter((s) => s.status === "failed" || s.status === "bounced" || Boolean(s.error)),
+    [sends],
+  );
+  const realOpenRate = sentSends.length > 0 ? Math.round((openedSends.length / sentSends.length) * 100) : 0;
+  const openRate = realOpenRate;
+
+  const filteredDeliverySends = useMemo(() => {
+    return sends
+      .filter((send) => {
+        const isDispatched = send.status === "sent" || send.status === "delivered" || send.status === "opened" || Boolean(send.sent_at);
+        if (deliveryFilter === "dispatched") return isDispatched;
+        if (deliveryFilter === "queued") return send.status === "queued" && !send.sent_at;
+        if (deliveryFilter === "failed") return send.status === "failed" || send.status === "bounced" || Boolean(send.error);
+        return true;
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.sent_at || a.scheduled_at || 0).getTime();
+        const timeB = new Date(b.sent_at || b.scheduled_at || 0).getTime();
+        return timeB - timeA;
+      });
+  }, [sends, deliveryFilter]);
+
   const buyers = leads.filter((lead) => (lead.tags ?? []).includes("purchased")).length;
   const optIn =
     leads.length > 0
@@ -489,7 +559,12 @@ function AdminPage() {
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         {notice ? <p className="text-sm text-[var(--brass)]">{notice}</p> : null}
 
-        <Tabs defaultValue="analytics">
+        <Tabs
+          defaultValue="analytics"
+          onValueChange={(val) => {
+            if (val === "commerce" && !commerceData) void loadCommerce();
+          }}
+        >
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="analytics">Webinar analytics</TabsTrigger>
             <TabsTrigger value="commerce">Commerce</TabsTrigger>
@@ -1046,15 +1121,67 @@ function AdminPage() {
           </TabsContent>
 
           <TabsContent value="delivery" className="space-y-5 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-lg border border-border">
+                <button
+                  type="button"
+                  onClick={() => setDeliveryFilter("dispatched")}
+                  className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
+                    deliveryFilter === "dispatched" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Dispatched ({sentSends.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeliveryFilter("all")}
+                  className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
+                    deliveryFilter === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  All ({sends.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeliveryFilter("queued")}
+                  className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
+                    deliveryFilter === "queued" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Queued ({queuedSends.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeliveryFilter("failed")}
+                  className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
+                    deliveryFilter === "failed" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Failed ({failedSends.length})
+                </button>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleSyncDelivery()}
+                disabled={syncingResend || loading}
+                className="gap-1.5 text-xs h-8"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${syncingResend ? "animate-spin" : ""}`} />
+                {syncingResend ? "Checking Resend..." : "Sync Resend Delivery & Opens"}
+              </Button>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              <Stat label="Sent" value={number("sent")} />
-              <Stat label="Open rate" value={`${openRate}%`} hint={`${number("opened")} opens`} />
-              <Stat label="People emailed" value={number("people")} />
-              <Stat label="Waiting in queue" value={number("queued")} />
+              <Stat label="Sent" value={sentSends.length} />
+              <Stat label="Open rate" value={`${realOpenRate}%`} hint={`${openedSends.length} opens`} />
+              <Stat label="Delivered" value={deliveredSends.length} />
+              <Stat label="Waiting in queue" value={queuedSends.length} />
               <Stat
                 label="Not delivered"
-                value={number("failed") + number("bounced")}
-                hint={`${number("bounced")} bounced · ${number("complained")} complaints`}
+                value={failedSends.length}
+                hint={`${sends.filter((s) => s.status === "bounced").length} bounced`}
               />
             </div>
 
@@ -1064,23 +1191,55 @@ function AdminPage() {
                   <tr className="text-muted-foreground">
                     <th className="p-3">When</th>
                     <th className="p-3">Recipient</th>
-                    <th className="p-3">Email</th>
+                    <th className="p-3">Email Template</th>
                     <th className="p-3">Status</th>
                     <th className="p-3">Opened</th>
                     <th className="p-3">Error</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sends.map((send) => (
-                    <tr key={send.id} className="border-b border-border/60">
-                      <td className="p-3">{fmt(send.sent_at ?? send.scheduled_at)}</td>
-                      <td className="p-3">{send.email}</td>
-                      <td className="p-3">{templateLabel(send.template)}</td>
-                      <td className="p-3">{send.status}</td>
-                      <td className="p-3">{send.opened_at ? fmt(send.opened_at) : "-"}</td>
-                      <td className="p-3 text-destructive">{send.error ?? ""}</td>
+                  {filteredDeliverySends.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                        No email sends found for this filter.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredDeliverySends.map((send) => (
+                      <tr key={send.id} className="border-b border-border/60 hover:bg-muted/30">
+                        <td className="p-3">{fmt(send.sent_at ?? send.scheduled_at)}</td>
+                        <td className="p-3 font-mono text-[11px]">{send.email}</td>
+                        <td className="p-3">{templateLabel(send.template)}</td>
+                        <td className="p-3">
+                          {send.opened_at || send.status === "opened" ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-600 border border-amber-500/30">
+                              Opened
+                            </span>
+                          ) : send.status === "delivered" ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 border border-emerald-500/30">
+                              Delivered
+                            </span>
+                          ) : send.status === "sent" ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-600 border border-blue-500/30">
+                              Sent
+                            </span>
+                          ) : send.status === "queued" ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+                              Queued
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-destructive/15 text-destructive border border-destructive/30">
+                              {send.status}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 font-mono text-[11px]">
+                          {send.opened_at ? fmt(send.opened_at) : "-"}
+                        </td>
+                        <td className="p-3 text-destructive">{send.error ?? ""}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1088,19 +1247,24 @@ function AdminPage() {
 
           {/* ----------------------------- COMMERCE ------------------------------ */}
           <TabsContent value="commerce" className="pt-5">
-            {commerceData ? (
+            {commerceLoading ? (
+              <div className="rounded-lg border border-border bg-card p-12 text-center space-y-3">
+                <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary" />
+                <p className="text-sm text-muted-foreground">Loading Commerce Console...</p>
+              </div>
+            ) : commerceData ? (
               <CommercePanel
                 password={password}
                 data={commerceData}
                 onRefresh={() => void loadCommerce()}
               />
             ) : (
-              <div className="rounded-lg border border-border bg-card p-6 text-center space-y-3">
+              <div className="rounded-lg border border-border bg-card p-8 text-center space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Commerce data not loaded yet.
+                  {commerceError || "Commerce data not loaded yet."}
                 </p>
-                <Button onClick={() => void loadCommerce()} disabled={loading}>
-                  Load Commerce Console
+                <Button onClick={() => void loadCommerce()} disabled={commerceLoading || loading}>
+                  {commerceError ? "Retry Loading Commerce" : "Load Commerce Console"}
                 </Button>
               </div>
             )}
