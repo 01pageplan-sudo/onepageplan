@@ -17,22 +17,37 @@ CREATE TABLE IF NOT EXISTS public.app_config (
 ALTER TABLE public.app_config ENABLE ROW LEVEL SECURITY;
 
 -- Allow service role full access
-DROP POLICY IF EXISTS "service role manages app config" ON public.app_config;
-CREATE POLICY "service role manages app config" ON public.app_config
-  FOR ALL TO service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'app_config' AND policyname = 'service role manages app config'
+  ) THEN
+    CREATE POLICY "service role manages app config" ON public.app_config FOR ALL TO service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 -- Allow anon & authenticated to read non-sensitive configuration keys
-DROP POLICY IF EXISTS "anon read public app_config" ON public.app_config;
-CREATE POLICY "anon read public app_config" ON public.app_config
-  FOR SELECT TO anon, authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'app_config' AND policyname = 'anon read public app_config'
+  ) THEN
+    CREATE POLICY "anon read public app_config" ON public.app_config FOR SELECT TO anon, authenticated
   USING (key NOT IN ('admin_password', 'cron_secret'));
+  END IF;
+END $$;
 
 -- Allow anon & authenticated to update non-sensitive configuration keys
-DROP POLICY IF EXISTS "anon update public app_config" ON public.app_config;
-CREATE POLICY "anon update public app_config" ON public.app_config
-  FOR ALL TO anon, authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'app_config' AND policyname = 'anon update public app_config'
+  ) THEN
+    CREATE POLICY "anon update public app_config" ON public.app_config FOR ALL TO anon, authenticated
   USING (key NOT IN ('admin_password', 'cron_secret'))
   WITH CHECK (key NOT IN ('admin_password', 'cron_secret'));
+  END IF;
+END $$;
 
 GRANT ALL ON public.app_config TO anon, authenticated, service_role;
 
@@ -109,9 +124,14 @@ CREATE TABLE IF NOT EXISTS public.commerce_settings (
 
 ALTER TABLE public.commerce_settings ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on commerce_settings" ON public.commerce_settings;
-CREATE POLICY "allow all on commerce_settings" ON public.commerce_settings
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'commerce_settings' AND policyname = 'allow all on commerce_settings'
+  ) THEN
+    CREATE POLICY "allow all on commerce_settings" ON public.commerce_settings FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.commerce_settings TO anon, authenticated, service_role;
 
@@ -135,9 +155,14 @@ CREATE TABLE IF NOT EXISTS public.cohorts (
 
 ALTER TABLE public.cohorts ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on cohorts" ON public.cohorts;
-CREATE POLICY "allow all on cohorts" ON public.cohorts
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'cohorts' AND policyname = 'allow all on cohorts'
+  ) THEN
+    CREATE POLICY "allow all on cohorts" ON public.cohorts FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.cohorts TO anon, authenticated, service_role;
 
@@ -169,9 +194,14 @@ CREATE INDEX IF NOT EXISTS idx_discount_codes_code ON public.discount_codes (upp
 
 ALTER TABLE public.discount_codes ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on discount_codes" ON public.discount_codes;
-CREATE POLICY "allow all on discount_codes" ON public.discount_codes
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'discount_codes' AND policyname = 'allow all on discount_codes'
+  ) THEN
+    CREATE POLICY "allow all on discount_codes" ON public.discount_codes FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.discount_codes TO anon, authenticated, service_role;
 
@@ -203,9 +233,14 @@ CREATE INDEX IF NOT EXISTS idx_referral_partners_code ON public.referral_partner
 
 ALTER TABLE public.referral_partners ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on referral_partners" ON public.referral_partners;
-CREATE POLICY "allow all on referral_partners" ON public.referral_partners
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'referral_partners' AND policyname = 'allow all on referral_partners'
+  ) THEN
+    CREATE POLICY "allow all on referral_partners" ON public.referral_partners FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.referral_partners TO anon, authenticated, service_role;
 
@@ -241,9 +276,14 @@ CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders (created_at DE
 
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on orders" ON public.orders;
-CREATE POLICY "allow all on orders" ON public.orders
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'orders' AND policyname = 'allow all on orders'
+  ) THEN
+    CREATE POLICY "allow all on orders" ON public.orders FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.orders TO anon, authenticated, service_role;
 
@@ -264,9 +304,14 @@ CREATE TABLE IF NOT EXISTS public.referral_conversions (
 
 ALTER TABLE public.referral_conversions ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on referral_conversions" ON public.referral_conversions;
-CREATE POLICY "allow all on referral_conversions" ON public.referral_conversions
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'referral_conversions' AND policyname = 'allow all on referral_conversions'
+  ) THEN
+    CREATE POLICY "allow all on referral_conversions" ON public.referral_conversions FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.referral_conversions TO anon, authenticated, service_role;
 
@@ -288,9 +333,14 @@ CREATE INDEX IF NOT EXISTS idx_manual_grants_email ON public.manual_grants (lowe
 
 ALTER TABLE public.manual_grants ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on manual_grants" ON public.manual_grants;
-CREATE POLICY "allow all on manual_grants" ON public.manual_grants
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'manual_grants' AND policyname = 'allow all on manual_grants'
+  ) THEN
+    CREATE POLICY "allow all on manual_grants" ON public.manual_grants FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.manual_grants TO anon, authenticated, service_role;
 
@@ -311,9 +361,14 @@ CREATE INDEX IF NOT EXISTS idx_member_access_email_prod ON public.member_access_
 
 ALTER TABLE public.member_access_grants ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on member_access_grants" ON public.member_access_grants;
-CREATE POLICY "allow all on member_access_grants" ON public.member_access_grants
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'member_access_grants' AND policyname = 'allow all on member_access_grants'
+  ) THEN
+    CREATE POLICY "allow all on member_access_grants" ON public.member_access_grants FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.member_access_grants TO anon, authenticated, service_role;
 
@@ -344,9 +399,14 @@ CREATE INDEX IF NOT EXISTS idx_invoices_buyer_email ON public.invoices (lower(tr
 
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on invoices" ON public.invoices;
-CREATE POLICY "allow all on invoices" ON public.invoices
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'invoices' AND policyname = 'allow all on invoices'
+  ) THEN
+    CREATE POLICY "allow all on invoices" ON public.invoices FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.invoices TO anon, authenticated, service_role;
 
@@ -362,9 +422,14 @@ CREATE TABLE IF NOT EXISTS public.commerce_events (
 
 ALTER TABLE public.commerce_events ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on commerce_events" ON public.commerce_events;
-CREATE POLICY "allow all on commerce_events" ON public.commerce_events
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'commerce_events' AND policyname = 'allow all on commerce_events'
+  ) THEN
+    CREATE POLICY "allow all on commerce_events" ON public.commerce_events FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.commerce_events TO anon, authenticated, service_role;
 
@@ -380,9 +445,14 @@ CREATE TABLE IF NOT EXISTS public.reconciliation_flags (
 
 ALTER TABLE public.reconciliation_flags ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on reconciliation_flags" ON public.reconciliation_flags;
-CREATE POLICY "allow all on reconciliation_flags" ON public.reconciliation_flags
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'reconciliation_flags' AND policyname = 'allow all on reconciliation_flags'
+  ) THEN
+    CREATE POLICY "allow all on reconciliation_flags" ON public.reconciliation_flags FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.reconciliation_flags TO anon, authenticated, service_role;
 
@@ -401,9 +471,14 @@ CREATE TABLE IF NOT EXISTS public.course_completions (
 
 ALTER TABLE public.course_completions ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on course_completions" ON public.course_completions;
-CREATE POLICY "allow all on course_completions" ON public.course_completions
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'course_completions' AND policyname = 'allow all on course_completions'
+  ) THEN
+    CREATE POLICY "allow all on course_completions" ON public.course_completions FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.course_completions TO anon, authenticated, service_role;
 
@@ -418,9 +493,14 @@ CREATE TABLE IF NOT EXISTS public.course_lessons_catalog (
 
 ALTER TABLE public.course_lessons_catalog ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on course_lessons_catalog" ON public.course_lessons_catalog;
-CREATE POLICY "allow all on course_lessons_catalog" ON public.course_lessons_catalog
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'course_lessons_catalog' AND policyname = 'allow all on course_lessons_catalog'
+  ) THEN
+    CREATE POLICY "allow all on course_lessons_catalog" ON public.course_lessons_catalog FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.course_lessons_catalog TO anon, authenticated, service_role;
 
@@ -439,9 +519,14 @@ CREATE INDEX IF NOT EXISTS idx_course_comments_created ON public.course_comments
 
 ALTER TABLE public.course_comments ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on course_comments" ON public.course_comments;
-CREATE POLICY "allow all on course_comments" ON public.course_comments
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'course_comments' AND policyname = 'allow all on course_comments'
+  ) THEN
+    CREATE POLICY "allow all on course_comments" ON public.course_comments FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.course_comments TO anon, authenticated, service_role;
 
@@ -467,9 +552,14 @@ CREATE INDEX IF NOT EXISTS idx_payments_email ON public.payments (lower(trim(ema
 
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on payments" ON public.payments;
-CREATE POLICY "allow all on payments" ON public.payments
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'payments' AND policyname = 'allow all on payments'
+  ) THEN
+    CREATE POLICY "allow all on payments" ON public.payments FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.payments TO anon, authenticated, service_role;
 
@@ -498,9 +588,14 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_sends_status ON public.whatsapp_sends(st
 
 ALTER TABLE public.whatsapp_sends ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on whatsapp_sends" ON public.whatsapp_sends;
-CREATE POLICY "allow all on whatsapp_sends" ON public.whatsapp_sends
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'whatsapp_sends' AND policyname = 'allow all on whatsapp_sends'
+  ) THEN
+    CREATE POLICY "allow all on whatsapp_sends" ON public.whatsapp_sends FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.whatsapp_sends TO anon, authenticated, service_role;
 
@@ -520,9 +615,14 @@ CREATE INDEX IF NOT EXISTS idx_webinar_event_logs_email ON public.webinar_event_
 
 ALTER TABLE public.webinar_event_logs ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on webinar_event_logs" ON public.webinar_event_logs;
-CREATE POLICY "allow all on webinar_event_logs" ON public.webinar_event_logs
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'webinar_event_logs' AND policyname = 'allow all on webinar_event_logs'
+  ) THEN
+    CREATE POLICY "allow all on webinar_event_logs" ON public.webinar_event_logs FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.webinar_event_logs TO anon, authenticated, service_role;
 
@@ -538,9 +638,14 @@ CREATE TABLE IF NOT EXISTS public.webinar_session_history (
 
 ALTER TABLE public.webinar_session_history ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on webinar_session_history" ON public.webinar_session_history;
-CREATE POLICY "allow all on webinar_session_history" ON public.webinar_session_history
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'webinar_session_history' AND policyname = 'allow all on webinar_session_history'
+  ) THEN
+    CREATE POLICY "allow all on webinar_session_history" ON public.webinar_session_history FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.webinar_session_history TO anon, authenticated, service_role;
 
@@ -562,9 +667,14 @@ CREATE TABLE IF NOT EXISTS public.whatsapp_inbound_messages (
 
 ALTER TABLE public.whatsapp_inbound_messages ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on whatsapp_inbound_messages" ON public.whatsapp_inbound_messages;
-CREATE POLICY "allow all on whatsapp_inbound_messages" ON public.whatsapp_inbound_messages
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'whatsapp_inbound_messages' AND policyname = 'allow all on whatsapp_inbound_messages'
+  ) THEN
+    CREATE POLICY "allow all on whatsapp_inbound_messages" ON public.whatsapp_inbound_messages FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.whatsapp_inbound_messages TO anon, authenticated, service_role;
 
@@ -586,9 +696,14 @@ CREATE INDEX IF NOT EXISTS idx_cpt_slug_active ON public.completion_page_templat
 
 ALTER TABLE public.completion_page_templates ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on completion_page_templates" ON public.completion_page_templates;
-CREATE POLICY "allow all on completion_page_templates" ON public.completion_page_templates
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'completion_page_templates' AND policyname = 'allow all on completion_page_templates'
+  ) THEN
+    CREATE POLICY "allow all on completion_page_templates" ON public.completion_page_templates FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.completion_page_templates TO anon, authenticated, service_role;
 
@@ -603,9 +718,14 @@ CREATE TABLE IF NOT EXISTS public.token_render_warnings (
 
 ALTER TABLE public.token_render_warnings ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on token_render_warnings" ON public.token_render_warnings;
-CREATE POLICY "allow all on token_render_warnings" ON public.token_render_warnings
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'token_render_warnings' AND policyname = 'allow all on token_render_warnings'
+  ) THEN
+    CREATE POLICY "allow all on token_render_warnings" ON public.token_render_warnings FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.token_render_warnings TO anon, authenticated, service_role;
 
@@ -629,9 +749,14 @@ CREATE TABLE IF NOT EXISTS public.message_templates (
 
 ALTER TABLE public.message_templates ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on message_templates" ON public.message_templates;
-CREATE POLICY "allow all on message_templates" ON public.message_templates
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'message_templates' AND policyname = 'allow all on message_templates'
+  ) THEN
+    CREATE POLICY "allow all on message_templates" ON public.message_templates FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.message_templates TO anon, authenticated, service_role;
 
@@ -661,9 +786,14 @@ CREATE TABLE IF NOT EXISTS public.scheduled_messages (
 
 ALTER TABLE public.scheduled_messages ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on scheduled_messages" ON public.scheduled_messages;
-CREATE POLICY "allow all on scheduled_messages" ON public.scheduled_messages
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'scheduled_messages' AND policyname = 'allow all on scheduled_messages'
+  ) THEN
+    CREATE POLICY "allow all on scheduled_messages" ON public.scheduled_messages FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.scheduled_messages TO anon, authenticated, service_role;
 
@@ -687,9 +817,14 @@ CREATE TABLE IF NOT EXISTS public.message_send_logs (
 
 ALTER TABLE public.message_send_logs ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on message_send_logs" ON public.message_send_logs;
-CREATE POLICY "allow all on message_send_logs" ON public.message_send_logs
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'message_send_logs' AND policyname = 'allow all on message_send_logs'
+  ) THEN
+    CREATE POLICY "allow all on message_send_logs" ON public.message_send_logs FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.message_send_logs TO anon, authenticated, service_role;
 
@@ -704,9 +839,14 @@ CREATE TABLE IF NOT EXISTS public.communication_suppressions (
 
 ALTER TABLE public.communication_suppressions ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on communication_suppressions" ON public.communication_suppressions;
-CREATE POLICY "allow all on communication_suppressions" ON public.communication_suppressions
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'communication_suppressions' AND policyname = 'allow all on communication_suppressions'
+  ) THEN
+    CREATE POLICY "allow all on communication_suppressions" ON public.communication_suppressions FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.communication_suppressions TO anon, authenticated, service_role;
 
@@ -723,9 +863,14 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
 
 ALTER TABLE public.attendance_records ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "allow all on attendance_records" ON public.attendance_records;
-CREATE POLICY "allow all on attendance_records" ON public.attendance_records
-  FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'attendance_records' AND policyname = 'allow all on attendance_records'
+  ) THEN
+    CREATE POLICY "allow all on attendance_records" ON public.attendance_records FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 GRANT ALL ON public.attendance_records TO anon, authenticated, service_role;
 
@@ -772,7 +917,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.admin_set_app_config(text, text, text) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.admin_set_app_config(text, text, text) TO anon, authenticated, service_role;
 
 -- Dedicated webinar ID saver with admin check
@@ -802,7 +947,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.admin_save_webinar_id(text, text) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.admin_save_webinar_id(text, text) TO anon, authenticated, service_role;
 
 -- Save messaging settings RPC
@@ -830,7 +975,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.admin_save_messaging_settings(text, boolean, text, text) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.admin_save_messaging_settings(text, boolean, text, text) TO anon, authenticated, service_role;
 
 -- Validate discount coupon code RPC
@@ -888,7 +1033,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.validate_discount_code(TEXT, TEXT, INT) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.validate_discount_code(TEXT, TEXT, INT) TO anon, authenticated, service_role;
 
 -- Compute current silver pricing with cohort & milestone rules
@@ -936,7 +1081,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.compute_current_silver_pricing() FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.compute_current_silver_pricing() TO anon, authenticated, service_role;
 
 -- Record successful payment RPC
@@ -985,7 +1130,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.record_successful_payment(TEXT, NUMERIC, TEXT, TEXT, TEXT, JSONB) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.record_successful_payment(TEXT, NUMERIC, TEXT, TEXT, TEXT, JSONB) TO anon, authenticated, service_role;
 
 -- WhatsApp send event recorder RPC
@@ -1021,7 +1166,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.record_whatsapp_event(TEXT, TEXT, TIMESTAMPTZ, TEXT) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.record_whatsapp_event(TEXT, TEXT, TIMESTAMPTZ, TEXT) TO anon, authenticated, service_role;
 
 -- WhatsApp dashboard summary RPC
@@ -1079,7 +1224,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.admin_get_whatsapp_dashboard(TEXT) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.admin_get_whatsapp_dashboard(TEXT) TO anon, authenticated, service_role;
 
 -- Historical webinar logs RPC
@@ -1129,7 +1274,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.admin_get_historical_webinar_logs(TEXT, DATE) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.admin_get_historical_webinar_logs(TEXT, DATE) TO anon, authenticated, service_role;
 
 -- Record email provider delivery/open events RPC
@@ -1184,7 +1329,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.record_email_provider_event(text, text, text, text) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.record_email_provider_event(text, text, text, text) TO anon, authenticated, service_role;
 
 -- Course access checker RPC
@@ -1214,7 +1359,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.check_course_access(TEXT) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.check_course_access(TEXT) TO anon, authenticated, service_role;
 
 -- Completion page template versioning RPC
@@ -1251,7 +1396,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.save_completion_template(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.save_completion_template(TEXT, TEXT, TEXT, TEXT) TO anon, authenticated, service_role;
 
 -- Rollback completion template RPC
@@ -1284,7 +1429,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.rollback_completion_template(TEXT, INT) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.rollback_completion_template(TEXT, INT) TO anon, authenticated, service_role;
 
 -- Bulk upload members RPC
@@ -1335,7 +1480,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.bulk_upload_members(TEXT, JSONB) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.bulk_upload_members(TEXT, JSONB) TO anon, authenticated, service_role;
 
 -- Grant entitlement on payment capture RPC
@@ -1386,9 +1531,46 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.grant_entitlement_on_capture(UUID) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.grant_entitlement_on_capture(UUID) TO anon, authenticated, service_role;
 
 -- ==============================================================================
+
+-- ------------------------------------------------------------------------------
+-- 17. REPAIRED ADMIN_EMAIL_STATS (COUNTS SENT, DELIVERED, OPENED STATUSES)
+-- ------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.admin_email_stats(
+  p_password text, p_from timestamptz DEFAULT NULL, p_to timestamptz DEFAULT NULL
+)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $
+DECLARE v jsonb;
+BEGIN
+  PERFORM public.assert_admin(p_password);
+  SELECT jsonb_build_object(
+    'sent', count(*) FILTER (WHERE status IN ('sent', 'delivered', 'opened', 'clicked')),
+    'queued', count(*) FILTER (WHERE status = 'queued'),
+    'opened', count(*) FILTER (WHERE opened_at IS NOT NULL OR status = 'opened'),
+    'delivered', count(*) FILTER (WHERE status IN ('delivered', 'opened', 'clicked')),
+    'failed', count(*) FILTER (WHERE status = 'failed'),
+    'bounced', count(*) FILTER (WHERE status = 'bounced'),
+    'complained', count(*) FILTER (WHERE status = 'complained'),
+    'people', count(DISTINCT email) FILTER (WHERE status IN ('sent', 'delivered', 'opened', 'clicked')),
+    'by_template', coalesce((
+      SELECT jsonb_object_agg(template, n) FROM (
+        SELECT template, count(*) AS n FROM public.email_sends e2
+        WHERE (p_from IS NULL OR e2.created_at >= p_from)
+          AND (p_to IS NULL OR e2.created_at < p_to)
+          AND e2.status IN ('sent', 'delivered', 'opened', 'clicked')
+        GROUP BY template
+      ) q
+    ), '{}'::jsonb)
+  ) INTO v
+  FROM public.email_sends e;
+  RETURN v;
+END;
+$;
+
+GRANT EXECUTE ON FUNCTION public.admin_email_stats(text, timestamptz, timestamptz) TO anon, authenticated, service_role;
+
 -- SETUP COMPLETE
 -- ==============================================================================

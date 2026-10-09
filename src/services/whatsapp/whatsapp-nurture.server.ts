@@ -75,8 +75,8 @@ export async function sendWhatsAppAutomation(
     bodyParameters: [firstName],
   });
 
-  // Fallback: if Meta reports parameter count mismatch (e.g. if template expects 2 params)
-  if (!result.sent && result.error && /parameter|mismatch|count/i.test(result.error)) {
+  // Fallback: if Meta reports parameter count mismatch (e.g. if template expects 2 params or 0 params)
+  if (!result.sent && result.error && /parameter|mismatch|count|132000/i.test(result.error)) {
     console.log(`[WhatsApp Nurture] Retrying template ${templateName} with 2 parameters (firstName, webinarUrl)...`);
     const retryResult = await sendWhatsAppTemplate({
       to: normalizedPhone,
@@ -86,6 +86,16 @@ export async function sendWhatsAppAutomation(
     });
     if (retryResult.sent) {
       result = retryResult;
+    } else if (retryResult.error && /parameter|mismatch|count|132000/i.test(retryResult.error)) {
+      console.log(`[WhatsApp Nurture] Retrying template ${templateName} with 0 parameters (static template)...`);
+      const retryStatic = await sendWhatsAppTemplate({
+        to: normalizedPhone,
+        templateName,
+        bodyParameters: [],
+      });
+      if (retryStatic.sent) {
+        result = retryStatic;
+      }
     }
   }
 

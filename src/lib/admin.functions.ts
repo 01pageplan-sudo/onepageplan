@@ -1907,6 +1907,29 @@ export const adminSyncResendDelivery = createServerFn({ method: "POST" })
           };
           const resendEmails = resendData.data || [];
 
+          function inferTemplateKey(subject: string): string | null {
+            const s = (subject || "").toLowerCase();
+            if (s.includes("seat is saved") || s.includes("confirmation")) return "confirmation";
+            if (s.includes("tomorrow, 7:00 pm") || s.includes("24 hours")) return "reminder_24h";
+            if (s.includes("1 hour") || s.includes("begin in 1 hour")) return "reminder_1h";
+            if (s.includes("we are live") || s.includes("live now")) return "live_now";
+            if (s.includes("door still open") || s.includes("late entry")) return "late_entry";
+            if (s.includes("missed the session") || s.includes("missed")) return "missed_session";
+            if (s.includes("attended") || s.includes("follow-up") || s.includes("follow up")) return "post_session";
+            if (s.includes("nurture 1") || s.includes("never write down")) return "nurture_1";
+            if (s.includes("nurture 2") || s.includes("insurance is not an investment")) return "nurture_2";
+            if (s.includes("nurture 3") || s.includes("emergency cushion")) return "nurture_3";
+            if (s.includes("nurture 4") || s.includes("five-year delay")) return "nurture_4";
+            if (s.includes("nurture 5") || s.includes("quietly leak")) return "nurture_5";
+            if (s.includes("nurture 6") || s.includes("not a spreadsheet")) return "nurture_6";
+            if (s.includes("nurture 7") || s.includes("goals with dates")) return "nurture_7";
+            if (s.includes("nurture 8") || s.includes("market will fall")) return "nurture_8";
+            if (s.includes("nurture 9") || s.includes("first in your file")) return "nurture_9";
+            if (s.includes("nurture 10") || s.includes("doing it yourself")) return "nurture_10";
+            if (s.includes("nurture 11") || s.includes("last note from me")) return "nurture_11";
+            return null;
+          }
+
           for (const item of resendEmails) {
             const resendId = item.id;
             const recipient = Array.isArray(item.to) ? item.to[0]?.toLowerCase() : String(item.to || "").toLowerCase();
@@ -1921,16 +1944,38 @@ export const adminSyncResendDelivery = createServerFn({ method: "POST" })
               const detail = (await detailRes.json()) as { last_event?: string; status?: string; created_at?: string };
               const lastEvent = (detail.last_event || detail.status || "").toLowerCase();
 
-              // Match in email_sends table by provider_id OR by recipient email
-              const { data: matchedRows } = await client
+              // 1. Try finding by exact provider_id first
+              let target: any = null;
+              const { data: byPid } = await client
                 .from("email_sends" as never)
-                .select("id, status, opened_at, delivered_at, provider_id, sent_at")
-                .or(`provider_id.eq.${resendId},email.ilike.${recipient}`)
-                .order("sent_at" as never, { ascending: false })
+                .select("id, template, status, opened_at, delivered_at, provider_id, sent_at")
+                .eq("provider_id" as never, resendId)
                 .limit(1);
 
-              if (matchedRows && matchedRows.length > 0) {
-                const target = matchedRows[0] as any;
+              if (byPid && byPid.length > 0) {
+                target = byPid[0];
+              } else {
+                // 2. Fall back to matching by recipient AND inferred template from subject
+                const inferredTpl = inferTemplateKey(item.subject || "");
+                let q = client
+                  .from("email_sends" as never)
+                  .select("id, template, status, opened_at, delivered_at, provider_id, sent_at")
+                  .eq("email" as never, recipient);
+
+                if (inferredTpl) {
+                  q = q.eq("template" as never, inferredTpl);
+                }
+
+                const { data: byTpl } = await q
+                  .order("created_at" as never, { ascending: true })
+                  .limit(1);
+
+                if (byTpl && byTpl.length > 0) {
+                  target = byTpl[0];
+                }
+              }
+
+              if (target) {
                 const updatePayload: Record<string, unknown> = {
                   provider_id: resendId,
                 };
@@ -1939,11 +1984,11 @@ export const adminSyncResendDelivery = createServerFn({ method: "POST" })
                   updatePayload["status"] = "opened";
                   updatePayload["opened_at"] = target.opened_at || detail.created_at || new Date().toISOString();
                   updatePayload["delivered_at"] = target.delivered_at || target.sent_at || new Date().toISOString();
+                  updatePayload["sent_at"] = target.sent_at || detail.created_at || new Date().toISOString();
                 } else if (lastEvent === "delivered") {
-                  if (target.status === "sent" || target.status === "queued") {
-                    updatePayload["status"] = "delivered";
-                    updatePayload["delivered_at"] = target.delivered_at || detail.created_at || new Date().toISOString();
-                  }
+                  updatePayload["status"] = "delivered";
+                  updatePayload["delivered_at"] = target.delivered_at || detail.created_at || new Date().toISOString();
+                  updatePayload["sent_at"] = target.sent_at || detail.created_at || new Date().toISOString();
                 } else if (lastEvent === "bounced") {
                   updatePayload["status"] = "bounced";
                 }
@@ -1957,6 +2002,24 @@ export const adminSyncResendDelivery = createServerFn({ method: "POST" })
             } catch {
               // Ignore single item error
             }
+          }
+
+          // 3. Reset any future scheduled emails that haven't been sent yet in Resend back to 'queued'
+          try {
+            const nowIso = new Date().toISOString();
+            await client
+              .from("email_sends" as never)
+              .update({
+                status: "queued",
+                sent_at: null,
+                delivered_at: null,
+                opened_at: null,
+                provider_id: null,
+              } as never)
+              .gt("scheduled_at" as never, nowIso)
+              .in("template" as never, ["reminder_1h", "live_now", "late_entry", "missed_session", "post_session"]);
+          } catch {
+            // Non-fatal
           }
         }
       } catch (e) {
@@ -2300,32 +2363,52 @@ export const adminSendTestMessage = createServerFn({ method: "POST" })
         };
       }
 
-      // Map parameters based on approved Meta templates
-      let bodyParams: string[] = ["Milan"];
-      if (template.key === "3p_direct_integration_test") {
+      // Dynamically count variable placeholders in template.body
+      const tokens = (template.body || "").match(/\{\{(\d+|[a-zA-Z0-9_]+)\}\}/g) || [];
+      const varCount = tokens.length;
+
+      let bodyParams: string[] = [];
+      if (varCount === 0) {
+        bodyParams = [];
+      } else if (varCount === 1) {
         bodyParams = ["Milan"];
-      } else if (
-        template.key === "webinar_confirmation" ||
-        template.key === "webinar_reminder_2h" ||
-        template.key === "webinar_reminder_15m" ||
-        template.key === "webinar_live_now"
-      ) {
+      } else if (varCount === 2) {
         bodyParams = ["Milan", "https://onepageplan.in/room"];
-      } else if (template.key === "webinar_missed") {
-        bodyParams = ["Milan", "https://onepageplan.in"];
-      } else if (template.key === "course_purchase_confirmat") {
-        bodyParams = ["Milan", "https://onepageplan.in/course", "https://onepageplan.in"];
+      } else if (varCount >= 3) {
+        bodyParams = ["Milan", "https://onepageplan.in/room", "https://onepageplan.in"];
       }
 
       const metaTemplateName = template.metaTemplateName || template.key;
       const lang = template.key === "3p_direct_integration_test" ? "en_US" : (template.metaLanguage || "en");
 
-      const res = await sendWhatsAppTemplate({
+      // Attempt 1: Send with calculated bodyParams
+      let res = await sendWhatsAppTemplate({
         to: normalized,
         templateName: metaTemplateName,
         languageCode: lang,
         bodyParameters: bodyParams,
       });
+
+      // Attempt 2: If Meta reports parameter mismatch (#132000), dynamically fallback
+      if (!res.sent && res.error && /parameter|mismatch|132000/i.test(res.error)) {
+        if (bodyParams.length > 0) {
+          // Retry with 0 parameters (static template in Meta)
+          res = await sendWhatsAppTemplate({
+            to: normalized,
+            templateName: metaTemplateName,
+            languageCode: lang,
+            bodyParameters: [],
+          });
+        } else {
+          // Retry with 1 parameter
+          res = await sendWhatsAppTemplate({
+            to: normalized,
+            templateName: metaTemplateName,
+            languageCode: lang,
+            bodyParameters: ["Milan"],
+          });
+        }
+      }
 
       if (!res.sent) {
         return { ok: false as const, error: res.error || "Meta WhatsApp Cloud API failed to send test message." };
