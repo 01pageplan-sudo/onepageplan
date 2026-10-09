@@ -1132,9 +1132,11 @@ BEGIN
     VALUES (v_reg_id, 'purchased')
     ON CONFLICT (registration_id, tag) DO NOTHING;
 
-    DELETE FROM public.email_sends
+    -- Cancel any pending nurture emails (stops sales pitch immediately)
+    UPDATE public.email_sends
+    SET status = 'cancelled'
     WHERE registration_id = v_reg_id
-      AND status = 'pending'
+      AND status = 'queued'
       AND template LIKE 'nurture%';
   END IF;
 
