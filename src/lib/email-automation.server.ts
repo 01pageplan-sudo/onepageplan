@@ -109,7 +109,6 @@ const EMAIL_TO_WHATSAPP_KEY: Record<string, string> = {
   reminder_24h: "reminder-2h",
   reminder_1h: "reminder-15m",
   live_now: "live",
-  late_entry: "live",
   missed_session: "no-show",
 };
 
@@ -243,21 +242,21 @@ export async function dispatchDueWebinarWhatsAppReminders(
 
       const dueKeys: Array<{ key: string; url: string }> = [];
 
-      // 1. 2-Hour Reminder (window: 2h 15m before start up to 25m before start)
-      if (nowMs >= startMs - 2.25 * HOUR && nowMs < startMs - 25 * 60 * 1000) {
+      // 1. 2-Hour Reminder (strict window around 5:00 PM IST: 4:55 PM to 5:20 PM IST)
+      if (nowMs >= startMs - 2 * HOUR - 5 * 60 * 1000 && nowMs <= startMs - 2 * HOUR + 20 * 60 * 1000) {
         dueKeys.push({ key: "reminder-2h", url: roomUrl });
       }
-      // 2. 15-Minute Reminder (window: 25m before start up to start)
-      if (nowMs >= startMs - 25 * 60 * 1000 && nowMs < startMs) {
+      // 2. 15-Minute Reminder (strict window around 6:45 PM IST: 6:40 PM to 6:58 PM IST)
+      if (nowMs >= startMs - 20 * 60 * 1000 && nowMs < startMs - 2 * 60 * 1000) {
         dueKeys.push({ key: "reminder-15m", url: roomUrl });
       }
-      // 3. Live Now Alert (window: from start up to 90m after start)
-      if (nowMs >= startMs && nowMs <= startMs + 90 * 60 * 1000) {
+      // 3. Live Now Alert (strict window around 7:00 PM IST: 6:58 PM to 7:12 PM IST — never late)
+      if (nowMs >= startMs - 2 * 60 * 1000 && nowMs <= startMs + 12 * 60 * 1000) {
         dueKeys.push({ key: "live", url: roomUrl });
       }
-      // 4. Missed Session Follow-up (window: morning after up to +12h for non-attendees)
+      // 4. Missed Session Follow-up (Sunday 9:00 AM to 9:30 AM IST for non-attendees)
       const attended = lead.status === "attended" || lead.status === "dropped_off";
-      if (!attended && nowMs >= morningAfterMs && nowMs <= morningAfterMs + 12 * HOUR) {
+      if (!attended && nowMs >= morningAfterMs && nowMs <= morningAfterMs + 30 * 60 * 1000) {
         dueKeys.push({
           key: "no-show",
           url: `https://onepageplan.in/checkout/money-reality-check?email=${encodeURIComponent(lead.email)}`,
@@ -417,27 +416,47 @@ export async function sendDueEmails(
       matchedLead.phone_e164 &&
       process.env["WHATSAPP_ENABLED"] !== "false"
     ) {
-      try {
-        const { sendWhatsAppAutomation } = await import("@/services/whatsapp/whatsapp-nurture.server");
-        const targetUrl =
-          waKey === "no-show"
-            ? `https://onepageplan.in/checkout/money-reality-check?email=${encodeURIComponent(row.email)}`
-            : resolvedLinks.joining_link || ROOM_URL;
-        await sendWhatsAppAutomation(
-          db,
-          {
-            id: matchedLead.id,
-            phone_e164: matchedLead.phone_e164,
-            full_name: matchedLead.full_name || row.full_name,
-            status: matchedLead.status,
-            whatsapp_consent: matchedLead.whatsapp_consent ?? true,
-          },
-          waKey,
-          row.session_date || matchedLead.session_date || "once",
-          targetUrl,
-        );
-      } catch (waErr) {
-        console.warn("companion whatsapp send failed:", waKey, waErr);
+      const sDate = row.session_date || matchedLead.session_date;
+      const start = sessionStart(sDate);
+      const nowMs = Date.now();
+      let withinWindow = true;
+      if (start) {
+        const startMs = start.getTime();
+        if (waKey === "reminder-2h") {
+          // Never send a 2-hour countdown reminder less than 45 minutes before or after 7:00 PM start
+          withinWindow = nowMs <= startMs - 45 * 60 * 1000;
+        } else if (waKey === "reminder-15m") {
+          // Never send a 15-minute countdown reminder after the 7:00 PM webinar has already started
+          withinWindow = nowMs < startMs;
+        } else if (waKey === "live") {
+          // Only send 'live now' within 15 minutes of the 7:00 PM start — never late into or after the session
+          withinWindow = nowMs >= startMs - 5 * 60 * 1000 && nowMs <= startMs + 15 * 60 * 1000;
+        }
+      }
+
+      if (withinWindow) {
+        try {
+          const { sendWhatsAppAutomation } = await import("@/services/whatsapp/whatsapp-nurture.server");
+          const targetUrl =
+            waKey === "no-show"
+              ? `https://onepageplan.in/checkout/money-reality-check?email=${encodeURIComponent(row.email)}`
+              : resolvedLinks.joining_link || ROOM_URL;
+          await sendWhatsAppAutomation(
+            db,
+            {
+              id: matchedLead.id,
+              phone_e164: matchedLead.phone_e164,
+              full_name: matchedLead.full_name || row.full_name,
+              status: matchedLead.status,
+              whatsapp_consent: matchedLead.whatsapp_consent ?? true,
+            },
+            waKey,
+            sDate || "once",
+            targetUrl,
+          );
+        } catch (waErr) {
+          console.warn("companion whatsapp send failed:", waKey, waErr);
+        }
       }
     }
   }

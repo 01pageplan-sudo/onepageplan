@@ -95,12 +95,35 @@ export async function handleWhatsAppWebhookPost(request: Request): Promise<Respo
           console.log(`[WhatsApp Status] WAMID: ${wamid} -> ${status}`);
 
           if (wamid) {
-            await (db.rpc as any)("record_whatsapp_event", {
-              p_wamid: wamid,
-              p_status: status,
-              p_timestamp: isoTimestamp,
-              p_error: errorDetail,
-            });
+            // Prevent out-of-order 'sent' or 'delivered' webhooks from downgrading a higher status
+            let shouldUpdate = true;
+            if (status === "sent" || status === "delivered") {
+              try {
+                const { data: existingSend } = await (db as any)
+                  .from("whatsapp_sends")
+                  .select("status, delivered_at, read_at, clicked_at")
+                  .eq("provider_message_id", wamid.trim())
+                  .maybeSingle();
+                if (existingSend) {
+                  const cur = String(existingSend.status || "").toLowerCase();
+                  if (status === "sent" && (cur === "delivered" || cur === "read" || cur === "clicked" || existingSend.delivered_at || existingSend.read_at || existingSend.clicked_at)) {
+                    shouldUpdate = false;
+                  } else if (status === "delivered" && (cur === "read" || cur === "clicked" || existingSend.read_at || existingSend.clicked_at)) {
+                    shouldUpdate = false;
+                  }
+                }
+              } catch {
+                /* ignore */
+              }
+            }
+            if (shouldUpdate) {
+              await (db.rpc as any)("record_whatsapp_event", {
+                p_wamid: wamid,
+                p_status: status,
+                p_timestamp: isoTimestamp,
+                p_error: errorDetail,
+              });
+            }
           }
         }
 

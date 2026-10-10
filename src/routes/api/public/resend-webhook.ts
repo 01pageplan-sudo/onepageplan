@@ -52,24 +52,24 @@ export const Route = createFileRoute("/api/public/resend-webhook")({
           const { adminPassword } = await import("@/lib/email-automation.server");
           const db = createPublicServerClient();
 
-          // 1. Call RPC function
+          // 1. Call RPC function (pass empty p_email when providerId is known so queued future rows are never overwritten by email fallback)
           try {
             await db.rpc("record_email_provider_event", {
               p_password: adminPassword(),
               p_event: event,
               p_provider_id: providerId as unknown as string,
-              p_email: (to ?? "") as string,
+              p_email: providerId ? "" : ((to ?? "") as string),
             });
           } catch (rpcErr) {
             console.warn("resend-webhook RPC notice:", rpcErr);
           }
 
-          // 2. Also directly update email_sends row using supabaseAdmin or db
+          // 2. Also directly update email_sends row using supabaseAdmin or db (never match queued/unsent rows)
           try {
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
             const adminClient = supabaseAdmin || db;
 
-            // Find target record by provider_id or by email
+            // Find target record by provider_id or by already-sent email row
             let targetId: string | null = null;
             if (providerId) {
               const { data: row } = await adminClient
@@ -85,6 +85,8 @@ export const Route = createFileRoute("/api/public/resend-webhook")({
                 .from("email_sends" as never)
                 .select("id, status")
                 .eq("email" as never, to.toLowerCase().trim())
+                .neq("status" as never, "queued")
+                .not("sent_at" as never, "is" as never, null as never)
                 .order("sent_at" as never, { ascending: false })
                 .limit(1)
                 .maybeSingle();

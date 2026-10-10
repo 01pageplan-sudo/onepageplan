@@ -62,22 +62,10 @@ export async function sendWhatsAppAutomation(
     .maybeSingle();
 
   if (insertError && (insertError.code === "23505" || insertError.message?.includes("duplicate"))) {
-    // Check if the previous attempt failed; if so, allow retry, otherwise skip duplicate
-    const { data: existingRow } = await db
-      .from("whatsapp_sends" as never)
-      .select("id, status")
-      .eq("registration_id" as never, lead.id)
-      .eq("message_key" as never, messageKey)
-      .eq("occurrence" as never, occurrence)
-      .maybeSingle();
-    const existing = existingRow as { id?: string; status?: string } | null;
-    if (!existing || existing.status !== "failed") {
-      return "skipped";
-    }
-    recordId = existing.id;
-  } else {
-    recordId = (inserted as { id?: string } | null)?.id;
+    return "skipped";
   }
+
+  recordId = (inserted as { id?: string } | null)?.id;
 
   const isParamMismatch = (err?: string) =>
     Boolean(err && /parameter|mismatch|count|button|132000|132012|132018/i.test(err));

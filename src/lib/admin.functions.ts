@@ -645,7 +645,44 @@ export const adminWhatsAppDashboard = createServerFn({ method: "POST" })
       console.error("adminWhatsAppDashboard failed:", error.message);
       return { ok: false as const, error: "Could not load WhatsApp metrics." };
     }
-    return { ok: true as const, data: (dashboard ?? {}) as unknown as AdminWhatsAppStats };
+    const raw = (dashboard ?? {}) as unknown as AdminWhatsAppStats;
+    const recentSends = (raw.recent_sends ?? []).map((row) => {
+      let status = row.status;
+      if (row.clicked_at) status = "clicked";
+      else if (row.read_at) status = "read";
+      else if (row.delivered_at && status === "sent") status = "delivered";
+      return { ...row, status };
+    });
+    const sentCount = Math.max(
+      raw.sent ?? 0,
+      recentSends.filter((r) => ["sent", "delivered", "read", "clicked"].includes(r.status)).length,
+    );
+    const deliveredCount = Math.max(
+      raw.delivered ?? 0,
+      recentSends.filter((r) => ["delivered", "read", "clicked"].includes(r.status)).length,
+    );
+    const readCount = Math.max(
+      raw.read ?? 0,
+      recentSends.filter((r) => ["read", "clicked"].includes(r.status)).length,
+    );
+    const clickedCount = Math.max(
+      raw.clicked ?? 0,
+      recentSends.filter((r) => r.status === "clicked").length,
+    );
+    return {
+      ok: true as const,
+      data: {
+        ...raw,
+        sent: sentCount,
+        delivered: deliveredCount,
+        read: readCount,
+        clicked: clickedCount,
+        delivered_rate: sentCount > 0 ? Math.round((deliveredCount / sentCount) * 1000) / 10 : 0,
+        read_rate: deliveredCount > 0 ? Math.round((readCount / deliveredCount) * 1000) / 10 : 0,
+        clicked_rate: deliveredCount > 0 ? Math.round((clickedCount / deliveredCount) * 1000) / 10 : 0,
+        recent_sends: recentSends,
+      },
+    };
   });
 
 export type AdminWebinarHistoricalEvent = {
@@ -2315,9 +2352,9 @@ export const adminSyncResendDelivery = createServerFn({ method: "POST" })
             const s = (subject || "").toLowerCase();
             if (s.includes("seat is saved") || s.includes("confirmation")) return "confirmation";
             if (s.includes("tomorrow, 7:00 pm") || s.includes("24 hours")) return "reminder_24h";
-            if (s.includes("1 hour") || s.includes("begin in 1 hour")) return "reminder_1h";
+            if (s.includes("1 hour") || s.includes("one hour") || s.includes("begin in 1 hour")) return "reminder_1h";
             if (s.includes("we are live") || s.includes("live now")) return "live_now";
-            if (s.includes("door still open") || s.includes("late entry")) return "late_entry";
+            if (s.includes("door still open") || s.includes("still open") || s.includes("late entry")) return "late_entry";
             if (s.includes("missed the session") || s.includes("missed")) return "missed_session";
             if (s.includes("attended") || s.includes("follow-up") || s.includes("follow up")) return "post_session";
             if (s.includes("nurture 1") || s.includes("never write down")) return "nurture_1";
@@ -2359,23 +2396,22 @@ export const adminSyncResendDelivery = createServerFn({ method: "POST" })
               if (byPid && byPid.length > 0) {
                 target = byPid[0];
               } else {
-                // 2. Fall back to matching by recipient AND inferred template from subject
+                // 2. Fall back to matching by recipient AND inferred template from subject,
+                //    but NEVER overwrite a future queued email that hasn't been sent yet.
                 const inferredTpl = inferTemplateKey(item.subject || "");
-                let q = client
-                  .from("email_sends" as never)
-                  .select("id, template, status, opened_at, delivered_at, provider_id, sent_at")
-                  .eq("email" as never, recipient);
-
                 if (inferredTpl) {
-                  q = q.eq("template" as never, inferredTpl);
-                }
+                  const { data: byTpl } = await client
+                    .from("email_sends" as never)
+                    .select("id, template, status, opened_at, delivered_at, provider_id, sent_at")
+                    .eq("email" as never, recipient)
+                    .eq("template" as never, inferredTpl)
+                    .neq("status" as never, "queued")
+                    .order("created_at" as never, { ascending: true })
+                    .limit(1);
 
-                const { data: byTpl } = await q
-                  .order("created_at" as never, { ascending: true })
-                  .limit(1);
-
-                if (byTpl && byTpl.length > 0) {
-                  target = byTpl[0];
+                  if (byTpl && byTpl.length > 0) {
+                    target = byTpl[0];
+                  }
                 }
               }
 
