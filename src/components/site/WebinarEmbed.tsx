@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, X, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -24,12 +24,16 @@ export function WebinarEmbed({
   const [webinarId, setWebinarId] = useState<string>(initialWebinarId);
   const [loading, setLoading] = useState<boolean>(!initialToken);
   const [error, setError] = useState<string | null>(null);
+  const joinedAtRef = useRef<number>(Date.now());
+  const leaveReportedRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (initialToken) {
       setToken(initialToken);
       if (initialWebinarId) setWebinarId(initialWebinarId);
       setLoading(false);
+      joinedAtRef.current = Date.now();
+      leaveReportedRef.current = false;
       return;
     }
 
@@ -58,6 +62,8 @@ export function WebinarEmbed({
         if (response.ok && data.token) {
           setToken(data.token);
           if (data.webinarId) setWebinarId(data.webinarId);
+          joinedAtRef.current = Date.now();
+          leaveReportedRef.current = false;
         } else {
           setError(
             data.error === "not_registered"
@@ -79,9 +85,94 @@ export function WebinarEmbed({
     return () => {
       isMounted = false;
     };
-  }, [email, name]);
+  }, [email, name, initialToken, initialWebinarId]);
 
-  const embedUrl = `${WEBINAR_ORIGIN}/embed/${webinarId}?token=${encodeURIComponent(token)}`;
+  useEffect(() => {
+    if (!token || !email) return;
+
+    const reportLeave = (reason: "leave" | "ended") => {
+      if (leaveReportedRef.current) return;
+      leaveReportedRef.current = true;
+      const durationSeconds = Math.max(1, Math.round((Date.now() - joinedAtRef.current) / 1000));
+      const payload = JSON.stringify({
+        source: "room_client",
+        event: reason === "ended" ? "completed" : "dropped_off",
+        email,
+        name: name || undefined,
+        webinar_id: webinarId,
+        duration_seconds: durationSeconds,
+      });
+
+      try {
+        if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+          const blob = new Blob([payload], { type: "application/json" });
+          navigator.sendBeacon("/api/public/webinar-webhook", blob);
+          return;
+        }
+      } catch {
+        /* fallback to fetch */
+      }
+
+      void fetch("/api/public/webinar-webhook", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== WEBINAR_ORIGIN) return;
+      const raw = event.data as unknown;
+      const type =
+        typeof raw === "string"
+          ? raw
+          : typeof (raw as { type?: unknown } | null)?.type === "string"
+            ? (raw as { type: string }).type
+            : "";
+      if (type === "webinar-user-left" || type === "webinar-user-kicked") {
+        reportLeave("leave");
+      } else if (type === "webinar-ended") {
+        reportLeave("ended");
+      }
+    };
+
+    const onPageHide = () => {
+      reportLeave("leave");
+    };
+
+    window.addEventListener("message", onMessage);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      window.removeEventListener("message", onMessage);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, [token, email, name, webinarId]);
+
+  // webinar.gg's /webinar-page/:webinarId route validates ?token= in both iframe and standalone modes
+  // and populates the attendee's real firstName & lastName from the join token (unlike /embed/:id which uses random guest names).
+  const authenticatedRoomUrl = `${WEBINAR_ORIGIN}/webinar-page/${webinarId}?token=${encodeURIComponent(token)}`;
+
+  const handleClose = () => {
+    if (!leaveReportedRef.current && token && email) {
+      leaveReportedRef.current = true;
+      const durationSeconds = Math.max(1, Math.round((Date.now() - joinedAtRef.current) / 1000));
+      void fetch("/api/public/webinar-webhook", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          source: "room_client",
+          event: "dropped_off",
+          email,
+          name: name || undefined,
+          webinar_id: webinarId,
+          duration_seconds: durationSeconds,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    }
+    onClose?.();
+  };
 
   return (
     <div className="fixed inset-0 z-50 h-screen w-full overflow-hidden bg-black text-white flex flex-col">
@@ -100,7 +191,7 @@ export function WebinarEmbed({
         <div className="flex items-center gap-2">
           {token && (
             <a
-              href={`${WEBINAR_ORIGIN}/${webinarId}?token=${encodeURIComponent(token)}`}
+              href={authenticatedRoomUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors"
@@ -113,7 +204,7 @@ export function WebinarEmbed({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onClose}
+              onClick={handleClose}
               className="h-9 w-9 rounded-full bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800 hover:text-white"
               title="Exit Fullscreen"
             >
@@ -153,7 +244,7 @@ export function WebinarEmbed({
               {onClose && (
                 <Button
                   className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                  onClick={onClose}
+                  onClick={handleClose}
                 >
                   Return to Main Page
                 </Button>
@@ -165,7 +256,7 @@ export function WebinarEmbed({
         {!loading && !error && token && (
           <>
             <iframe
-              src={embedUrl}
+              src={authenticatedRoomUrl}
               title="The Money Reality Masterclass Live Stream"
               width="100%"
               height="100%"
@@ -180,7 +271,7 @@ export function WebinarEmbed({
               <div className="flex items-center gap-2 bg-zinc-950/90 border border-zinc-800 rounded-full px-4 py-2 text-xs text-zinc-300 shadow-2xl backdrop-blur-md">
                 <span className="text-[11px] text-zinc-400">Stream restricted or not loading?</span>
                 <a
-                  href={`${WEBINAR_ORIGIN}/${webinarId}?token=${encodeURIComponent(token)}`}
+                  href={authenticatedRoomUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 flex items-center gap-1 ml-1"

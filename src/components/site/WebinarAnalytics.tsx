@@ -15,6 +15,8 @@ type Metrics = {
   totalUsers: number | null;
   peakUsers: number | null;
   durationMinutes: number | null;
+  droppedOffUsers?: number | null;
+  avgWatchMinutes?: number | null;
 };
 
 type FeedKind = "join" | "leave" | "chat" | "activity";
@@ -117,7 +119,7 @@ export function WebinarAnalytics({ password = "" }: { password?: string }) {
         setError(
           body.error === "not_configured"
             ? "The webinar API key is not set on this deployment yet."
-            : "The provider did not return analytics for this webinar yet.",
+            : null,
         );
         setMetrics(null);
         return;
@@ -126,6 +128,8 @@ export function WebinarAnalytics({ password = "" }: { password?: string }) {
         totalUsers: body.totalUsers ?? null,
         peakUsers: body.peakUsers ?? null,
         durationMinutes: body.durationMinutes ?? null,
+        droppedOffUsers: body.droppedOffUsers ?? null,
+        avgWatchMinutes: body.avgWatchMinutes ?? null,
       });
     } catch {
       setError("Could not reach the analytics endpoint.");
@@ -176,8 +180,26 @@ export function WebinarAnalytics({ password = "" }: { password?: string }) {
     void loadHistory(date);
   };
 
+  // Combine API metrics with session event analytics so numbers always reflect recorded joins/drop-offs
+  const activeSession = sessions.find((s) => s.session_date === selectedSessionDate) ?? sessions[0];
+  const effectiveTotalUsers = Math.max(metrics?.totalUsers ?? 0, activeSession?.unique_attendees ?? 0);
+  const effectivePeakUsers = Math.max(metrics?.peakUsers ?? 0, activeSession?.unique_attendees ?? 0);
+  const effectiveDropOffs = Math.max(metrics?.droppedOffUsers ?? 0, activeSession?.leaves ?? 0);
+
+  const computedDurationMinutes = (() => {
+    if (metrics?.durationMinutes && metrics.durationMinutes > 0) return metrics.durationMinutes;
+    if (events.length === 0) return 0;
+    const times = events
+      .map((e) => new Date(e.created_at).getTime())
+      .filter((t) => !Number.isNaN(t));
+    if (times.length < 2) return 0;
+    const minT = Math.min(...times);
+    const maxT = Math.max(...times);
+    return Math.max(1, Math.round((maxT - minT) / 60000));
+  })();
+
   const show = (value: number | null | undefined, suffix = "") =>
-    loading ? "…" : value === null || value === undefined ? "-" : `${value}${suffix}`;
+    loading && historyLoading ? "…" : value === null || value === undefined ? "0" : `${value}${suffix}`;
 
   return (
     <div className="space-y-6">
@@ -185,7 +207,7 @@ export function WebinarAnalytics({ password = "" }: { password?: string }) {
         <div>
           <h2 className="text-base font-semibold">Webinar Session Analytics & Logs</h2>
           <p className="text-xs text-muted-foreground">
-            Live attendance numbers and permanent historical logs across all masterclass dates.
+            Live attendance numbers, drop-off tracking, and permanent historical logs across all masterclass dates.
           </p>
         </div>
 
@@ -283,20 +305,29 @@ export function WebinarAnalytics({ password = "" }: { password?: string }) {
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Card
           label="Current Total Attendees"
-          value={show(metrics?.totalUsers)}
-          hint="From live webinar provider"
+          value={show(effectiveTotalUsers)}
+          hint="Unique verified room attendees"
         />
         <Card
           label="Peak Live Users"
-          value={show(metrics?.peakUsers)}
+          value={show(effectivePeakUsers)}
           hint="Maximum concurrent users"
         />
         <Card
+          label="Drop-Offs / Leaves"
+          value={show(effectiveDropOffs)}
+          hint={
+            metrics?.avgWatchMinutes
+              ? `Avg watch time: ${metrics.avgWatchMinutes} min`
+              : "Tracked on room exit / leave"
+          }
+        />
+        <Card
           label="Session Duration"
-          value={show(metrics?.durationMinutes, " min")}
+          value={computedDurationMinutes > 0 ? show(computedDurationMinutes, " min") : "-"}
           hint="Total room active time"
         />
       </div>
@@ -324,7 +355,7 @@ export function WebinarAnalytics({ password = "" }: { password?: string }) {
               >
                 <p className="font-bold">{ses.session_date}</p>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  {ses.unique_attendees} attendees · {ses.joins} joins
+                  {ses.unique_attendees} attendees · {ses.joins} joins · {ses.leaves} drop-offs
                 </p>
               </button>
             ))}
@@ -364,19 +395,41 @@ export function WebinarAnalytics({ password = "" }: { password?: string }) {
               const Icon = ICON[kind];
               const timeLabel = formatTime(ev.created_at);
 
+              const actorLabel =
+                ev.full_name && ev.email
+                  ? `${ev.full_name} (${ev.email})`
+                  : ev.full_name
+                    ? ev.full_name
+                    : ev.email
+                      ? ev.email
+                      : ev.event_type === "room_started" || ev.event_type === "room_ended"
+                        ? "Webinar Host"
+                        : "Room System";
+
+              const actionLabel =
+                ev.event_type === "join"
+                  ? "joined the room"
+                  : ev.event_type === "leave"
+                    ? `left the room${
+                        ev.duration_seconds
+                          ? ev.duration_seconds >= 60
+                            ? ` after ${Math.round(ev.duration_seconds / 60)}m`
+                            : ` after ${ev.duration_seconds}s`
+                          : ""
+                      }`
+                    : ev.event_type === "room_started"
+                      ? "started the live webinar room"
+                      : ev.event_type === "room_ended"
+                        ? "ended the webinar session"
+                        : ev.event_type;
+
               return (
                 <li key={ev.id} className="flex items-start gap-2 text-white/80">
                   <span className="text-white/40">[{timeLabel}]</span>
                   <Icon className={`mt-0.5 size-3.5 shrink-0 ${TONE[kind]}`} />
                   <span className="break-words">
-                    <span className="font-semibold text-white/90">
-                      {ev.email ? ev.email : "Unknown Attendee"}
-                    </span>{" "}
-                    {ev.event_type === "join"
-                      ? "joined the room"
-                      : ev.event_type === "leave"
-                        ? `left the room${ev.duration_seconds ? ` after ${Math.round(ev.duration_seconds / 60)}m` : ""}`
-                        : ev.event_type}
+                    <span className="font-semibold text-white/90">{actorLabel}</span>{" "}
+                    {actionLabel}
                     {ev.session_date ? (
                       <span className="text-white/30 text-[10px] ml-2">({ev.session_date})</span>
                     ) : null}

@@ -29,81 +29,111 @@ export async function handleWebinarWebhookRequest(request: Request): Promise<Res
     request.headers.get("x-shared-secret") ??
     url.searchParams.get("secret") ??
     "";
-  if (secret && provided !== secret) {
+
+  let body: unknown = null;
+  try {
+    body = await request.json();
+  } catch {
+    body = null;
+  }
+
+  const flat = flatten(body);
+  const isRoomClientBeacon = flat["source"] === "room_client";
+
+  if (secret && provided !== secret && !isRoomClientBeacon) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-        let body: unknown = null;
-        try {
-          body = await request.json();
-        } catch {
-          body = null;
-        }
+  try {
+    const email = pick(flat, ["email", "Email", "attendee_email", "user_email", "emailAddress"]);
+    const rawEvent =
+      pick(flat, ["event", "status", "type", "action", "attendee_status", "event_type"]) ?? "";
+    const event = rawEvent.toLowerCase();
+    const webinarId =
+      pick(flat, ["webinar_id", "webinarId", "session_id", "sessionId"]) ||
+      process.env["WEBINAR_GG_WEBINAR_ID"] ||
+      "cmthk6y4001kos60ybxfkbc67";
 
-        try {
-          const flat = flatten(body);
-          const email = pick(flat, ["email", "Email", "attendee_email", "user_email", "emailAddress"]);
-          const rawEvent =
-            pick(flat, ["event", "status", "type", "action", "attendee_status", "event_type"]) ?? "";
-          const event = rawEvent.toLowerCase();
-          const webinarId =
-            pick(flat, ["webinar_id", "webinarId", "session_id", "sessionId"]) ||
-            process.env["WEBINAR_GG_WEBINAR_ID"] ||
-            "cmthk6y4001kos60ybxfkbc67";
+    const rawDuration = flat["duration"] ?? flat["duration_seconds"] ?? flat["time_spent"];
+    const durationSeconds =
+      typeof rawDuration === "number"
+        ? rawDuration
+        : typeof rawDuration === "string" && !Number.isNaN(Number(rawDuration))
+          ? Number(rawDuration)
+          : 0;
 
-          let status: string | null = null;
-          let eventType = "activity";
-          if (/join|attend|present|live/.test(event)) {
-            status = "attended";
-            eventType = "join";
-          } else if (/drop|left|early|exit/.test(event)) {
-            status = "dropped_off";
-            eventType = "leave";
-          } else if (/chat|message/.test(event)) {
-            eventType = "chat";
-          } else if (/poll/.test(event)) {
-            eventType = "poll";
-          }
+    let status: string | null = null;
+    let eventType = "activity";
+    if (event === "webinar.started") {
+      eventType = "room_started";
+    } else if (event === "webinar.ended" || event === "webinar.slot.ended") {
+      eventType = "room_ended";
+    } else if (event === "completed") {
+      status = "attended";
+      eventType = "leave";
+    } else if (/join|attend|present|live/.test(event)) {
+      status = "attended";
+      eventType = "join";
+    } else if (/drop|left|leave|early|exit|kick/.test(event)) {
+      status = durationSeconds >= 45 * 60 ? "attended" : "dropped_off";
+      eventType = "leave";
+    } else if (/chat|message/.test(event)) {
+      eventType = "chat";
+    } else if (/poll/.test(event)) {
+      eventType = "poll";
+    }
 
-          const rawDuration = flat["duration"] ?? flat["duration_seconds"] ?? flat["time_spent"];
-          const durationSeconds = typeof rawDuration === "number" ? rawDuration : 0;
+    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+    const { sessionDateISO } = await import("@/lib/session");
+    const db = createPublicServerClient();
+    const sessionDate = sessionDateISO();
 
-          const { createPublicServerClient } = await import("@/lib/supabase-public.server");
-          const { sessionDateISO } = await import("@/lib/session");
-          const db = createPublicServerClient();
-          const sessionDate = sessionDateISO();
+    // If this is a client beacon, verify the email belongs to a registered attendee before recording
+    if (isRoomClientBeacon) {
+      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email.toLowerCase())) {
+        return new Response("ok");
+      }
+      const { data: details } = await db.rpc(
+        "lookup_registration_details_for_room" as never,
+        { p_email: email.toLowerCase(), p_session_date: sessionDate } as never,
+      );
+      const record = (details ?? null) as { full_name?: string } | null;
+      if (!record?.full_name) {
+        return new Response("ok");
+      }
+    }
 
-          // 1. Permanently archive event to webinar_event_logs for historical analysis
-          try {
-            await db.from("webinar_event_logs" as never).insert({
-              webinar_id: webinarId,
-              session_date: sessionDate,
-              email: email ? email.toLowerCase() : null,
-              event_type: eventType,
-              event_data: body,
-              duration_seconds: durationSeconds,
-            } as never);
-          } catch (logErr) {
-            console.warn("Could not insert into webinar_event_logs:", logErr);
-          }
+    // 1. Permanently archive event to webinar_event_logs for historical analysis
+    try {
+      await db.from("webinar_event_logs" as never).insert({
+        webinar_id: webinarId,
+        session_date: sessionDate,
+        email: email ? email.toLowerCase() : null,
+        event_type: eventType,
+        event_data: body,
+        duration_seconds: durationSeconds,
+      } as never);
+    } catch (logErr) {
+      console.warn("Could not insert into webinar_event_logs:", logErr);
+    }
 
-          if (!email) {
-            console.log("webinar-webhook: no email in payload", JSON.stringify(body)?.slice(0, 500));
-            return new Response("ok");
-          }
+    if (!email) {
+      console.log("webinar-webhook: lifecycle/non-email event", eventType);
+      return new Response("ok");
+    }
 
-          // 2. Update current attendee status in registrations
-          const { data: matched, error } = await db.rpc("record_webinar_event", {
-            p_email: email.toLowerCase(),
-            p_session_date: sessionDate,
-            p_status: status ?? "",
-            p_payload: body as never,
-          });
+    // 2. Update current attendee status in registrations
+    const { data: matched, error } = await db.rpc("record_webinar_event", {
+      p_email: email.toLowerCase(),
+      p_session_date: sessionDate,
+      p_status: status ?? "",
+      p_payload: body as never,
+    });
 
-          if (error) throw error;
-          if (!matched) {
-            console.log("webinar-webhook: no matching registration for", email);
-          }
+    if (error) throw error;
+    if (!matched) {
+      console.log("webinar-webhook: no matching registration for", email);
+    }
 
           // Prompt 4: Record attendee in attendance_records and schedule 11:00 AM IST follow-up if attended
           if (status === "attended") {

@@ -96,10 +96,21 @@ type LeadRow = {
   id: string;
   email: string;
   full_name: string;
+  phone_e164?: string | null;
+  whatsapp_consent?: boolean | null;
   status: string;
   session_date: string | null;
   tags: string[] | null;
   tag_dates: Record<string, string> | null;
+};
+
+const EMAIL_TO_WHATSAPP_KEY: Record<string, string> = {
+  confirmation: "confirmation",
+  reminder_24h: "reminder-2h",
+  reminder_1h: "reminder-15m",
+  live_now: "live",
+  late_entry: "live",
+  missed_session: "no-show",
 };
 
 type QueueRow = {
@@ -192,6 +203,93 @@ export async function scheduleSequence(db: PublicServerClient, override?: string
   return Number(inserted ?? 0);
 }
 
+/**
+ * Dispatches due WhatsApp webinar reminders (2h, 15m, live_now, missed) for consented leads.
+ * Deduplicated automatically in whatsapp_sends by (registration_id, message_key, occurrence).
+ */
+export async function dispatchDueWebinarWhatsAppReminders(
+  db: PublicServerClient,
+  override?: string | undefined,
+): Promise<{ sent: number; failed: number; skipped: number }> {
+  if (process.env["WHATSAPP_ENABLED"] === "false") {
+    return { sent: 0, failed: 0, skipped: 0 };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  try {
+    const password = adminPassword(override);
+    const settings = await loadSettings(db, password);
+    const from = new Date(Date.now() - 7 * 24 * HOUR).toISOString();
+    const { data, error } = await db.rpc("admin_leads", { p_password: password, p_from: from });
+    if (error || !data) return { sent: 0, failed: 0, skipped: 0 };
+
+    const { sendWhatsAppAutomation } = await import("@/services/whatsapp/whatsapp-nurture.server");
+    const leads = (data ?? []) as unknown as LeadRow[];
+    const nowMs = Date.now();
+
+    for (const lead of leads) {
+      if (lead.whatsapp_consent === false || !lead.phone_e164 || !lead.session_date) continue;
+      const start = sessionStart(lead.session_date);
+      if (!start) continue;
+
+      const startMs = start.getTime();
+      const morningAfterMs = startMs + 14 * HOUR;
+      const links = resolveLinks(settings, lead.session_date, lead.email);
+      const roomUrl = links.joining_link || ROOM_URL;
+      const occurrence = lead.session_date;
+
+      const dueKeys: Array<{ key: string; url: string }> = [];
+
+      // 1. 2-Hour Reminder (window: 2h 15m before start up to 25m before start)
+      if (nowMs >= startMs - 2.25 * HOUR && nowMs < startMs - 25 * 60 * 1000) {
+        dueKeys.push({ key: "reminder-2h", url: roomUrl });
+      }
+      // 2. 15-Minute Reminder (window: 25m before start up to start)
+      if (nowMs >= startMs - 25 * 60 * 1000 && nowMs < startMs) {
+        dueKeys.push({ key: "reminder-15m", url: roomUrl });
+      }
+      // 3. Live Now Alert (window: from start up to 90m after start)
+      if (nowMs >= startMs && nowMs <= startMs + 90 * 60 * 1000) {
+        dueKeys.push({ key: "live", url: roomUrl });
+      }
+      // 4. Missed Session Follow-up (window: morning after up to +12h for non-attendees)
+      const attended = lead.status === "attended" || lead.status === "dropped_off";
+      if (!attended && nowMs >= morningAfterMs && nowMs <= morningAfterMs + 12 * HOUR) {
+        dueKeys.push({
+          key: "no-show",
+          url: `https://onepageplan.in/checkout/money-reality-check?email=${encodeURIComponent(lead.email)}`,
+        });
+      }
+
+      for (const item of dueKeys) {
+        const res = await sendWhatsAppAutomation(
+          db,
+          {
+            id: lead.id,
+            phone_e164: lead.phone_e164,
+            full_name: lead.full_name,
+            status: lead.status,
+            whatsapp_consent: lead.whatsapp_consent ?? true,
+          },
+          item.key,
+          occurrence,
+          item.url,
+        );
+        if (res === "sent") sent += 1;
+        else if (res === "failed") failed += 1;
+        else skipped += 1;
+      }
+    }
+  } catch (err) {
+    console.warn("[WhatsApp Reminders] dispatchDueWebinarWhatsAppReminders warning:", err);
+  }
+
+  return { sent, failed, skipped };
+}
+
 async function sendEmailUsingProvider(args: {
   to: string;
   subject: string;
@@ -252,6 +350,20 @@ export async function sendDueEmails(
     full_name: string;
   }[];
 
+  // Build email -> lead lookup so companion WhatsApp reminders can be triggered alongside emails
+  const leadByEmail = new Map<string, LeadRow>();
+  if (due.some((r) => Boolean(EMAIL_TO_WHATSAPP_KEY[r.template]))) {
+    try {
+      const from = new Date(Date.now() - 45 * 24 * HOUR).toISOString();
+      const { data: leadsData } = await db.rpc("admin_leads", { p_password: password, p_from: from });
+      for (const l of ((leadsData ?? []) as unknown as LeadRow[])) {
+        if (l.email) leadByEmail.set(l.email.trim().toLowerCase(), l);
+      }
+    } catch {
+      /* non-fatal */
+    }
+  }
+
   let sent = 0;
   let failed = 0;
 
@@ -268,10 +380,11 @@ export async function sendDueEmails(
       continue;
     }
     const spec = applyOverride(base, overrides[row.template]);
+    const resolvedLinks = resolveLinks(settings, row.session_date, row.email);
     try {
       const { subject, html, text } = renderEmail(spec, {
         firstName: firstName(row.full_name),
-        links: resolveLinks(settings, row.session_date, row.email),
+        links: resolvedLinks,
       });
 
       const providerId = await sendEmailUsingProvider({ to: row.email, subject, html, text });
@@ -293,6 +406,40 @@ export async function sendDueEmails(
       });
       failed += 1;
     }
+
+    // Companion WhatsApp dispatch for webinar lifecycle/reminder templates
+    const waKey = EMAIL_TO_WHATSAPP_KEY[row.template];
+    const matchedLead = leadByEmail.get(row.email.trim().toLowerCase());
+    if (
+      waKey &&
+      matchedLead &&
+      matchedLead.whatsapp_consent !== false &&
+      matchedLead.phone_e164 &&
+      process.env["WHATSAPP_ENABLED"] !== "false"
+    ) {
+      try {
+        const { sendWhatsAppAutomation } = await import("@/services/whatsapp/whatsapp-nurture.server");
+        const targetUrl =
+          waKey === "no-show"
+            ? `https://onepageplan.in/checkout/money-reality-check?email=${encodeURIComponent(row.email)}`
+            : resolvedLinks.joining_link || ROOM_URL;
+        await sendWhatsAppAutomation(
+          db,
+          {
+            id: matchedLead.id,
+            phone_e164: matchedLead.phone_e164,
+            full_name: matchedLead.full_name || row.full_name,
+            status: matchedLead.status,
+            whatsapp_consent: matchedLead.whatsapp_consent ?? true,
+          },
+          waKey,
+          row.session_date || matchedLead.session_date || "once",
+          targetUrl,
+        );
+      } catch (waErr) {
+        console.warn("companion whatsapp send failed:", waKey, waErr);
+      }
+    }
   }
 
   return { claimed: due.length, sent, failed };
@@ -302,7 +449,8 @@ export async function runDispatch(limit = 25, password?: string | undefined) {
   const db = createPublicServerClient();
   const queued = await scheduleSequence(db, password);
   const result = await sendDueEmails(db, limit, password);
-  return { queued, ...result };
+  const whatsapp = await dispatchDueWebinarWhatsAppReminders(db, password);
+  return { queued, ...result, whatsapp };
 }
 
 export function istLabel(value: string | Date) {

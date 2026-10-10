@@ -47,6 +47,7 @@ export async function sendWhatsAppAutomation(
   const webinarUrl = customRoomUrl || ROOM_URL;
 
   // Insert initial record into whatsapp_sends
+  let recordId: string | undefined;
   const { data: inserted, error: insertError } = await db
     .from("whatsapp_sends" as never)
     .insert({
@@ -60,41 +61,67 @@ export async function sendWhatsAppAutomation(
     .select("id")
     .maybeSingle();
 
-  // If already sent or duplicate, skip
   if (insertError && (insertError.code === "23505" || insertError.message?.includes("duplicate"))) {
-    return "skipped";
+    // Check if the previous attempt failed; if so, allow retry, otherwise skip duplicate
+    const { data: existingRow } = await db
+      .from("whatsapp_sends" as never)
+      .select("id, status")
+      .eq("registration_id" as never, lead.id)
+      .eq("message_key" as never, messageKey)
+      .eq("occurrence" as never, occurrence)
+      .maybeSingle();
+    const existing = existingRow as { id?: string; status?: string } | null;
+    if (!existing || existing.status !== "failed") {
+      return "skipped";
+    }
+    recordId = existing.id;
+  } else {
+    recordId = (inserted as { id?: string } | null)?.id;
   }
 
-  const recordId = (inserted as { id?: string } | null)?.id;
+  const isParamMismatch = (err?: string) =>
+    Boolean(err && /parameter|mismatch|count|button|132000|132012|132018/i.test(err));
 
   // Dispatch through Meta Cloud API
-  // Primary attempt: single parameter {{1}} for firstName (CTA button handles room access)
+  // Attempt 1: single parameter {{1}} for firstName (CTA button handles room access)
   let result = await sendWhatsAppTemplate({
     to: normalizedPhone,
     templateName,
     bodyParameters: [firstName],
   });
 
-  // Fallback: if Meta reports parameter count mismatch (e.g. if template expects 2 params or 0 params)
-  if (!result.sent && result.error && /parameter|mismatch|count|132000/i.test(result.error)) {
-    console.log(`[WhatsApp Nurture] Retrying template ${templateName} with 2 parameters (firstName, webinarUrl)...`);
-    const retryResult = await sendWhatsAppTemplate({
+  // Attempt 2: 2 body parameters ({{1}} = firstName, {{2}} = webinarUrl) without dynamic button param
+  if (!result.sent && isParamMismatch(result.error)) {
+    console.log(`[WhatsApp Nurture] Retrying template ${templateName} with 2 body parameters (firstName, webinarUrl)...`);
+    const retry2Body = await sendWhatsAppTemplate({
       to: normalizedPhone,
       templateName,
       bodyParameters: [firstName, webinarUrl],
-      buttonUrlParam: webinarUrl.replace("https://onepageplan.in", ""),
     });
-    if (retryResult.sent) {
-      result = retryResult;
-    } else if (retryResult.error && /parameter|mismatch|count|132000/i.test(retryResult.error)) {
-      console.log(`[WhatsApp Nurture] Retrying template ${templateName} with 0 parameters (static template)...`);
-      const retryStatic = await sendWhatsAppTemplate({
+    if (retry2Body.sent) {
+      result = retry2Body;
+    } else if (isParamMismatch(retry2Body.error)) {
+      // Attempt 3: 2 body parameters + dynamic URL button parameter
+      console.log(`[WhatsApp Nurture] Retrying template ${templateName} with 2 body params + buttonUrlParam...`);
+      const retry2WithBtn = await sendWhatsAppTemplate({
         to: normalizedPhone,
         templateName,
-        bodyParameters: [],
+        bodyParameters: [firstName, webinarUrl],
+        buttonUrlParam: webinarUrl.replace("https://onepageplan.in", ""),
       });
-      if (retryStatic.sent) {
-        result = retryStatic;
+      if (retry2WithBtn.sent) {
+        result = retry2WithBtn;
+      } else if (isParamMismatch(retry2WithBtn.error)) {
+        // Attempt 4: 0 parameters (static template)
+        console.log(`[WhatsApp Nurture] Retrying template ${templateName} with 0 parameters (static template)...`);
+        const retryStatic = await sendWhatsAppTemplate({
+          to: normalizedPhone,
+          templateName,
+          bodyParameters: [],
+        });
+        if (retryStatic.sent) {
+          result = retryStatic;
+        }
       }
     }
   }

@@ -652,6 +652,7 @@ export type AdminWebinarHistoricalEvent = {
   webinar_id: string;
   session_date: string;
   email: string | null;
+  full_name?: string | null;
   event_type: string;
   duration_seconds: number;
   created_at: string;
@@ -669,13 +670,20 @@ export const adminHistoricalWebinarLogs = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string; sessionDate?: string | null }) => data)
   .handler(async ({ data }) => {
     const { createPublicServerClient } = await import("./supabase-public.server");
-    const { data: res, error } = await createPublicServerClient().rpc(
-      "admin_get_historical_webinar_logs" as never,
-      {
-        p_password: data.password,
-        ...(data.sessionDate ? { p_session_date: data.sessionDate } : {}),
-      } as never,
-    );
+    const db = createPublicServerClient();
+    const [histRes, apiLogsRes, leadsRes] = await Promise.all([
+      db.rpc(
+        "admin_get_historical_webinar_logs" as never,
+        {
+          p_password: data.password,
+          ...(data.sessionDate ? { p_session_date: data.sessionDate } : {}),
+        } as never,
+      ),
+      db.rpc("admin_webinar_logs", { p_password: data.password, p_limit: 100 }),
+      db.rpc("admin_leads", { p_password: data.password }),
+    ]);
+
+    const error = histRes.error;
     if (error) {
       if (unauthorized(error.message)) {
         return {
@@ -693,7 +701,25 @@ export const adminHistoricalWebinarLogs = createServerFn({ method: "POST" })
         events: [] as AdminWebinarHistoricalEvent[],
       };
     }
-    const parsed = (res ?? {}) as {
+
+    // Build email -> full_name lookup from registrations and webinar_api_logs
+    const nameByEmail = new Map<string, string>();
+    const leadsList = ((leadsRes.data ?? []) as unknown as Array<{ email?: string; full_name?: string }>);
+    for (const l of leadsList) {
+      if (l.email && l.full_name) {
+        nameByEmail.set(l.email.trim().toLowerCase(), l.full_name.trim());
+      }
+    }
+    const apiLogs = ((apiLogsRes.data ?? []) as unknown as AdminWebinarLog[]);
+    for (const log of apiLogs) {
+      const em = (log.email || log.request_body?.["email"] || "").trim().toLowerCase();
+      const fn = (log.full_name || log.request_body?.["name"] || "").trim();
+      if (em && fn && !nameByEmail.has(em)) {
+        nameByEmail.set(em, fn);
+      }
+    }
+
+    const parsed = (histRes.data ?? {}) as {
       sessions?: AdminWebinarHistoricalSession[];
       events?: Array<{
         id: string;
@@ -702,23 +728,104 @@ export const adminHistoricalWebinarLogs = createServerFn({ method: "POST" })
         email: string | null;
         event_type: string;
         duration_seconds: number;
+        event_data?: Record<string, unknown> | null;
         created_at: string;
       }>;
     };
-    const cleanEvents: AdminWebinarHistoricalEvent[] = (parsed.events ?? []).map((e) => ({
-      id: String(e.id),
-      webinar_id: String(e.webinar_id),
-      session_date: String(e.session_date),
-      email: e.email ? String(e.email) : null,
-      event_type: String(e.event_type),
-      duration_seconds: Number(e.duration_seconds || 0),
-      created_at: String(e.created_at),
-    }));
+
+    const cleanEvents: AdminWebinarHistoricalEvent[] = (parsed.events ?? []).map((e) => {
+      const emailClean = e.email ? String(e.email).trim().toLowerCase() : null;
+      const evData = (e.event_data ?? {}) as Record<string, unknown>;
+      const rawWebhookEvent = typeof evData["event"] === "string" ? evData["event"].toLowerCase() : "";
+      let evType = String(e.event_type);
+      if (evType === "activity") {
+        if (rawWebhookEvent === "webinar.started") evType = "room_started";
+        else if (rawWebhookEvent === "webinar.ended" || rawWebhookEvent === "webinar.slot.ended") evType = "room_ended";
+      }
+      const dataName =
+        typeof evData["full_name"] === "string"
+          ? evData["full_name"]
+          : typeof evData["name"] === "string"
+            ? evData["name"]
+            : null;
+      const fullName = dataName || (emailClean ? nameByEmail.get(emailClean) ?? null : null);
+
+      return {
+        id: String(e.id),
+        webinar_id: String(e.webinar_id),
+        session_date: String(e.session_date),
+        email: emailClean,
+        full_name: fullName,
+        event_type: evType,
+        duration_seconds: Number(e.duration_seconds || 0),
+        created_at: String(e.created_at),
+      };
+    });
+
+    // Merge successful join-token calls from webinar_api_logs that were not yet logged in webinar_event_logs
+    for (const log of apiLogs) {
+      if (log.outcome !== "ok" || !log.email) continue;
+      const em = log.email.trim().toLowerCase();
+      const logTimeMs = new Date(log.created_at).getTime();
+      // Convert created_at to IST YYYY-MM-DD for session_date
+      const istDate = new Date(logTimeMs + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+      if (data.sessionDate && istDate !== data.sessionDate) continue;
+
+      const alreadyRecorded = cleanEvents.some(
+        (ev) =>
+          ev.event_type === "join" &&
+          ev.email === em &&
+          Math.abs(new Date(ev.created_at).getTime() - logTimeMs) < 60_000,
+      );
+      if (!alreadyRecorded) {
+        cleanEvents.push({
+          id: `apilog-${log.id}`,
+          webinar_id: log.webinar_id || "cmthk6y4001kos60ybxfkbc67",
+          session_date: istDate,
+          email: em,
+          full_name: log.full_name || log.request_body?.["name"] || nameByEmail.get(em) || null,
+          event_type: "join",
+          duration_seconds: 0,
+          created_at: log.created_at,
+        });
+      }
+    }
+
+    cleanEvents.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    // Recompute session summaries so merged join events are reflected in unique_attendees & joins
+    const sessionMap = new Map<string, AdminWebinarHistoricalSession>();
+    for (const s of parsed.sessions ?? []) {
+      sessionMap.set(s.session_date, { ...s });
+    }
+    const eventsBySession = new Map<string, AdminWebinarHistoricalEvent[]>();
+    for (const ev of cleanEvents) {
+      const list = eventsBySession.get(ev.session_date) ?? [];
+      list.push(ev);
+      eventsBySession.set(ev.session_date, list);
+    }
+    for (const [sDate, evList] of eventsBySession.entries()) {
+      const uniqueEmails = new Set(evList.map((x) => x.email).filter(Boolean));
+      const joinsCount = evList.filter((x) => x.event_type === "join").length;
+      const leavesCount = evList.filter((x) => x.event_type === "leave").length;
+      const existing = sessionMap.get(sDate);
+      sessionMap.set(sDate, {
+        session_date: sDate,
+        total_events: Math.max(existing?.total_events ?? 0, evList.length),
+        unique_attendees: Math.max(existing?.unique_attendees ?? 0, uniqueEmails.size),
+        joins: Math.max(existing?.joins ?? 0, joinsCount),
+        leaves: Math.max(existing?.leaves ?? 0, leavesCount),
+      });
+    }
+
+    const mergedSessions = Array.from(sessionMap.values()).sort((a, b) =>
+      b.session_date.localeCompare(a.session_date),
+    );
 
     return {
       ok: true as const,
       error: null,
-      sessions: parsed.sessions ?? [],
+      sessions: mergedSessions,
       events: cleanEvents,
     };
   });

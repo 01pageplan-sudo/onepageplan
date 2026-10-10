@@ -67,7 +67,7 @@ async function logWebinarCall(entry: {
 }
 
 export type JoinTokenResult =
-  | { ok: true; token: string; webinarId: string }
+  | { ok: true; token: string; webinarId: string; fullName: string }
   | { ok: false; reason: "not_registered" | "token_failed" | "rate_limited" };
 
 export const getJoinToken = createServerFn({ method: "POST" })
@@ -103,7 +103,7 @@ export const getJoinToken = createServerFn({ method: "POST" })
             .maybeSingle();
           if ((eRow as any)?.joining_link) {
             const link = String((eRow as any).joining_link).trim();
-            const match = link.match(/(?:room|embed)\/([a-zA-Z0-9]+)/i);
+            const match = link.match(/(?:room|embed|webinar-page)\/([a-zA-Z0-9]+)/i);
             if (match && match[1]) {
               webinarId = match[1];
             } else if (/^[a-zA-Z0-9]{15,40}$/.test(link)) {
@@ -249,7 +249,45 @@ export const getJoinToken = createServerFn({ method: "POST" })
       }
 
       await logWebinarCall({ ...logBase, outcome: "ok", error: null });
-      return { ok: true as const, token, webinarId };
+
+      // Record live join event in webinar_event_logs and mark attendee status as attended
+      try {
+        const { createPublicServerClient } = await import("./supabase-public.server");
+        const { sessionDateISO } = await import("./session");
+        const db = createPublicServerClient();
+        const sessionDate = sessionDateISO();
+
+        await db.from("webinar_event_logs" as never).insert({
+          webinar_id: webinarId,
+          session_date: sessionDate,
+          email: email.toLowerCase(),
+          event_type: "join",
+          event_data: {
+            full_name: fullName,
+            email: email.toLowerCase(),
+            phone,
+            source: "room_join_token",
+          },
+          duration_seconds: 0,
+        } as never);
+
+        await db.rpc("record_webinar_event", {
+          p_email: email.toLowerCase(),
+          p_session_date: sessionDate,
+          p_status: "attended",
+          p_payload: {
+            event: "join",
+            full_name: fullName,
+            email: email.toLowerCase(),
+            webinar_id: webinarId,
+            joined_at: new Date().toISOString(),
+          } as never,
+        });
+      } catch (eventErr) {
+        console.warn("getJoinToken: could not record webinar join event:", eventErr);
+      }
+
+      return { ok: true as const, token, webinarId, fullName };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error("getJoinToken failed:", message);

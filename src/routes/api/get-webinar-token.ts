@@ -135,7 +135,43 @@ export const Route = createFileRoute("/api/get-webinar-token")({
           return Response.json({ error: "token_failed" }, { status: 502 });
         }
 
-        return Response.json({ token, webinarId }, { headers: { "cache-control": "no-store" } });
+        try {
+          const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+          const { sessionDateISO } = await import("@/lib/session");
+          const db = createPublicServerClient();
+          const sessionDate = sessionDateISO();
+
+          await db.from("webinar_event_logs" as never).insert({
+            webinar_id: webinarId,
+            session_date: sessionDate,
+            email: email.toLowerCase(),
+            event_type: "join",
+            event_data: {
+              full_name: full,
+              email: email.toLowerCase(),
+              phone: phone || "+910000000000",
+              source: "api_get_webinar_token",
+            },
+            duration_seconds: 0,
+          } as never);
+
+          await db.rpc("record_webinar_event", {
+            p_email: email.toLowerCase(),
+            p_session_date: sessionDate,
+            p_status: "attended",
+            p_payload: {
+              event: "join",
+              full_name: full,
+              email: email.toLowerCase(),
+              webinar_id: webinarId,
+              joined_at: new Date().toISOString(),
+            } as never,
+          });
+        } catch {
+          /* non-fatal */
+        }
+
+        return Response.json({ token, webinarId, name: full }, { headers: { "cache-control": "no-store" } });
       },
     },
   },

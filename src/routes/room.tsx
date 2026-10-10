@@ -75,6 +75,7 @@ function RoomPage() {
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState("");
   const [webinarId, setWebinarId] = useState("");
+  const [attendeeName, setAttendeeName] = useState("");
   const tracked = useRef(false);
   const autoLaunched = useRef(false);
 
@@ -86,6 +87,7 @@ function RoomPage() {
         if (result.ok) {
           setToken(result.token);
           setWebinarId(result.webinarId);
+          setAttendeeName(result.fullName);
           setPhase("player");
         } else if (result.reason === "not_registered") {
           setPhase("not_registered");
@@ -236,6 +238,7 @@ function RoomPage() {
         {phase === "player" ? (
           <WebinarEmbed
             email={email}
+            name={attendeeName}
             token={token}
             webinarId={webinarId}
             onClose={() => setPhase("form")}
