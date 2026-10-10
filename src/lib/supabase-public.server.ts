@@ -12,6 +12,8 @@ import type { Database } from "@/integrations/supabase/types";
 export function createPublicServerClient() {
   const url = process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"];
   const key =
+    process.env["SUPABASE_SERVICE_ROLE_KEY"] ??
+    process.env["SUPABASE_SECRET_KEY"] ??
     process.env["SUPABASE_PUBLISHABLE_KEY"] ??
     process.env["SUPABASE_ANON_KEY"] ??
     process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ??
@@ -19,7 +21,7 @@ export function createPublicServerClient() {
 
   if (!url || !key) {
     throw new Error(
-      "Missing SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY (or SUPABASE_ANON_KEY) in the server environment.",
+      "Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_PUBLISHABLE_KEY / SUPABASE_ANON_KEY) in the server environment.",
     );
   }
 

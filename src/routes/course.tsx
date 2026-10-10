@@ -848,6 +848,12 @@ function CoursePortalPage() {
   const currentMinSec = activeLesson.minWatchSeconds || 120;
   const watchProgressPct = Math.min(100, Math.round((currentWatchSec / currentMinSec) * 100));
 
+  const getSupabaseAuthHeaders = async (): Promise<Record<string, string>> => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   // Mark lesson as complete and unlock next module
   const markLessonComplete = (lessonId: string) => {
     if (!completedLessonIds.includes(lessonId)) {
@@ -860,9 +866,11 @@ function CoursePortalPage() {
           /* ignore */
         }
       }
-      void recordLessonCompletionFn({ data: { lessonId } }).catch(() => {
-        /* non-blocking server sync */
-      });
+      void getSupabaseAuthHeaders()
+        .then((headers) => recordLessonCompletionFn({ data: { lessonId }, headers }))
+        .catch(() => {
+          /* non-blocking server sync */
+        });
     }
   };
 
@@ -905,7 +913,9 @@ function CoursePortalPage() {
           return;
         }
 
-        const res = await checkAccessFn();
+        const res = await checkAccessFn({
+          headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
+        });
         if (!isMounted) return;
 
         if (res.ok && res.authenticated) {
@@ -961,7 +971,8 @@ function CoursePortalPage() {
       return;
     }
 
-    getLessonVideoFn({ data: { lessonId: activeLesson.id } })
+    void getSupabaseAuthHeaders()
+      .then((headers) => getLessonVideoFn({ data: { lessonId: activeLesson.id }, headers }))
       .then((res) => {
         if (isMounted) {
           if (res.ok && res.lesson?.embedUrl) {
@@ -998,7 +1009,8 @@ function CoursePortalPage() {
     }
     async function loadComments() {
       try {
-        const res = await getLessonCommentsFn({ data: { lessonId: activeLesson.id } });
+        const headers = await getSupabaseAuthHeaders();
+        const res = await getLessonCommentsFn({ data: { lessonId: activeLesson.id }, headers });
         if (isMounted && res.ok) {
           setComments(res.comments);
         }
@@ -1022,12 +1034,14 @@ function CoursePortalPage() {
     const name = authorNameInput.trim() || undefined;
 
     try {
+      const headers = await getSupabaseAuthHeaders();
       const res = await postLessonCommentFn({
         data: {
           lessonId: activeLesson.id,
           name,
           content: commentText.trim(),
         },
+        headers,
       });
 
       if (res.ok && res.comment) {
@@ -1757,7 +1771,8 @@ function CoursePortalPage() {
               }}
               onShowPurchase={() => setShowPurchaseView(true)}
               onCheckAccess={async () => {
-                return await checkAccessFn();
+                const headers = await getSupabaseAuthHeaders();
+                return await checkAccessFn({ headers });
               }}
             />
           )}

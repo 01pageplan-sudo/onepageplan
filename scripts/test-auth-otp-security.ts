@@ -810,6 +810,112 @@ async function runSecurityTests() {
     assert.equal(goldNotified, true, "Must trigger Gold Completer notification");
   });
 
+  await test("Audit Fix 1: All client serverFn calls in course.tsx and course.complete.tsx forward Authorization Bearer token headers", async () => {
+    const courseTsx = fs.readFileSync(path.resolve(process.cwd(), "src/routes/course.tsx"), "utf-8");
+    const courseCompleteTsx = fs.readFileSync(
+      path.resolve(process.cwd(), "src/routes/course.complete.tsx"),
+      "utf-8",
+    );
+
+    assert(
+      courseTsx.includes("const getSupabaseAuthHeaders = async ()"),
+      "course.tsx must define getSupabaseAuthHeaders helper",
+    );
+    assert(
+      courseTsx.includes("recordLessonCompletionFn({ data: { lessonId }, headers })"),
+      "recordLessonCompletionFn must pass auth headers",
+    );
+    assert(
+      courseTsx.includes("checkAccessFn({\n          headers: { Authorization: `Bearer ${sessionData.session.access_token}` }"),
+      "initSession checkAccessFn must pass Authorization Bearer header",
+    );
+    assert(
+      courseTsx.includes("return await checkAccessFn({ headers });"),
+      "onCheckAccess callback must pass auth headers to checkAccessFn",
+    );
+    assert(
+      courseTsx.includes("getLessonVideoFn({ data: { lessonId: activeLesson.id }, headers })"),
+      "getLessonVideoFn must pass auth headers",
+    );
+    assert(
+      courseTsx.includes("getLessonCommentsFn({ data: { lessonId: activeLesson.id }, headers })"),
+      "getLessonCommentsFn must pass auth headers",
+    );
+    assert(
+      courseCompleteTsx.includes(
+        "getCompleterDataFn({\n          headers: { Authorization: `Bearer ${sessionData.session.access_token}` }",
+      ),
+      "course.complete.tsx getCompleterDataFn must pass Authorization Bearer header",
+    );
+  });
+
+  await test("Audit Fix 2 & 3: Server Supabase client prioritizes SUPABASE_SERVICE_ROLE_KEY and migration 20261010170000 aligns commerce_events + locks down admin RPCs", async () => {
+    const publicServerTs = fs.readFileSync(
+      path.resolve(process.cwd(), "src/lib/supabase-public.server.ts"),
+      "utf-8",
+    );
+    assert(
+      publicServerTs.indexOf('process.env["SUPABASE_SERVICE_ROLE_KEY"]') <
+        publicServerTs.indexOf('process.env["SUPABASE_PUBLISHABLE_KEY"]'),
+      "createPublicServerClient must prefer SUPABASE_SERVICE_ROLE_KEY before publishable/anon key",
+    );
+
+    const mig170000 = fs.readFileSync(
+      path.resolve(
+        process.cwd(),
+        "supabase/migrations/20261010170000_fix_commerce_events_and_rpc_security.sql",
+      ),
+      "utf-8",
+    );
+    assert(
+      mig170000.includes("CREATE TRIGGER trg_sync_commerce_events_name_type"),
+      "Migration must sync commerce_events event_name and event_type columns",
+    );
+    assert(
+      mig170000.includes(
+        "REVOKE ALL ON FUNCTION public.record_manual_grant(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;",
+      ),
+      "Migration must revoke anon/authenticated from record_manual_grant",
+    );
+    assert(
+      mig170000.includes(
+        "REVOKE ALL ON FUNCTION public.bulk_upload_members(JSONB, TEXT) FROM PUBLIC, anon, authenticated;",
+      ),
+      "Migration must revoke anon/authenticated from bulk_upload_members",
+    );
+    assert(
+      mig170000.includes(
+        "REVOKE ALL ON FUNCTION public.grant_entitlement_on_capture(UUID, TEXT) FROM PUBLIC, anon, authenticated;",
+      ),
+      "Migration must revoke anon/authenticated from grant_entitlement_on_capture",
+    );
+    assert(
+      mig170000.includes(
+        "REVOKE ALL ON FUNCTION public.revoke_entitlement_on_refund(UUID) FROM PUBLIC, anon, authenticated;",
+      ),
+      "Migration must revoke anon/authenticated from revoke_entitlement_on_refund",
+    );
+  });
+
+  await test("Audit Fix 4: submit-reward does not claim no database changes occurred on empty/malformed RPC response", async () => {
+    const submitRewardTs = fs.readFileSync(
+      path.resolve(process.cwd(), "src/routes/api/course/submit-reward.ts"),
+      "utf-8",
+    );
+    assert(
+      submitRewardTs.includes(
+        "Unable to confirm reward claim status from server. Please refresh or try again.",
+      ),
+      "Empty RPC response must state that status could not be confirmed rather than claiming no changes were saved",
+    );
+    assert(
+      !submitRewardTs.includes(
+        "Failed to confirm reward claim transaction. No changes were saved",
+      ),
+      "Must not claim no changes were saved when rpcError is null",
+    );
+  });
+
   console.log("\n=================================================================");
   console.log(`SECURITY TEST SUMMARY: ${passed}/${total} TESTS PASSED`);
   console.log("=================================================================");

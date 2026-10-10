@@ -199,7 +199,7 @@ export async function handleSubmitRewardRequest(
           ok: false,
           retryable: true,
           error:
-            "Failed to confirm reward claim transaction. No changes were saved—please try again.",
+            "Unable to confirm reward claim status from server. Please refresh or try again.",
         },
         { status: 500 },
       );

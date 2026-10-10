@@ -156,7 +156,9 @@ function CourseCompletePage() {
           return;
         }
 
-        const res = await getCompleterDataFn();
+        const res = await getCompleterDataFn({
+          headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
+        });
         if (!isMounted) return;
 
         if (res.authorized) {

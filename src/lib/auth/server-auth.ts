@@ -40,11 +40,12 @@ export async function getAuthenticatedUser(customRequest?: Request): Promise<{
       return { user: null, error: "empty_token" };
     }
 
-    // Load server-side admin client with service role
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Load server-side client (uses service_role when available, or publishable key for Auth API verification)
+    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+    const authClient = createPublicServerClient();
 
     // Cryptographically verify token with Supabase Auth
-    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    const { data, error } = await authClient.auth.getUser(token);
     if (error || !data?.user) {
       return { user: null, error: error?.message || "invalid_token" };
     }
