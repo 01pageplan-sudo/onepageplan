@@ -40,6 +40,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_jwt_role TEXT := coalesce(auth.role(), current_setting('request.jwt.claim.role', true), '');
+  v_auth_uid UUID := auth.uid();
+  v_effective_user_id UUID;
+  v_effective_email TEXT;
+  v_auth_email TEXT;
   v_clean_email TEXT := lower(trim(coalesce(p_email, '')));
   v_clean_tier TEXT := lower(trim(coalesce(p_tier, '')));
 BEGIN
@@ -47,16 +52,79 @@ BEGIN
     RETURN false;
   END IF;
 
-  -- Admin emails bypass
-  IF v_clean_email = 'dodhia.milan@gmail.com' THEN
+  IF v_jwt_role = 'anon' THEN
+    RAISE EXCEPTION 'Unauthorized: anonymous callers cannot verify member access'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF v_jwt_role = 'authenticated' OR (v_auth_uid IS NOT NULL AND v_jwt_role <> 'service_role') THEN
+    IF v_auth_uid IS NULL THEN
+      RAISE EXCEPTION 'Unauthorized: missing authenticated user identity'
+        USING ERRCODE = '42501';
+    END IF;
+
+    IF p_user_id IS NOT NULL AND p_user_id <> v_auth_uid THEN
+      RAISE EXCEPTION 'Unauthorized: cannot check access for another user_id'
+        USING ERRCODE = '42501';
+    END IF;
+
+    SELECT lower(trim(email))
+    INTO v_auth_email
+    FROM auth.users
+    WHERE id = v_auth_uid;
+
+    IF v_auth_email IS NULL OR v_auth_email = '' THEN
+      RETURN false;
+    END IF;
+
+    IF v_clean_email <> '' AND v_clean_email <> v_auth_email THEN
+      RAISE EXCEPTION 'Unauthorized: cannot check access for another email'
+        USING ERRCODE = '42501';
+    END IF;
+
+    v_effective_user_id := v_auth_uid;
+    v_effective_email := v_auth_email;
+  ELSIF v_jwt_role = 'service_role' OR current_user IN ('postgres', 'service_role', 'supabase_admin') THEN
+    IF p_user_id IS NOT NULL THEN
+      SELECT lower(trim(email))
+      INTO v_auth_email
+      FROM auth.users
+      WHERE id = p_user_id;
+
+      IF v_auth_email IS NULL OR v_auth_email = '' THEN
+        RETURN false;
+      END IF;
+
+      IF v_clean_email <> '' AND v_clean_email <> v_auth_email THEN
+        RAISE EXCEPTION 'Unauthorized: p_user_id and p_email do not match in auth.users'
+          USING ERRCODE = '42501';
+      END IF;
+
+      v_effective_user_id := p_user_id;
+      v_effective_email := v_auth_email;
+    ELSE
+      v_effective_user_id := NULL;
+      v_effective_email := v_clean_email;
+    END IF;
+  ELSE
+    RAISE EXCEPTION 'Unauthorized caller context for has_active_access_for_user'
+      USING ERRCODE = '42501';
+  END IF;
+
+  -- Admin emails bypass (only after email verification above)
+  IF v_effective_email = 'dodhia.milan@gmail.com' THEN
     RETURN true;
   END IF;
 
   RETURN EXISTS (
     SELECT 1 FROM public.member_access_grants
     WHERE (
-      (p_user_id IS NOT NULL AND user_id = p_user_id)
-      OR (v_clean_email <> '' AND lower(trim(email)) = v_clean_email)
+      (v_effective_user_id IS NOT NULL AND user_id = v_effective_user_id)
+      OR (
+        v_effective_email <> ''
+        AND lower(trim(email)) = v_effective_email
+        AND (user_id IS NULL OR v_effective_user_id IS NULL OR user_id = v_effective_user_id)
+      )
     )
     AND access_tier = v_clean_tier
     AND status = 'active'
@@ -65,7 +133,7 @@ BEGIN
 END;
 $$;
 
--- 6. Keep backward-compatible has_active_access for background tasks
+-- 6. Keep backward-compatible has_active_access for internal SQL / service_role tasks
 CREATE OR REPLACE FUNCTION public.has_active_access(p_email TEXT, p_tier TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -73,15 +141,49 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_clean_email TEXT := lower(trim(coalesce(p_email, '')));
+  v_clean_tier TEXT := lower(trim(coalesce(p_tier, '')));
+  v_jwt_role TEXT := coalesce(auth.role(), current_setting('request.jwt.claim.role', true), '');
+  v_auth_uid UUID := auth.uid();
+  v_call_stack TEXT;
 BEGIN
-  RETURN public.has_active_access_for_user(NULL, p_email, p_tier);
+  IF v_clean_email = '' OR v_clean_tier = '' THEN
+    RETURN false;
+  END IF;
+
+  GET DIAGNOSTICS v_call_stack = PG_CONTEXT;
+
+  IF position('PL/pgSQL function' in coalesce(v_call_stack, '')) > 0
+     AND length(v_call_stack) - length(replace(v_call_stack, 'PL/pgSQL function', '')) <= length('PL/pgSQL function')
+     AND v_jwt_role NOT IN ('service_role', '')
+  THEN
+    IF v_jwt_role = 'anon' THEN
+      RAISE EXCEPTION 'Unauthorized: anonymous callers cannot check member access'
+        USING ERRCODE = '42501';
+    END IF;
+
+    RETURN public.has_active_access_for_user(v_auth_uid, v_clean_email, v_clean_tier);
+  END IF;
+
+  IF v_clean_email = 'dodhia.milan@gmail.com' THEN
+    RETURN true;
+  END IF;
+
+  RETURN EXISTS (
+    SELECT 1 FROM public.member_access_grants
+    WHERE lower(trim(email)) = v_clean_email
+      AND access_tier = v_clean_tier
+      AND status = 'active'
+      AND (expires_at IS NULL OR expires_at > now())
+  );
 END;
 $$;
 
 -- 7. Idempotent function to link all existing and historical purchases to auth.users.id
 CREATE OR REPLACE FUNCTION public.link_user_entitlements(
-  p_user_id UUID,
-  p_email TEXT
+  p_user_id UUID DEFAULT NULL,
+  p_email TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -89,35 +191,79 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_jwt_role TEXT := coalesce(auth.role(), current_setting('request.jwt.claim.role', true), '');
+  v_auth_uid UUID := auth.uid();
+  v_target_user_id UUID;
+  v_verified_email TEXT;
   v_clean_email TEXT := lower(trim(coalesce(p_email, '')));
 BEGIN
-  IF p_user_id IS NULL OR v_clean_email = '' THEN
-    RETURN;
+  IF v_jwt_role = 'anon' THEN
+    RAISE EXCEPTION 'Unauthorized: anonymous callers cannot link entitlements'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF v_jwt_role = 'authenticated' OR (v_auth_uid IS NOT NULL AND v_jwt_role <> 'service_role') THEN
+    IF v_auth_uid IS NULL THEN
+      RAISE EXCEPTION 'Unauthorized: missing authenticated user identity'
+        USING ERRCODE = '42501';
+    END IF;
+
+    IF p_user_id IS NOT NULL AND p_user_id <> v_auth_uid THEN
+      RAISE EXCEPTION 'Unauthorized: cannot link entitlements for another user_id'
+        USING ERRCODE = '42501';
+    END IF;
+
+    v_target_user_id := v_auth_uid;
+  ELSIF v_jwt_role = 'service_role' OR current_user IN ('postgres', 'service_role', 'supabase_admin', 'supabase_auth_admin') THEN
+    v_target_user_id := p_user_id;
+  ELSE
+    RAISE EXCEPTION 'Unauthorized caller role for link_user_entitlements'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF v_target_user_id IS NULL THEN
+    RAISE EXCEPTION 'Invalid parameter: user_id is required'
+      USING ERRCODE = '22023';
+  END IF;
+
+  SELECT lower(trim(email))
+  INTO v_verified_email
+  FROM auth.users
+  WHERE id = v_target_user_id;
+
+  IF v_verified_email IS NULL OR v_verified_email = '' THEN
+    RAISE EXCEPTION 'Unauthorized: user_id not found in auth.users'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF v_clean_email <> '' AND v_clean_email <> v_verified_email THEN
+    RAISE EXCEPTION 'Unauthorized: supplied email does not match verified user email in auth.users'
+      USING ERRCODE = '42501';
   END IF;
 
   -- Link member_access_grants
   UPDATE public.member_access_grants
-  SET user_id = p_user_id
-  WHERE lower(trim(email)) = v_clean_email
-    AND (user_id IS NULL OR user_id = p_user_id);
+  SET user_id = v_target_user_id
+  WHERE lower(trim(email)) = v_verified_email
+    AND user_id IS NULL;
 
   -- Link orders
   UPDATE public.orders
-  SET user_id = p_user_id
-  WHERE lower(trim(buyer_email)) = v_clean_email
-    AND (user_id IS NULL OR user_id = p_user_id);
+  SET user_id = v_target_user_id
+  WHERE lower(trim(buyer_email)) = v_verified_email
+    AND user_id IS NULL;
 
   -- Link course_completions
   UPDATE public.course_completions
-  SET user_id = p_user_id
-  WHERE lower(trim(email)) = v_clean_email
-    AND (user_id IS NULL OR user_id = p_user_id);
+  SET user_id = v_target_user_id
+  WHERE lower(trim(email)) = v_verified_email
+    AND user_id IS NULL;
 
   -- Link course_comments
   UPDATE public.course_comments
-  SET user_id = p_user_id
-  WHERE lower(trim(author_email)) = v_clean_email
-    AND (user_id IS NULL OR user_id = p_user_id);
+  SET user_id = v_target_user_id
+  WHERE lower(trim(author_email)) = v_verified_email
+    AND user_id IS NULL;
 END;
 $$;
 
@@ -163,7 +309,12 @@ CREATE TRIGGER trigger_auto_link_user_orders
   FOR EACH ROW
   EXECUTE FUNCTION public.auto_link_user_on_grant();
 
--- 9. Permissions
-GRANT EXECUTE ON FUNCTION public.has_active_access_for_user(UUID, TEXT, TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.has_active_access(TEXT, TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.link_user_entitlements(UUID, TEXT) TO authenticated, service_role;
+-- 9. Strict Function Execution Permissions (service_role only for RPC)
+REVOKE ALL ON FUNCTION public.has_active_access_for_user(UUID, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.has_active_access_for_user(UUID, TEXT, TEXT) TO service_role;
+
+REVOKE ALL ON FUNCTION public.has_active_access(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.has_active_access(TEXT, TEXT) TO service_role;
+
+REVOKE ALL ON FUNCTION public.link_user_entitlements(UUID, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.link_user_entitlements(UUID, TEXT) TO service_role;

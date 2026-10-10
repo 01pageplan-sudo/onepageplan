@@ -92,17 +92,19 @@ export async function syncUserEntitlements(userId: string, email: string): Promi
     });
 
     if (rpcError) {
-      // Fallback: direct table updates if RPC is not yet loaded in DB cache
+      // Never fallback on authorization / privilege violations
+      if (rpcError.code === "42501" || String(rpcError.message || "").includes("Unauthorized")) {
+        throw new Error(rpcError.message || "Unauthorized entitlement link attempt");
+      }
+      // Fallback: direct table updates only if RPC is not yet loaded in DB schema cache
       await fallbackDirectSync(supabaseAdmin, userId, cleanEmail);
     }
   } catch (err) {
-    console.warn("[Auth Sync] link_user_entitlements RPC notice:", err);
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await fallbackDirectSync(supabaseAdmin, userId, cleanEmail);
-    } catch {
-      /* ignore */
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("Unauthorized")) {
+      throw err;
     }
+    console.warn("[Auth Sync] link_user_entitlements RPC notice:", err);
   }
 }
 
@@ -111,26 +113,35 @@ async function fallbackDirectSync(
   userId: string,
   email: string,
 ): Promise<void> {
+  // Authoritatively verify userId owns email in auth.users before any direct update
+  const { data: userLookup, error: lookupError } = await adminClient.auth.admin.getUserById(userId);
+  const verifiedEmail = (userLookup?.user?.email || "").trim().toLowerCase();
+
+  if (lookupError || !verifiedEmail || verifiedEmail !== email) {
+    throw new Error("Unauthorized: userId and email do not match in Supabase Auth");
+  }
+
   await Promise.allSettled([
     adminClient
       .from("member_access_grants")
       .update({ user_id: userId })
-      .eq("email", email)
+      .eq("email", verifiedEmail)
       .is("user_id", null),
     adminClient
       .from("orders")
       .update({ user_id: userId })
-      .eq("buyer_email", email)
+      .eq("buyer_email", verifiedEmail)
       .is("user_id", null),
     adminClient
       .from("course_completions")
       .update({ user_id: userId })
-      .eq("email", email)
+      .eq("email", verifiedEmail)
       .is("user_id", null),
     adminClient
       .from("course_comments")
       .update({ user_id: userId })
-      .eq("author_email", email)
+      .eq("author_email", verifiedEmail)
       .is("user_id", null),
   ]);
 }
+

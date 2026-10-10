@@ -455,18 +455,32 @@ export type LessonComment = {
 export const getLessonCommentsFn = createServerFn({ method: "POST" })
   .validator((data: { lessonId: string }) => data)
   .handler(async ({ data }) => {
-    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
-    const db = createPublicServerClient();
+    const { getAuthenticatedUser } = await import("@/lib/auth/server-auth");
+    const { user, error: authErr } = await getAuthenticatedUser();
+    if (authErr || !user) {
+      return { ok: false, comments: [] as LessonComment[], error: "unauthenticated" };
+    }
+
+    const { getMemberEntitledTiers } = await import("@/lib/commerce/video-access.server");
+    const tiers = await getMemberEntitledTiers(user.email, user.id);
+    const hasCourseEntitlement =
+      tiers.canViewMrc || tiers.canViewSilver || tiers.canViewGold || tiers.canViewDiamond || user.isAdmin;
+
+    if (!hasCourseEntitlement) {
+      return { ok: false, comments: [] as LessonComment[], error: "forbidden_unentitled" };
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     try {
-      const { data: rows, error } = await db
+      const { data: rows, error } = await supabaseAdmin
         .from("course_comments" as never)
         .select("*")
         .eq("lesson_id" as never, data.lessonId as never)
         .order("created_at" as never, { ascending: true } as never);
 
       if (error) {
-        return { ok: true, comments: [] as LessonComment[] };
+        return { ok: false, comments: [] as LessonComment[], error: error.message };
       }
 
       return {
@@ -482,7 +496,7 @@ export const getLessonCommentsFn = createServerFn({ method: "POST" })
         })) as LessonComment[],
       };
     } catch {
-      return { ok: true, comments: [] as LessonComment[] };
+      return { ok: false, comments: [] as LessonComment[], error: "query_failed" };
     }
   });
 
@@ -499,6 +513,15 @@ export const postLessonCommentFn = createServerFn({ method: "POST" })
     const { user, error: authErr } = await getAuthenticatedUser();
     if (authErr || !user) {
       return { ok: false, error: "Authentication required to post comments. Please log in." };
+    }
+
+    const { getMemberEntitledTiers } = await import("@/lib/commerce/video-access.server");
+    const tiers = await getMemberEntitledTiers(user.email, user.id);
+    const hasCourseEntitlement =
+      tiers.canViewMrc || tiers.canViewSilver || tiers.canViewGold || tiers.canViewDiamond || user.isAdmin;
+
+    if (!hasCourseEntitlement) {
+      return { ok: false, error: "Only enrolled course members can post comments." };
     }
 
     const cleanContent = (data.content || "").trim();
@@ -526,34 +549,32 @@ export const postLessonCommentFn = createServerFn({ method: "POST" })
         .select()
         .single();
 
-      if (error) {
-        console.warn("[Course Comments] Insert error:", error.message);
+      if (error || !inserted) {
+        console.error("[Course Comments] Insert error:", error?.message || "No row returned");
+        return {
+          ok: false,
+          error: "Failed to save comment to database. Please try again.",
+        };
       }
 
+      const row = inserted as any;
       return {
         ok: true,
         comment: {
-          id: (inserted as any)?.id || `local-${Date.now()}`,
-          lessonId: data.lessonId,
+          id: String(row.id),
+          lessonId: String(row.lesson_id || data.lessonId),
           authorEmail: user.email,
           authorName: displayName,
           content: cleanContent,
-          createdAt: new Date().toISOString(),
+          createdAt: String(row.created_at || new Date().toISOString()),
           isAdmin: user.isAdmin,
         },
       };
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       return {
-        ok: true,
-        comment: {
-          id: `local-${Date.now()}`,
-          lessonId: data.lessonId,
-          authorEmail: user.email,
-          authorName: displayName,
-          content: cleanContent,
-          createdAt: new Date().toISOString(),
-          isAdmin: user.isAdmin,
-        },
+        ok: false,
+        error: `Failed to save comment: ${msg}`,
       };
     }
   });
@@ -851,9 +872,13 @@ function CoursePortalPage() {
     };
   }, [activeLesson.id, activeEmail, hasAccess]);
 
-  // Load comments whenever active lesson changes
+  // Load comments whenever active lesson changes (only for authenticated entitled members)
   useEffect(() => {
     let isMounted = true;
+    if (!activeEmail || !hasAccess) {
+      setComments([]);
+      return;
+    }
     async function loadComments() {
       try {
         const res = await getLessonCommentsFn({ data: { lessonId: activeLesson.id } });
@@ -868,7 +893,7 @@ function CoursePortalPage() {
     return () => {
       isMounted = false;
     };
-  }, [activeLesson.id]);
+  }, [activeLesson.id, activeEmail, hasAccess]);
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();

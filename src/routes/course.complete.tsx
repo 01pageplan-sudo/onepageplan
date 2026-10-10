@@ -43,11 +43,35 @@ export const getCompleterDataFn = createServerFn({ method: "POST" }).handler(asy
     .maybeSingle();
 
   // Check completion record
-  const { data: completion } = await supabaseAdmin
+  const { data: completion, error: completionErr } = await supabaseAdmin
     .from("course_completions" as never)
     .select("*")
     .eq("email" as never, user.email as never)
     .maybeSingle();
+
+  if (completionErr) {
+    return { authorized: false, isCompleter: false, email: user.email };
+  }
+
+  const gRow = grant as any;
+  const cRow = completion as any;
+
+  // Verify genuine completion record exists and belongs to this user
+  const isCompleter = Boolean(
+    cRow &&
+      cRow.id &&
+      cRow.completed_at &&
+      cRow.is_completed !== false &&
+      (!cRow.user_id || cRow.user_id === user.id),
+  );
+
+  if (!isCompleter) {
+    return {
+      authorized: true,
+      isCompleter: false,
+      email: user.email,
+    };
+  }
 
   // Check settings for Gold price
   const { data: settings } = await supabaseAdmin
@@ -56,8 +80,6 @@ export const getCompleterDataFn = createServerFn({ method: "POST" }).handler(asy
     .eq("id" as never, 1)
     .maybeSingle();
 
-  const gRow = grant as any;
-  const cRow = completion as any;
   const sRow = settings as any;
 
   const goldPrice = sRow?.gold_completer_price ? formatRupees(sRow.gold_completer_price) : "₹18,001";
@@ -84,6 +106,7 @@ export const getCompleterDataFn = createServerFn({ method: "POST" }).handler(asy
 
   return {
     authorized: true,
+    isCompleter: true,
     email: user.email,
     isCustomTemplate: isCustom,
     customHtml: renderedHtml,
@@ -112,6 +135,7 @@ function CourseCompletePage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{
     authorized: boolean;
+    isCompleter?: boolean;
     email: string | null;
     isCustomTemplate?: boolean;
     customHtml?: string;
@@ -122,6 +146,7 @@ function CourseCompletePage() {
     certificateName?: string;
   }>({
     authorized: false,
+    isCompleter: false,
     email: null,
   });
 
@@ -141,7 +166,7 @@ function CourseCompletePage() {
         if (res.authorized) {
           setData(res);
         } else {
-          setData({ authorized: false, email: res.email || null });
+          setData({ authorized: false, isCompleter: false, email: res.email || null });
         }
       } catch {
         /* network error */
@@ -195,6 +220,35 @@ function CourseCompletePage() {
               className="inline-block py-2.5 px-6 bg-[#4A5A3A] text-white rounded-lg font-semibold text-xs"
             >
               Go to Member Login →
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!data.isCompleter) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex flex-col justify-between">
+        <header className="border-b border-gray-200 bg-white">
+          <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
+            <Wordmark />
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-md w-full px-4 py-16 text-center space-y-4">
+          <ShieldAlert className="h-10 w-10 text-amber-600 mx-auto" />
+          <h1 className="text-xl font-bold text-gray-900">Course Completion Required</h1>
+          <p className="text-xs text-gray-600">
+            Course completion has not yet been verified for your account. Please complete all required modules in The Calm Money System to unlock your completion certificate and rewards.
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/course"
+              className="inline-block py-2.5 px-6 bg-[#4A5A3A] text-white rounded-lg font-semibold text-xs"
+            >
+              Continue Your Course →
             </Link>
           </div>
         </main>
