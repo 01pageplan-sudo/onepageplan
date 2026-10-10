@@ -502,7 +502,8 @@ export const adminRunDispatch = createServerFn({ method: "POST" })
       }
       const queued = await automation.scheduleSequence(db, data.password);
       const result = await automation.sendDueEmails(db, 50, data.password);
-      return { ok: true as const, queued, ...result };
+      const whatsapp = await automation.dispatchDueWebinarWhatsAppReminders(db, data.password);
+      return { ok: true as const, queued, ...result, whatsapp };
     } catch (error) {
       console.error("adminRunDispatch failed:", error);
       return { ok: false as const, error: "Could not run the queue." };
