@@ -34,6 +34,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ProtectedVideoPlayer } from "@/components/site/ProtectedVideoPlayer";
 import { RazorpayButton } from "@/components/site/RazorpayButton";
+import { CourseLoginView } from "@/components/course/CourseLoginView";
+import { supabase } from "@/integrations/supabase/client";
 
 type CourseSearchParams = {
   email?: string | undefined;
@@ -43,16 +45,6 @@ export const Route = createFileRoute("/course")({
   validateSearch: (search: Record<string, unknown>): CourseSearchParams => ({
     email: typeof search["email"] === "string" ? search["email"] : undefined,
   }),
-  loaderDeps: ({ search }) => ({ email: search.email }),
-  loader: async ({ deps }) => {
-    if (!deps.email) return { initialAccess: null as boolean | null, initialEmail: null as string | null };
-    try {
-      const res = await checkAccessFn({ data: { email: deps.email } });
-      return { initialAccess: res.hasAccess, initialEmail: res.email || deps.email };
-    } catch {
-      return { initialAccess: null, initialEmail: deps.email };
-    }
-  },
   head: () => ({
     meta: [
       { title: "The Calm Money System | Member Portal" },
@@ -64,65 +56,65 @@ export const Route = createFileRoute("/course")({
 });
 
 export const checkAccessFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { email: string }) => data)
-  .handler(async ({ data }) => {
-    const cleanEmail = (data.email || "").trim().toLowerCase();
-    if (!cleanEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(cleanEmail)) {
-      return { ok: false, hasAccess: false, error: "invalid_email", tiers: null };
+  .handler(async () => {
+    const { getAuthenticatedUser, syncUserEntitlements } = await import("@/lib/auth/server-auth");
+    const { user, error } = await getAuthenticatedUser();
+    if (error || !user) {
+      return {
+        ok: false,
+        authenticated: false,
+        hasAccess: false,
+        email: null,
+        userId: null,
+        isAdmin: false,
+        tiers: null,
+        error: error || "unauthenticated",
+      };
     }
 
-    // Owner / Creator & Admin bypass for review & testing
-    const adminEmails = (process.env["COURSE_ADMIN_EMAILS"] || "dodhia.milan@gmail.com")
-      .toLowerCase()
-      .split(",")
-      .map((e) => e.trim());
+    // Associate existing historical purchases and grants with user ID
+    await syncUserEntitlements(user.id, user.email);
 
-    if (adminEmails.includes(cleanEmail)) {
+    if (user.isAdmin) {
       return {
         ok: true,
+        authenticated: true,
         hasAccess: true,
-        email: cleanEmail,
+        email: user.email,
+        userId: user.id,
         isAdmin: true,
         tiers: { canViewMrc: true, canViewSilver: true, canViewGold: true, canViewDiamond: true },
       };
     }
 
     const { getMemberEntitledTiers } = await import("@/lib/commerce/video-access.server");
-    const tiers = await getMemberEntitledTiers(cleanEmail);
+    const tiers = await getMemberEntitledTiers(user.email, user.id);
     const hasAnyTier = tiers.canViewMrc || tiers.canViewSilver || tiers.canViewGold || tiers.canViewDiamond;
-
-    if (hasAnyTier) {
-      return {
-        ok: true,
-        hasAccess: true,
-        email: cleanEmail,
-        tiers,
-      };
-    }
-
-    // Fallback: check legacy course access
-    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
-    const db = createPublicServerClient();
-    const { data: legacyAccess } = await (db.rpc as any)("check_course_access", {
-      p_email: cleanEmail,
-    });
-
-    const hasAccess = Boolean(legacyAccess);
 
     return {
       ok: true,
-      hasAccess,
-      email: cleanEmail,
-      tiers: hasAccess ? { canViewMrc: true, canViewSilver: true, canViewGold: false, canViewDiamond: false } : null,
+      authenticated: true,
+      hasAccess: hasAnyTier,
+      email: user.email,
+      userId: user.id,
+      isAdmin: false,
+      tiers: hasAnyTier ? tiers : null,
     };
   });
 
 export const getLessonVideoFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { email: string; lessonId: string }) => data)
+  .validator((data: { lessonId: string }) => data)
   .handler(async ({ data }) => {
+    const { getAuthenticatedUser } = await import("@/lib/auth/server-auth");
+    const { user, error } = await getAuthenticatedUser();
+    if (error || !user) {
+      return { ok: false, error: "unauthenticated" };
+    }
+
     const { getEntitledLessonVideo } = await import("@/lib/commerce/video-access.server");
     return await getEntitledLessonVideo({
-      email: data.email,
+      email: user.email,
+      userId: user.id,
       lessonId: data.lessonId,
     });
   });
@@ -461,7 +453,7 @@ export type LessonComment = {
 };
 
 export const getLessonCommentsFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { lessonId: string }) => data)
+  .validator((data: { lessonId: string }) => data)
   .handler(async ({ data }) => {
     const { createPublicServerClient } = await import("@/lib/supabase-public.server");
     const db = createPublicServerClient();
@@ -474,7 +466,6 @@ export const getLessonCommentsFn = createServerFn({ method: "POST" })
         .order("created_at" as never, { ascending: true } as never);
 
       if (error) {
-        // Fallback: If table not yet in schema cache, return empty array gracefully
         return { ok: true, comments: [] as LessonComment[] };
       }
 
@@ -496,48 +487,47 @@ export const getLessonCommentsFn = createServerFn({ method: "POST" })
   });
 
 export const postLessonCommentFn = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     (data: {
       lessonId: string;
-      email: string;
       name?: string | undefined;
       content: string;
     }) => data,
   )
   .handler(async ({ data }) => {
-    const cleanEmail = (data.email || "").trim().toLowerCase();
-    const cleanContent = (data.content || "").trim();
-
-    if (!cleanEmail || !cleanContent) {
-      return { ok: false, error: "Content and email required." };
+    const { getAuthenticatedUser } = await import("@/lib/auth/server-auth");
+    const { user, error: authErr } = await getAuthenticatedUser();
+    if (authErr || !user) {
+      return { ok: false, error: "Authentication required to post comments. Please log in." };
     }
 
-    const { createPublicServerClient } = await import("@/lib/supabase-public.server");
-    const db = createPublicServerClient();
+    const cleanContent = (data.content || "").trim();
+    if (!cleanContent) {
+      return { ok: false, error: "Comment content cannot be empty." };
+    }
 
-    const isAdmin =
-      cleanEmail === "dodhia.milan@gmail.com" ||
-      (process.env["COURSE_ADMIN_EMAILS"] || "").toLowerCase().includes(cleanEmail);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const displayName =
       (data.name || "").trim() ||
-      (isAdmin ? "Milan Dodhia (Mentor)" : cleanEmail.split("@")[0] || "Member");
+      (user.isAdmin ? "Milan Dodhia (Mentor)" : user.email.split("@")[0] || "Member");
 
     try {
-      const { data: inserted, error } = await db
+      const { data: inserted, error } = await supabaseAdmin
         .from("course_comments" as never)
         .insert({
           lesson_id: data.lessonId,
-          author_email: cleanEmail,
+          author_email: user.email,
+          user_id: user.id,
           author_name: displayName,
           content: cleanContent,
-          is_admin: isAdmin,
+          is_admin: user.isAdmin,
         } as never)
         .select()
         .single();
 
       if (error) {
-        console.warn("[Course Comments] Insert fallback:", error.message);
+        console.warn("[Course Comments] Insert error:", error.message);
       }
 
       return {
@@ -545,11 +535,11 @@ export const postLessonCommentFn = createServerFn({ method: "POST" })
         comment: {
           id: (inserted as any)?.id || `local-${Date.now()}`,
           lessonId: data.lessonId,
-          authorEmail: cleanEmail,
+          authorEmail: user.email,
           authorName: displayName,
           content: cleanContent,
           createdAt: new Date().toISOString(),
-          isAdmin,
+          isAdmin: user.isAdmin,
         },
       };
     } catch {
@@ -558,11 +548,11 @@ export const postLessonCommentFn = createServerFn({ method: "POST" })
         comment: {
           id: `local-${Date.now()}`,
           lessonId: data.lessonId,
-          authorEmail: cleanEmail,
+          authorEmail: user.email,
           authorName: displayName,
           content: cleanContent,
           createdAt: new Date().toISOString(),
-          isAdmin,
+          isAdmin: user.isAdmin,
         },
       };
     }
@@ -570,12 +560,13 @@ export const postLessonCommentFn = createServerFn({ method: "POST" })
 
 function CoursePortalPage() {
   const search = Route.useSearch();
-  const loaderData = Route.useLoaderData();
-  const [emailInput, setEmailInput] = useState(() => search.email || loaderData?.initialEmail || "");
-  const [activeEmail, setActiveEmail] = useState<string | null>(() => loaderData?.initialEmail ?? null);
-  const [hasAccess, setHasAccess] = useState<boolean | null>(() => loaderData?.initialAccess ?? null);
-  const [checking, setChecking] = useState(false);
-  const [errorNotice, setErrorNotice] = useState("");
+  const [activeEmail, setActiveEmail] = useState<string | null>(null);
+  const [activeUserId, setActiveUserId] = useState<string | null>(null);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [showPurchaseView, setShowPurchaseView] = useState(false);
+  const [emailInput, setEmailInput] = useState(() => search.email || "");
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
 
@@ -703,8 +694,8 @@ function CoursePortalPage() {
   const currentLessonIndex = allLessons.findIndex((l) => l.id === activeLesson.id);
   const nextLesson = allLessons[currentLessonIndex + 1];
 
-  // Creator bypass: dodhia.milan@gmail.com can toggle between Student View (locked) and Mentor View (all unlocked)
-  const isCreatorAdmin = activeEmail === "dodhia.milan@gmail.com";
+  // Creator bypass: verified admin can toggle between Student View (locked) and Mentor View (all unlocked)
+  const isCreatorAdmin = isAdminUser;
   const [studentPreviewMode, setStudentPreviewMode] = useState<boolean>(true); // default to student locked view to test
 
   // Check if a specific lesson is unlocked
@@ -765,42 +756,63 @@ function CoursePortalPage() {
     };
   }, [activeLesson.id]);
 
-  const verifyEmail = async (targetEmail: string) => {
-    const clean = targetEmail.trim().toLowerCase();
-    if (!clean) return;
-    setErrorNotice("");
-    setChecking(true);
-
-    try {
-      const res = await checkAccessFn({ data: { email: clean } });
-      if (!res.ok && res.error === "invalid_email") {
-        setErrorNotice("Please enter a valid email address.");
-        setChecking(false);
-        return;
-      }
-
-      setActiveEmail(res.email || clean);
-      setHasAccess(res.hasAccess);
-      if (res.tiers) {
-        setMemberTiers(res.tiers);
-        if (res.tiers.canViewMrc && !res.tiers.canViewSilver) {
-          setActiveSectionId("sec-mrc");
-          setActiveLessonId("mrc-01");
+  // Session verification on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function initSession() {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
+          if (isMounted) setIsCheckingAuth(false);
+          return;
         }
-      }
-      if (res.hasAccess && typeof window !== "undefined") {
-        try {
-          window.localStorage.setItem("opp_course_email", clean);
-        } catch {
-          /* ignore */
+
+        const res = await checkAccessFn();
+        if (!isMounted) return;
+
+        if (res.ok && res.authenticated) {
+          setActiveEmail(res.email);
+          setActiveUserId(res.userId);
+          setIsAdminUser(Boolean(res.isAdmin));
+          setHasAccess(res.hasAccess);
+          if (res.tiers) {
+            setMemberTiers(res.tiers);
+            if (res.tiers.canViewMrc && !res.tiers.canViewSilver) {
+              setActiveSectionId("sec-mrc");
+              setActiveLessonId("mrc-01");
+            }
+          }
+        } else {
+          // Token invalid or expired on server
+          await supabase.auth.signOut().catch(() => {});
+          setActiveEmail(null);
+          setActiveUserId(null);
+          setHasAccess(null);
         }
+      } catch {
+        /* ignore */
+      } finally {
+        if (isMounted) setIsCheckingAuth(false);
       }
-    } catch {
-      setErrorNotice("Could not verify access. Please try again.");
-    } finally {
-      setChecking(false);
     }
-  };
+
+    void initSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        setActiveEmail(null);
+        setActiveUserId(null);
+        setHasAccess(null);
+        setMemberTiers(null);
+        setIsAdminUser(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   // Dynamically resolve protected BIGVU embed URL for active lesson
   useEffect(() => {
@@ -811,7 +823,7 @@ function CoursePortalPage() {
       return;
     }
 
-    getLessonVideoFn({ data: { email: activeEmail, lessonId: activeLesson.id } })
+    getLessonVideoFn({ data: { lessonId: activeLesson.id } })
       .then((res) => {
         if (isMounted) {
           if (res.ok && res.lesson?.embedUrl) {
@@ -839,29 +851,6 @@ function CoursePortalPage() {
     };
   }, [activeLesson.id, activeEmail, hasAccess]);
 
-  const handleVerifyEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await verifyEmail(emailInput);
-  };
-
-  // Auto-verify on mount from query param or localStorage
-  useEffect(() => {
-    const queryEmail = search.email?.trim().toLowerCase();
-    if (queryEmail) {
-      setEmailInput(queryEmail);
-      void verifyEmail(queryEmail);
-      return;
-    }
-
-    if (typeof window !== "undefined") {
-      const savedEmail = window.localStorage.getItem("opp_course_email")?.trim().toLowerCase();
-      if (savedEmail) {
-        setEmailInput(savedEmail);
-        void verifyEmail(savedEmail);
-      }
-    }
-  }, [search.email]);
-
   // Load comments whenever active lesson changes
   useEffect(() => {
     let isMounted = true;
@@ -888,14 +877,12 @@ function CoursePortalPage() {
     setSubmittingComment(true);
     setCommentSuccess(false);
 
-    const email = activeEmail || emailInput || "guest@onepageplan.in";
     const name = authorNameInput.trim() || undefined;
 
     try {
       const res = await postLessonCommentFn({
         data: {
           lessonId: activeLesson.id,
-          email,
           name,
           content: commentText.trim(),
         },
@@ -908,21 +895,20 @@ function CoursePortalPage() {
         setTimeout(() => setCommentSuccess(false), 3000);
       }
     } catch {
-      // Fallback local append for immediate responsive UI
-      const localComment: LessonComment = {
-        id: `local-${Date.now()}`,
-        lessonId: activeLesson.id,
-        authorEmail: email,
-        authorName: name || (email === "dodhia.milan@gmail.com" ? "Milan Dodhia (Mentor)" : email.split("@")[0] || "Member"),
-        content: commentText.trim(),
-        createdAt: new Date().toISOString(),
-        isAdmin: email === "dodhia.milan@gmail.com",
-      };
-      setComments((prev) => [...prev, localComment]);
-      setCommentText("");
+      // Fallback
     } finally {
       setSubmittingComment(false);
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut().catch(() => {});
+    setActiveEmail(null);
+    setActiveUserId(null);
+    setHasAccess(null);
+    setMemberTiers(null);
+    setIsAdminUser(false);
+    setShowPurchaseView(false);
   };
 
   return (
@@ -954,13 +940,7 @@ function CoursePortalPage() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (typeof window !== "undefined") {
-                        window.localStorage.removeItem("opp_course_email");
-                      }
-                      setHasAccess(null);
-                      setActiveEmail(null);
-                    }}
+                    onClick={handleLogout}
                     className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2 ml-1"
                   >
                     Logout
@@ -974,42 +954,10 @@ function CoursePortalPage() {
         </header>
 
         <main className="mx-auto max-w-6xl px-4 py-8">
-          {/* STEP 1: Not logged in / Email not verified yet */}
-          {hasAccess === null ? (
-            <div className="mx-auto max-w-md text-center py-12">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Lock className="h-6 w-6" />
-              </div>
-              <h1 className="text-2xl font-bold">The Calm Money System</h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Enter the email address you used when purchasing to unlock your recorded curriculum.
-              </p>
-
-              <form onSubmit={handleVerifyEmail} className="mt-6 space-y-4">
-                <Input
-                  type="email"
-                  placeholder="name@example.com"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  required
-                  className="text-center"
-                />
-                <Button type="submit" disabled={checking} className="w-full">
-                  {checking ? "Checking verified access..." : "Access Course Materials →"}
-                </Button>
-                {errorNotice ? <p className="text-xs text-destructive">{errorNotice}</p> : null}
-              </form>
-
-              <div className="mt-10 pt-6 border-t border-border/60 text-xs text-muted-foreground">
-                Haven't enrolled yet?{" "}
-                <button
-                  type="button"
-                  onClick={() => setHasAccess(false)}
-                  className="font-semibold text-primary underline underline-offset-4"
-                >
-                  View curriculum & purchase access (₹6,000)
-                </button>
-              </div>
+          {isCheckingAuth ? (
+            <div className="mx-auto max-w-md text-center py-24 space-y-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+              <p className="text-xs text-muted-foreground">Checking authenticated session...</p>
             </div>
           ) : hasAccess === true ? (
             /* STEP 2: Access verified -> Full Structure (Modules, Sprints, Bonuses, Materials, Comments) */
@@ -1461,8 +1409,8 @@ function CoursePortalPage() {
                 </div>
               </div>
             </div>
-          ) : (
-            /* STEP 3: No verified access -> Direct Razorpay ₹6,000 Purchase */
+          ) : showPurchaseView ? (
+            /* STEP 3: Direct Razorpay ₹6,000 Purchase */
             <div className="mx-auto max-w-2xl py-8 space-y-8">
               <div className="text-center space-y-3">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brass)]/15 text-[var(--brass)]">
@@ -1629,10 +1577,9 @@ function CoursePortalPage() {
                     email={emailInput.trim()}
                     name={buyerName.trim()}
                     phone={buyerPhone.trim()}
-                    discountCode={appliedDiscount?.code}
+                    discountCode={appliedDiscount ? appliedDiscount.code : undefined}
                     onSuccess={() => {
-                      setActiveEmail(emailInput.trim().toLowerCase());
-                      setHasAccess(true);
+                      setShowPurchaseView(false);
                     }}
                   />
                   <p className="text-center text-[11px] text-muted-foreground mt-2">
@@ -1644,13 +1591,33 @@ function CoursePortalPage() {
               <div className="text-center">
                 <button
                   type="button"
-                  onClick={() => setHasAccess(null)}
+                  onClick={() => setShowPurchaseView(false)}
                   className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
                 >
-                  Already paid with a different email? Log in here
+                  Already paid? Log in here with your email code →
                 </button>
               </div>
             </div>
+          ) : (
+            /* STEP 1: Email OTP Login Screen */
+            <CourseLoginView
+              initialEmail={search.email || ""}
+              onLoginSuccess={(email, tiers, userId, isAdmin) => {
+                setActiveEmail(email);
+                setActiveUserId(userId);
+                setIsAdminUser(Boolean(isAdmin));
+                setMemberTiers(tiers);
+                setHasAccess(true);
+                if (tiers?.canViewMrc && !tiers?.canViewSilver) {
+                  setActiveSectionId("sec-mrc");
+                  setActiveLessonId("mrc-01");
+                }
+              }}
+              onShowPurchase={() => setShowPurchaseView(true)}
+              onCheckAccess={async () => {
+                return await checkAccessFn();
+              }}
+            />
           )}
         </main>
       </div>

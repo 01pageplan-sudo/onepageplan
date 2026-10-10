@@ -3,6 +3,7 @@ import { Award, CheckCircle2, Package, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CourseRewardFormProps {
   email: string;
@@ -33,11 +34,18 @@ export function CourseRewardForm({
     setError(null);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch("/api/course/submit-reward", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
-          email: email.trim().toLowerCase(),
           certificateName: name.trim(),
           tshirtSize: size,
           shippingAddress: address.trim(),

@@ -1,97 +1,104 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
 import { getActiveTemplateHtml } from "@/lib/commerce/templates.server";
 import { renderTemplateWithTokens } from "@/lib/commerce/token-engine.server";
 import { formatRupees } from "@/lib/commerce/pricing.server";
 import { formatPlainDate } from "@/lib/commerce/completion.server";
-import { createPublicServerClient } from "@/lib/supabase-public.server";
 import { CourseRewardForm } from "@/components/commerce/CourseRewardForm";
 import { Wordmark } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
-import { Sparkles, Trophy, ArrowRight, ShieldAlert } from "lucide-react";
+import { Sparkles, Trophy, ShieldAlert, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 type SearchParams = {
-  email?: string;
+  email?: string | undefined;
 };
+
+export const getCompleterDataFn = createServerFn({ method: "POST" }).handler(async () => {
+  const { getAuthenticatedUser } = await import("@/lib/auth/server-auth");
+  const { user, error: authErr } = await getAuthenticatedUser();
+
+  if (authErr || !user) {
+    return { authorized: false, isCompleter: false, email: null };
+  }
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  // Verify member has silver access
+  const { getMemberEntitledTiers } = await import("@/lib/commerce/video-access.server");
+  const tiers = await getMemberEntitledTiers(user.email, user.id);
+
+  if (!tiers.canViewSilver && !user.isAdmin) {
+    return { authorized: false, isCompleter: false, email: user.email };
+  }
+
+  // Fetch access grant for cohort info
+  const { data: grant } = await supabaseAdmin
+    .from("member_access_grants" as never)
+    .select("*, cohorts(*)")
+    .eq("email" as never, user.email as never)
+    .eq("access_tier" as never, "silver")
+    .eq("status" as never, "active")
+    .maybeSingle();
+
+  // Check completion record
+  const { data: completion } = await supabaseAdmin
+    .from("course_completions" as never)
+    .select("*")
+    .eq("email" as never, user.email as never)
+    .maybeSingle();
+
+  // Check settings for Gold price
+  const { data: settings } = await supabaseAdmin
+    .from("commerce_settings" as never)
+    .select("*")
+    .eq("id" as never, 1)
+    .maybeSingle();
+
+  const gRow = grant as any;
+  const cRow = completion as any;
+  const sRow = settings as any;
+
+  const goldPrice = sRow?.gold_completer_price ? formatRupees(sRow.gold_completer_price) : "₹18,001";
+  const goldDeadline = formatPlainDate(cRow?.gold_upgrade_deadline);
+
+  // Fetch custom template if any
+  const { html: rawHtml, isCustom } = await getActiveTemplateHtml("course-complete");
+
+  let renderedHtml = "";
+  if (isCustom) {
+    const rendered = await renderTemplateWithTokens(
+      rawHtml,
+      {
+        first_name: user.email.split("@")[0],
+        cohort_name: gRow?.cohorts?.name || "Cohort",
+        gold_price: goldPrice,
+        gold_deadline: goldDeadline,
+        certificate_form: `<div id="opp-reward-form-anchor"></div>`,
+      },
+      "course-complete",
+    );
+    renderedHtml = rendered.html;
+  }
+
+  return {
+    authorized: true,
+    email: user.email,
+    isCustomTemplate: isCustom,
+    customHtml: renderedHtml,
+    cohortName: gRow?.cohorts?.name || "Cohort",
+    goldPrice,
+    goldDeadline,
+    rewardSubmitted: Boolean(cRow?.reward_submitted_at),
+    certificateName: cRow?.certificate_name || "",
+  };
+});
 
 export const Route = createFileRoute("/course/complete")({
   validateSearch: (search: Record<string, unknown>): SearchParams => ({
     email: typeof search["email"] === "string" ? search["email"] : undefined,
   }),
-  loaderDeps: ({ search }) => ({ email: search.email }),
-  loader: async ({ deps }) => {
-    const cleanEmail = (deps.email || "").trim().toLowerCase();
-    if (!cleanEmail) {
-      return { authorized: false, isCompleter: false };
-    }
-
-    const db = createPublicServerClient();
-
-    // Verify member has silver access
-    const { data: grant } = await db
-      .from("member_access_grants" as never)
-      .select("*, cohorts(*)")
-      .eq("email" as never, cleanEmail)
-      .eq("access_tier" as never, "silver")
-      .eq("status" as never, "active")
-      .maybeSingle();
-
-    if (!grant) {
-      return { authorized: false, isCompleter: false };
-    }
-
-    // Check completion record
-    const { data: completion } = await db
-      .from("course_completions" as never)
-      .select("*")
-      .eq("email" as never, cleanEmail)
-      .maybeSingle();
-
-    // Check settings for Gold price
-    const { data: settings } = await db
-      .from("commerce_settings" as never)
-      .select("*")
-      .eq("id" as never, 1)
-      .maybeSingle();
-
-    const gRow = grant as any;
-    const cRow = completion as any;
-    const sRow = settings as any;
-
-    const goldPrice = sRow?.gold_completer_price ? formatRupees(sRow.gold_completer_price) : "₹18,001";
-    const goldDeadline = formatPlainDate(cRow?.gold_upgrade_deadline);
-
-    // Fetch custom template if any
-    const { html: rawHtml, isCustom } = await getActiveTemplateHtml("course-complete");
-
-    let renderedHtml = "";
-    if (isCustom) {
-      // If custom template uploaded, render it with token replacements
-      const rendered = await renderTemplateWithTokens(
-        rawHtml,
-        {
-          first_name: cleanEmail.split("@")[0],
-          cohort_name: gRow.cohorts?.name || "Cohort",
-          gold_price: goldPrice,
-          gold_deadline: goldDeadline,
-          certificate_form: `<div id="opp-reward-form-anchor"></div>`,
-        },
-        "course-complete"
-      );
-      renderedHtml = rendered.html;
-    }
-
-    return {
-      authorized: true,
-      email: cleanEmail,
-      isCustomTemplate: isCustom,
-      customHtml: renderedHtml,
-      cohortName: gRow.cohorts?.name || "Cohort",
-      goldPrice,
-      goldDeadline,
-      rewardSubmitted: Boolean(cRow?.reward_submitted_at),
-      certificateName: cRow?.certificate_name || "",
-    };
-  },
   head: () => ({
     meta: [
       { title: "Course Completed | The Calm Money System" },
@@ -102,7 +109,70 @@ export const Route = createFileRoute("/course/complete")({
 });
 
 function CourseCompletePage() {
-  const data = Route.useLoaderData();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<{
+    authorized: boolean;
+    email: string | null;
+    isCustomTemplate?: boolean;
+    customHtml?: string;
+    cohortName?: string;
+    goldPrice?: string;
+    goldDeadline?: string;
+    rewardSubmitted?: boolean;
+    certificateName?: string;
+  }>({
+    authorized: false,
+    email: null,
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCompleterStatus() {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
+          if (isMounted) setLoading(false);
+          return;
+        }
+
+        const res = await getCompleterDataFn();
+        if (!isMounted) return;
+
+        if (res.authorized) {
+          setData(res);
+        } else {
+          setData({ authorized: false, email: res.email || null });
+        }
+      } catch {
+        /* network error */
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    void loadCompleterStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex flex-col justify-between">
+        <header className="border-b border-gray-200 bg-white">
+          <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
+            <Wordmark />
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-md w-full px-4 py-24 text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-[#4A5A3A] mx-auto" />
+          <p className="text-xs text-gray-600">Verifying member course completion...</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!data.authorized || !data.email) {
     return (

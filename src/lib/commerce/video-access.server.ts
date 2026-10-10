@@ -9,7 +9,7 @@
  * - Diamond: Silver + Gold + Diamond sessions.
  */
 
-import { createPublicServerClient } from "@/lib/supabase-public.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export interface LessonSummary {
   id: string;
@@ -28,11 +28,41 @@ export interface EntitledLessonPayload extends LessonSummary {
   embedUrl: string; // BIGVU embed URL - provided ONLY to authorized members
 }
 
+async function checkTierAccess(
+  tier: string,
+  email: string,
+  userId?: string,
+): Promise<boolean> {
+  try {
+    const res = await (supabaseAdmin.rpc as any)("has_active_access_for_user", {
+      p_user_id: userId || null,
+      p_email: email,
+      p_tier: tier,
+    });
+    if (!res.error && typeof res.data === "boolean") {
+      return res.data;
+    }
+  } catch {
+    // Fall back to legacy has_active_access if migration is not yet loaded
+  }
+
+  try {
+    const legacyRes = await (supabaseAdmin.rpc as any)("has_active_access", {
+      p_email: email,
+      p_tier: tier,
+    });
+    return Boolean(legacyRes.data);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Checks member's active access rights and returns the list of tiers they are entitled to view.
  */
 export async function getMemberEntitledTiers(
   email: string,
+  userId?: string,
 ): Promise<{
   canViewMrc: boolean;
   canViewSilver: boolean;
@@ -40,7 +70,7 @@ export async function getMemberEntitledTiers(
   canViewDiamond: boolean;
 }> {
   const cleanEmail = (email || "").trim().toLowerCase();
-  if (!cleanEmail) {
+  if (!cleanEmail && !userId) {
     return { canViewMrc: false, canViewSilver: false, canViewGold: false, canViewDiamond: false };
   }
 
@@ -50,29 +80,26 @@ export async function getMemberEntitledTiers(
     .split(",")
     .map((e) => e.trim());
 
-  if (adminEmails.includes(cleanEmail)) {
+  if (cleanEmail && adminEmails.includes(cleanEmail)) {
     return { canViewMrc: true, canViewSilver: true, canViewGold: true, canViewDiamond: true };
   }
 
-  const db = createPublicServerClient();
-
-  const [mrcRes, silverRes, goldRes, diamondRes] = await Promise.all([
-    (db.rpc as any)("has_active_access", { p_email: cleanEmail, p_tier: "money_reality_check" }),
-    (db.rpc as any)("has_active_access", { p_email: cleanEmail, p_tier: "silver" }),
-    (db.rpc as any)("has_active_access", { p_email: cleanEmail, p_tier: "gold" }),
-    (db.rpc as any)("has_active_access", { p_email: cleanEmail, p_tier: "diamond" }),
+  const [hasMrc, hasSilverTier, hasGoldTier, hasDiamondTier] = await Promise.all([
+    checkTierAccess("money_reality_check", cleanEmail, userId),
+    checkTierAccess("silver", cleanEmail, userId),
+    checkTierAccess("gold", cleanEmail, userId),
+    checkTierAccess("diamond", cleanEmail, userId),
   ]);
 
-  const hasDiamond = Boolean(diamondRes.data);
-  const hasGold = hasDiamond || Boolean(goldRes.data);
-  const hasSilver = hasGold || Boolean(silverRes.data);
-  const hasMrc = Boolean(mrcRes.data);
+  const hasDiamond = Boolean(hasDiamondTier);
+  const hasGold = hasDiamond || Boolean(hasGoldTier);
+  const hasSilver = hasGold || Boolean(hasSilverTier);
 
   return {
-    canViewMrc: hasMrc,
-    canViewSilver: hasSilver,
-    canViewGold: hasGold,
-    canViewDiamond: hasDiamond,
+    canViewMrc: Boolean(hasMrc),
+    canViewSilver,
+    canViewGold,
+    canViewDiamond,
   };
 }
 
@@ -83,6 +110,7 @@ export async function getMemberEntitledTiers(
  */
 export async function getEntitledLessonVideo(params: {
   email: string;
+  userId?: string;
   lessonId: string;
 }): Promise<{
   ok: boolean;
@@ -90,10 +118,9 @@ export async function getEntitledLessonVideo(params: {
   error?: string;
 }> {
   const cleanEmail = (params.email || "").trim().toLowerCase();
-  const db = createPublicServerClient();
 
   // 1. Fetch lesson metadata from catalog
-  const { data: lessonRow, error: lessonError } = await db
+  const { data: lessonRow, error: lessonError } = await supabaseAdmin
     .from("course_lessons_catalog" as never)
     .select("*")
     .eq("id" as never, params.lessonId as never)
@@ -104,7 +131,7 @@ export async function getEntitledLessonVideo(params: {
   }
 
   const lesson = lessonRow as any;
-  const tiers = await getMemberEntitledTiers(cleanEmail);
+  const tiers = await getMemberEntitledTiers(cleanEmail, params.userId);
 
   // 2. Validate entitlement against lesson tier
   let isAuthorized = false;
