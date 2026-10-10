@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createPublicServerClient } from "@/lib/supabase-public.server";
-import { signOrderId, verifyOrderSignature } from "@/lib/commerce/completion.server";
+import { verifyOrderSignature } from "@/lib/commerce/completion.server";
 
 /**
  * Checks order status for completion page polling.
@@ -18,10 +18,17 @@ export const Route = createFileRoute("/api/commerce/poll-order-status")({
           return Response.json({ ok: false, error: "Missing order_id" }, { status: 400 });
         }
 
+        if (!token) {
+          return Response.json(
+            { ok: false, authorized: false, error: "Missing order verification token" },
+            { status: 401 },
+          );
+        }
+
         const db = createPublicServerClient();
         const { data: order, error } = await db
           .from("orders" as never)
-          .select("id, status, buyer_email, product_id")
+          .select("id, razorpay_order_id, status, buyer_email, product_id")
           .or(`id.eq.${orderId},razorpay_order_id.eq.${orderId}` as never)
           .maybeSingle();
 
@@ -30,17 +37,28 @@ export const Route = createFileRoute("/api/commerce/poll-order-status")({
         }
 
         const ord = order as any;
-        const isValid = token && verifyOrderSignature(ord.id, token);
+        const isValid = Boolean(
+          verifyOrderSignature(ord.id, token) ||
+            (ord.razorpay_order_id && verifyOrderSignature(ord.razorpay_order_id, token)),
+        );
+
+        if (!isValid) {
+          return Response.json(
+            { ok: false, authorized: false, error: "Invalid order verification token" },
+            { status: 403 },
+          );
+        }
 
         return Response.json({
           ok: true,
           orderId: ord.id,
           status: ord.status,
           captured: ord.status === "captured",
-          authorized: Boolean(isValid),
-          token: isValid ? token : signOrderId(ord.id),
+          authorized: true,
+          token,
         });
       },
     },
   },
 });
+

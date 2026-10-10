@@ -267,6 +267,7 @@ export function CheckoutView({ product, isUpgrade = false, pagePath }: CheckoutV
         ok?: boolean;
         orderId?: string;
         orderDbId?: string;
+        orderToken?: string;
         amount?: number;
         currency?: string;
         keyId?: string;
@@ -322,9 +323,9 @@ export function CheckoutView({ product, isUpgrade = false, pagePath }: CheckoutV
           }
 
           const targetOrderId = orderData.orderDbId || orderData.orderId || "";
-          const targetToken = (orderData as any).orderToken || "";
+          const targetToken = orderData.orderToken || "";
 
-          const completionUrl = `/complete/${completionSlug}?order_id=${encodeURIComponent(targetOrderId)}&token=${encodeURIComponent(targetToken)}&email=${encodeURIComponent(email.trim().toLowerCase())}`;
+          const completionUrl = `/complete/${completionSlug}?order_id=${encodeURIComponent(targetOrderId)}&token=${encodeURIComponent(targetToken)}`;
           window.location.href = completionUrl;
         },
         modal: {

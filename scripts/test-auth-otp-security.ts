@@ -916,6 +916,53 @@ async function runSecurityTests() {
     );
   });
 
+  await test("Audit Fix 5: poll-order-status requires valid HMAC token and never mints tokens for unauthorized requests", async () => {
+    const pollOrderTs = fs.readFileSync(
+      path.resolve(process.cwd(), "src/routes/api/commerce/poll-order-status.ts"),
+      "utf-8",
+    );
+    assert(
+      !pollOrderTs.includes("signOrderId("),
+      "poll-order-status must NEVER call signOrderId to mint tokens for unauthorized callers",
+    );
+    assert(
+      pollOrderTs.includes("Missing order verification token") &&
+        pollOrderTs.includes("Invalid order verification token"),
+      "poll-order-status must reject missing (401) and invalid (403) verification tokens",
+    );
+  });
+
+  await test("Audit Fix 6: Completion pages and getRenderedCompletionPage do not authorize via unverified URL email query params", async () => {
+    const completionServerTs = fs.readFileSync(
+      path.resolve(process.cwd(), "src/lib/commerce/completion.server.ts"),
+      "utf-8",
+    );
+    assert(
+      !completionServerTs.includes("userEmail.trim().toLowerCase() === order.buyer_email") &&
+        !completionServerTs.includes("isOwnerEmail"),
+      "getRenderedCompletionPage must not authorize based on an unverified userEmail parameter",
+    );
+    assert(
+      completionServerTs.includes("if (!isTokenValid)"),
+      "getRenderedCompletionPage must strictly require a valid HMAC signature token",
+    );
+
+    const completionRoutes = [
+      "src/routes/complete.silver.tsx",
+      "src/routes/complete.gold.tsx",
+      "src/routes/complete.diamond.tsx",
+      "src/routes/complete.money-reality-check.tsx",
+      "src/routes/complete.silver-upgrade.tsx",
+    ];
+    for (const relPath of completionRoutes) {
+      const code = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
+      assert(
+        !code.includes("deps.email"),
+        `${relPath} must not forward unverified search.email to getRenderedCompletionPage`,
+      );
+    }
+  });
+
   console.log("\n=================================================================");
   console.log(`SECURITY TEST SUMMARY: ${passed}/${total} TESTS PASSED`);
   console.log("=================================================================");

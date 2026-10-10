@@ -128,7 +128,7 @@ export const Route = createFileRoute("/api/commerce/create-order")({
 
           const { signOrderId } = await import("@/lib/commerce/completion.server");
           const orderDbId = (insertedOrder as any)?.id;
-          const orderToken = orderDbId ? signOrderId(orderDbId) : "";
+          const orderToken = signOrderId(orderDbId || rzpResult.orderId);
 
           return Response.json({
             ok: true,

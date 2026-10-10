@@ -115,12 +115,14 @@ export interface CompletionPageResult {
 
 /**
  * Resolves order data, verifies access guards, constructs token values, and renders template.
+ * Authorization strictly requires a valid cryptographic HMAC order signature token.
+ * Unverified client-supplied email query parameters are never trusted.
  */
 export async function getRenderedCompletionPage(
   slug: string,
   orderId: string | undefined,
   token: string | undefined,
-  userEmail: string | undefined,
+  _untrustedEmailParam?: string | undefined,
 ): Promise<CompletionPageResult> {
   if (!orderId) {
     return { status: "unauthorized" };
@@ -141,11 +143,14 @@ export async function getRenderedCompletionPage(
 
   const order = orderRow as any;
 
-  // 2. Validate authorization: either signature token matches OR logged in user matches buyer_email
-  const isTokenValid = token && verifyOrderSignature(order.id, token);
-  const isOwnerEmail = userEmail && userEmail.trim().toLowerCase() === order.buyer_email?.trim().toLowerCase();
+  // 2. Validate authorization: strictly require valid HMAC signature token
+  const isTokenValid = Boolean(
+    token &&
+      (verifyOrderSignature(order.id, token) ||
+        (order.razorpay_order_id && verifyOrderSignature(order.razorpay_order_id, token))),
+  );
 
-  if (!isTokenValid && !isOwnerEmail) {
+  if (!isTokenValid) {
     return { status: "unauthorized" };
   }
 

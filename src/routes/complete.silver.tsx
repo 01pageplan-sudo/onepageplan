@@ -5,22 +5,19 @@ import { CompletionView } from "@/components/commerce/CompletionView";
 type SearchParams = {
   order_id?: string;
   token?: string;
-  email?: string;
 };
 
 export const Route = createFileRoute("/complete/silver")({
   validateSearch: (search: Record<string, unknown>): SearchParams => ({
     order_id: typeof search["order_id"] === "string" ? search["order_id"] : undefined,
     token: typeof search["token"] === "string" ? search["token"] : undefined,
-    email: typeof search["email"] === "string" ? search["email"] : undefined,
   }),
   loaderDeps: ({ search }) => ({
     orderId: search.order_id,
     token: search.token,
-    email: search.email,
   }),
   loader: async ({ deps }) => {
-    return await getRenderedCompletionPage("silver", deps.orderId, deps.token, deps.email);
+    return await getRenderedCompletionPage("silver", deps.orderId, deps.token);
   },
   head: () => ({
     meta: [
