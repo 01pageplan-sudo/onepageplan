@@ -323,10 +323,74 @@ REVOKE ALL ON FUNCTION public.rollback_completion_template(TEXT, INT) FROM PUBLI
 GRANT EXECUTE ON FUNCTION public.rollback_completion_template(TEXT, INT) TO service_role;
 
 -- ------------------------------------------------------------------------------
--- 5. RESTRICT grant_entitlement_on_capture & revoke_entitlement_on_refund TO service_role
+-- 5. SECURE revoke_entitlement_on_refund & grant_entitlement_on_capture (service_role only)
 -- ------------------------------------------------------------------------------
-REVOKE ALL ON FUNCTION public.grant_entitlement_on_capture(UUID, TEXT) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.grant_entitlement_on_capture(UUID, TEXT) TO service_role;
+CREATE OR REPLACE FUNCTION public.revoke_entitlement_on_refund(
+  p_order_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_jwt_role TEXT := COALESCE(
+    current_setting('request.jwt.claim.role', true),
+    (NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'),
+    ''
+  );
+  v_order RECORD;
+BEGIN
+  IF v_jwt_role IS DISTINCT FROM 'service_role'
+     AND current_user NOT IN ('postgres', 'supabase_admin', 'supabase_auth_admin')
+  THEN
+    RAISE EXCEPTION 'Unauthorized: revoke_entitlement_on_refund requires service_role'
+      USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_order
+  FROM public.orders
+  WHERE id = p_order_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'order_not_found');
+  END IF;
+
+  UPDATE public.orders
+  SET
+    status = 'refunded',
+    refunded_at = now()
+  WHERE id = v_order.id;
+
+  UPDATE public.member_access_grants
+  SET
+    status = 'revoked',
+    revoked_at = now()
+  WHERE order_id = v_order.id;
+
+  INSERT INTO public.commerce_events (event_name, event_type, email, payload)
+  VALUES (
+    'refund_processed',
+    'refund_processed',
+    lower(trim(v_order.buyer_email)),
+    jsonb_build_object(
+      'product', v_order.product_id,
+      'order_id', v_order.id,
+      'amount', v_order.amount_charged
+    )
+  );
+
+  RETURN jsonb_build_object('ok', true, 'order_id', v_order.id);
+END;
+$$;
 
 REVOKE ALL ON FUNCTION public.revoke_entitlement_on_refund(UUID) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.revoke_entitlement_on_refund(UUID) TO service_role;
+
+DO $$
+BEGIN
+  IF to_regprocedure('public.grant_entitlement_on_capture(uuid,text)') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.grant_entitlement_on_capture(UUID, TEXT) FROM PUBLIC, anon, authenticated;
+    GRANT EXECUTE ON FUNCTION public.grant_entitlement_on_capture(UUID, TEXT) TO service_role;
+  END IF;
+END $$;
