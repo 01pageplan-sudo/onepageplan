@@ -26,15 +26,15 @@ function createRewardRequest(body: Record<string, unknown>, token?: string): Req
 interface MockDbOptions {
   completionRow?: Record<string, unknown> | null;
   fetchError?: { message: string } | null;
-  updatedRows?: Array<{ id: string }> | null;
-  updateError?: { message: string } | null;
-  eventInsertError?: { message: string } | null;
+  rpcUnavailable?: boolean;
+  rpcError?: { message: string; code?: string } | null;
+  rpcResult?: Record<string, unknown> | null;
 }
 
 function createMockSupabaseAdmin(opts: MockDbOptions) {
   const operations: string[] = [];
 
-  const mockDb = {
+  const mockDb: Record<string, any> = {
     operations,
     from(table: string) {
       if (table === "course_completions") {
@@ -54,38 +54,13 @@ function createMockSupabaseAdmin(opts: MockDbOptions) {
               },
             };
           },
-          update(payload: Record<string, unknown>) {
-            const chain = {
-              is(_col: string, _val: unknown) {
-                return chain;
-              },
-              eq(_col: string, val: string) {
-                const eqChain = {
-                  is(_isCol: string, _isVal: unknown) {
-                    return eqChain;
-                  },
-                  async select() {
-                    if (payload["reward_submitted_at"] === null) {
-                      operations.push(`rollback:course_completions:${val}`);
-                    } else {
-                      operations.push(
-                        `update:course_completions:${val}:${String(payload["user_id"])}`,
-                      );
-                    }
-                    return {
-                      data: opts.updatedRows !== undefined ? opts.updatedRows : [{ id: val }],
-                      error: opts.updateError ?? null,
-                    };
-                  },
-                };
-                return eqChain;
-              },
-            };
-            return chain;
+          update() {
+            operations.push("non_atomic_update:course_completions");
+            throw new Error("Non-atomic direct update on course_completions must not be called");
           },
           async insert() {
             operations.push("insert:course_completions");
-            return { data: null, error: null };
+            throw new Error("Direct insert on course_completions must not be called");
           },
         };
       }
@@ -93,11 +68,8 @@ function createMockSupabaseAdmin(opts: MockDbOptions) {
       if (table === "commerce_events") {
         return {
           async insert() {
-            operations.push("insert:commerce_events");
-            return {
-              data: null,
-              error: opts.eventInsertError ?? null,
-            };
+            operations.push("non_atomic_insert:commerce_events");
+            throw new Error("Non-atomic direct insert on commerce_events must not be called");
           },
         };
       }
@@ -125,6 +97,28 @@ function createMockSupabaseAdmin(opts: MockDbOptions) {
       throw new Error(`Unexpected table access in test: ${table}`);
     },
   };
+
+  if (!opts.rpcUnavailable) {
+    mockDb["rpc"] = async (fnName: string, args: Record<string, unknown>) => {
+      operations.push(`rpc:${fnName}:${String(args["p_user_id"])}`);
+      if (opts.rpcError) {
+        return { data: null, error: opts.rpcError };
+      }
+      if (opts.rpcResult !== undefined) {
+        return { data: opts.rpcResult, error: null };
+      }
+      return {
+        data: {
+          ok: true,
+          status: 200,
+          already_claimed: false,
+          completion_id: (opts.completionRow as any)?.id ?? "comp-verified-1",
+          submitted_at: "2026-10-10T12:00:00Z",
+        },
+        error: null,
+      };
+    };
+  }
 
   return mockDb;
 }
@@ -583,8 +577,9 @@ async function runSecurityTests() {
     assert.equal(body.ok, false);
   });
 
-  await test("Medium Fix 4b: Returns 500 when updating course_completions fails and does NOT emit events", async () => {
-    const mockDb = createMockSupabaseAdmin({
+  await test("Exclusive Transactional RPC: Returns retryable error (503/500) without partial updates when claim_course_reward RPC is unavailable", async () => {
+    let goldNotified = false;
+    const mockDbUnavailable = createMockSupabaseAdmin({
       completionRow: {
         id: "comp-verified-1",
         email: "silver@example.com",
@@ -593,7 +588,7 @@ async function runSecurityTests() {
         is_completed: true,
         completed_lessons: ["core-1", "core-2", "core-3", "core-4"],
       },
-      updateError: { message: "disk full / RLS violation" },
+      rpcUnavailable: true,
     });
 
     const req = createRewardRequest(
@@ -616,19 +611,32 @@ async function runSecurityTests() {
         canViewGold: false,
         canViewDiamond: false,
       }),
-      supabaseAdmin: mockDb,
+      supabaseAdmin: mockDbUnavailable,
+      handleGoldCompleterEligibleEvent: async () => {
+        goldNotified = true;
+      },
     });
 
-    assert.equal(response.status, 500, "Must return 500 when DB update fails");
-    const body = (await response.json()) as { ok: boolean; error: string };
+    assert.equal(response.status, 503, "Must return 503 when RPC client is unavailable");
+    const body = (await response.json()) as {
+      ok: boolean;
+      retryable?: boolean;
+      error: string;
+    };
     assert.equal(body.ok, false);
+    assert.equal(body.retryable, true);
     assert(
-      !mockDb.operations.includes("insert:commerce_events"),
-      "Must NOT emit commerce_events when course_completions update fails",
+      !mockDbUnavailable.operations.includes("non_atomic_update:course_completions"),
+      "Must NEVER fall back to non-atomic course_completions update",
     );
+    assert(
+      !mockDbUnavailable.operations.includes("non_atomic_insert:commerce_events"),
+      "Must NEVER fall back to non-atomic commerce_events insert",
+    );
+    assert.equal(goldNotified, false);
   });
 
-  await test("Midway Failure Consistency: Rolls back course_completions when commerce_events insert fails and does NOT send notifications", async () => {
+  await test("Exclusive Transactional RPC: Returns retryable 500 error without partial updates or notifications when claim_course_reward RPC fails", async () => {
     let goldNotified = false;
     const mockDb = createMockSupabaseAdmin({
       completionRow: {
@@ -639,7 +647,7 @@ async function runSecurityTests() {
         is_completed: true,
         completed_lessons: ["core-1", "core-2", "core-3", "core-4"],
       },
-      eventInsertError: { message: "commerce_events insert failed" },
+      rpcError: { message: "transaction aborted in PostgreSQL" },
     });
 
     const req = createRewardRequest(
@@ -668,17 +676,27 @@ async function runSecurityTests() {
       },
     });
 
-    assert.equal(response.status, 500, "Must return 500 when commerce_events insert fails");
-    const body = (await response.json()) as { ok: boolean; error: string };
+    assert.equal(response.status, 500, "Must return 500 when transactional RPC fails");
+    const body = (await response.json()) as {
+      ok: boolean;
+      retryable?: boolean;
+      error: string;
+    };
     assert.equal(body.ok, false);
+    assert.equal(body.retryable, true, "Must mark error as retryable");
     assert(
-      mockDb.operations.includes("rollback:course_completions:comp-verified-1"),
-      "Must roll back reward_submitted_at on course_completions when commerce_events insert fails midway",
+      mockDb.operations.includes("rpc:claim_course_reward:user-silver-1"),
+      "Must invoke claim_course_reward RPC",
     );
-    assert.equal(goldNotified, false, "Must NOT send Gold Completer notification when event insert fails");
+    assert(
+      !mockDb.operations.includes("non_atomic_update:course_completions") &&
+        !mockDb.operations.includes("non_atomic_insert:commerce_events"),
+      "Must NOT execute any non-atomic table writes",
+    );
+    assert.equal(goldNotified, false, "Must NOT send Gold Completer notification when RPC fails");
   });
 
-  await test("Reward Idempotency: Rejects duplicate reward claims (409 Conflict) and prevents duplicate events & notifications", async () => {
+  await test("Reward Idempotency: Rejects duplicate reward claims (409 Conflict) and prevents duplicate RPC calls & notifications", async () => {
     let goldNotified = false;
     const mockDbAlreadyClaimed = createMockSupabaseAdmin({
       completionRow: {
@@ -727,12 +745,8 @@ async function runSecurityTests() {
     assert.equal(body.ok, false);
     assert.equal(body.alreadyClaimed, true);
     assert(
-      !mockDbAlreadyClaimed.operations.some((op) => op.startsWith("update:course_completions")),
-      "Must NOT overwrite course_completions on duplicate submission",
-    );
-    assert(
-      !mockDbAlreadyClaimed.operations.includes("insert:commerce_events"),
-      "Must NOT insert duplicate commerce_events on duplicate submission",
+      !mockDbAlreadyClaimed.operations.some((op: string) => op.startsWith("rpc:claim_course_reward")),
+      "Must short-circuit before RPC when reward_submitted_at is already set",
     );
     assert.equal(
       goldNotified,
@@ -741,7 +755,7 @@ async function runSecurityTests() {
     );
   });
 
-  await test("Legitimate Completer: Succeeds (200 OK) when authenticated, entitled to Silver, and all core modules are verified", async () => {
+  await test("Legitimate Completer: Succeeds (200 OK) via transactional claim_course_reward RPC when authenticated, entitled to Silver, and all core modules are verified", async () => {
     let goldNotified = false;
     const mockDb = createMockSupabaseAdmin({
       completionRow: {
@@ -785,12 +799,13 @@ async function runSecurityTests() {
     const body = (await response.json()) as { ok: boolean };
     assert.equal(body.ok, true);
     assert(
-      mockDb.operations.includes("update:course_completions:comp-verified-1:user-silver-1"),
-      "Must update existing completion record and bind user_id",
+      mockDb.operations.includes("rpc:claim_course_reward:user-silver-1"),
+      "Must execute atomic claim_course_reward RPC",
     );
     assert(
-      mockDb.operations.includes("insert:commerce_events"),
-      "Must record course_reward_claimed event",
+      !mockDb.operations.includes("non_atomic_update:course_completions") &&
+        !mockDb.operations.includes("non_atomic_insert:commerce_events"),
+      "Must NOT perform separate non-atomic table writes",
     );
     assert.equal(goldNotified, true, "Must trigger Gold Completer notification");
   });

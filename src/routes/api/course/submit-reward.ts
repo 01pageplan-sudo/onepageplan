@@ -35,7 +35,7 @@ export interface SubmitRewardDependencies {
  * 2. Active Silver (or higher) course entitlement
  * 3. Server-verified course completion record (is_completed === true, completed_at, and required core modules)
  * 4. Idempotent reward claiming (prevents duplicate claims, duplicate events, and duplicate notifications)
- * 5. Atomic consistency between course_completions and commerce_events (via transactional RPC or compensating rollback)
+ * 5. Exclusive use of the transactional `claim_course_reward` PostgreSQL RPC (no non-atomic multi-step fallback)
  */
 export async function handleSubmitRewardRequest(
   request: Request,
@@ -143,52 +143,32 @@ export async function handleSubmitRewardRequest(
       );
     }
 
-    const now = new Date().toISOString();
-    let handledViaAtomicRpc = false;
+    // 5. Execute atomic transactional PostgreSQL RPC `claim_course_reward` exclusively
+    if (typeof db.rpc !== "function") {
+      console.error("[Submit Reward] Transactional RPC client is unavailable.");
+      return Response.json(
+        {
+          ok: false,
+          retryable: true,
+          error:
+            "Reward claim service is temporarily unavailable. Your reward status was not modified—please try again.",
+        },
+        { status: 503 },
+      );
+    }
 
-    // 5a. Prefer single-transaction PostgreSQL RPC if available
-    if (typeof db.rpc === "function") {
-      const { data: rpcResult, error: rpcError } = await db.rpc("claim_course_reward", {
-        p_user_id: user.id,
-        p_email: user.email,
-        p_certificate_name: certificateName,
-        p_tshirt_size: tshirtSize,
-        p_shipping_address: shippingAddress,
-      });
+    const { data: rpcResult, error: rpcError } = await db.rpc("claim_course_reward", {
+      p_user_id: user.id,
+      p_email: user.email,
+      p_certificate_name: certificateName,
+      p_tshirt_size: tshirtSize,
+      p_shipping_address: shippingAddress,
+    });
 
-      if (!rpcError && rpcResult && typeof rpcResult === "object") {
-        handledViaAtomicRpc = true;
-        const resObj = rpcResult as {
-          ok?: boolean;
-          status?: number;
-          already_claimed?: boolean;
-          error?: string;
-        };
-
-        if (resObj.already_claimed || resObj.status === 409) {
-          return Response.json(
-            {
-              ok: false,
-              alreadyClaimed: true,
-              error:
-                resObj.error || "Completion reward has already been claimed for this account.",
-            },
-            { status: 409 },
-          );
-        }
-
-        if (!resObj.ok) {
-          return Response.json(
-            {
-              ok: false,
-              error: resObj.error || "Unable to verify course completion for reward claim.",
-            },
-            { status: resObj.status || 403 },
-          );
-        }
-      } else if (
-        rpcError &&
-        (rpcError.code === "23505" || String(rpcError.message || "").includes("idx_commerce_events_unique_reward_claimed_email"))
+    if (rpcError) {
+      if (
+        rpcError.code === "23505" ||
+        String(rpcError.message || "").includes("idx_commerce_events_unique_reward_claimed_email")
       ) {
         return Response.json(
           {
@@ -198,106 +178,60 @@ export async function handleSubmitRewardRequest(
           },
           { status: 409 },
         );
-      } else if (
-        rpcError &&
-        rpcError.code !== "PGRST202" &&
-        !String(rpcError.message || "").includes("Could not find the function")
-      ) {
-        console.error("[Submit Reward] Atomic RPC claim_course_reward failed:", rpcError.message);
-        return Response.json(
-          { ok: false, error: "Failed to save reward claim to database. Please try again." },
-          { status: 500 },
-        );
       }
+
+      console.error("[Submit Reward] Atomic RPC claim_course_reward failed:", rpcError.message);
+      return Response.json(
+        {
+          ok: false,
+          retryable: true,
+          error:
+            "Failed to process reward claim transactionally. No changes were saved—please try again.",
+        },
+        { status: 500 },
+      );
     }
 
-    // 5b. Fallback table operations with optimistic lock (.is("reward_submitted_at", null)) and compensating rollback
-    if (!handledViaAtomicRpc) {
-      const updateQuery = db
-        .from("course_completions" as never)
-        .update({
-          user_id: user.id,
-          certificate_name: certificateName,
-          tshirt_size: tshirtSize,
-          shipping_address: shippingAddress,
-          reward_submitted_at: now,
-        } as never)
-        .eq("id" as never, completionRecord!.id as never);
-
-      const guardedQuery =
-        typeof (updateQuery as any).is === "function"
-          ? (updateQuery as any).is("reward_submitted_at", null)
-          : updateQuery;
-
-      const { data: updatedRows, error: updateError } = await guardedQuery.select("id");
-
-      if (
-        updateError ||
-        !updatedRows ||
-        (Array.isArray(updatedRows) && updatedRows.length === 0)
-      ) {
-        console.error(
-          "[Submit Reward] Failed to update course_completions:",
-          updateError?.message || "No rows updated",
-        );
-        return Response.json(
-          { ok: false, error: "Failed to save reward claim to database. Please try again." },
-          { status: 500 },
-        );
-      }
-
-      // Emit reward claimed event and roll back course_completions if event insert fails
-      const { error: eventError } = await db.from("commerce_events" as never).insert({
-        event_name: "course_reward_claimed",
-        email: user.email,
-        payload: {
-          user_id: user.id,
-          completion_id: completionRecord!.id,
-          certificate_name: certificateName,
-          tshirt_size: tshirtSize,
-          shipping_address: shippingAddress,
-          submitted_at: now,
+    if (!rpcResult || typeof rpcResult !== "object") {
+      console.error("[Submit Reward] Atomic RPC claim_course_reward returned empty/invalid result.");
+      return Response.json(
+        {
+          ok: false,
+          retryable: true,
+          error:
+            "Failed to confirm reward claim transaction. No changes were saved—please try again.",
         },
-      } as never);
+        { status: 500 },
+      );
+    }
 
-      if (eventError) {
-        console.error("[Submit Reward] Failed to insert commerce_events:", eventError.message);
+    const resObj = rpcResult as {
+      ok?: boolean;
+      status?: number;
+      already_claimed?: boolean;
+      error?: string;
+    };
 
-        // Compensating rollback so course_completions and commerce_events stay consistent on midway failure
-        try {
-          await db
-            .from("course_completions" as never)
-            .update({
-              certificate_name: completionRecord!.certificate_name ?? null,
-              tshirt_size: completionRecord!.tshirt_size ?? null,
-              shipping_address: completionRecord!.shipping_address ?? null,
-              reward_submitted_at: null,
-            } as never)
-            .eq("id" as never, completionRecord!.id as never)
-            .select("id");
-        } catch (rollbackErr) {
-          console.error("[Submit Reward] Compensating rollback failed:", rollbackErr);
-        }
+    if (resObj.already_claimed || resObj.status === 409) {
+      return Response.json(
+        {
+          ok: false,
+          alreadyClaimed: true,
+          error:
+            resObj.error || "Completion reward has already been claimed for this account.",
+        },
+        { status: 409 },
+      );
+    }
 
-        if (
-          (eventError as any).code === "23505" ||
-          String(eventError.message || "").includes("idx_commerce_events_unique_reward_claimed_email")
-        ) {
-          return Response.json(
-            {
-              ok: false,
-              alreadyClaimed: true,
-              error: "Completion reward has already been claimed for this account.",
-            },
-            { status: 409 },
-          );
-        }
-
-        return Response.json(
-          { ok: false, error: "Failed to record reward claim event. Please try again." },
-          { status: 500 },
-        );
-      }
+    if (!resObj.ok) {
+      return Response.json(
+        {
+          ok: false,
+          error: resObj.error || "Unable to verify course completion for reward claim.",
+        },
+        { status: resObj.status || 403 },
+      );
     }
 
     // 6. Trigger Gold Completer notifications once per unique claim (non-blocking)
