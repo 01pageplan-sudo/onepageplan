@@ -32,9 +32,14 @@
 -- PART 1: Course Completion Schema & Constraint Hardening
 -- ------------------------------------------------------------------------------
 
--- 1a. Add completed_lessons JSONB array to track server-verified completed lessons
+-- 1a. Ensure all completion and reward columns exist on course_completions
 ALTER TABLE public.course_completions
-  ADD COLUMN IF NOT EXISTS completed_lessons JSONB NOT NULL DEFAULT '[]'::jsonb;
+  ADD COLUMN IF NOT EXISTS is_completed BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS completed_lessons JSONB NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS certificate_name TEXT,
+  ADD COLUMN IF NOT EXISTS tshirt_size TEXT,
+  ADD COLUMN IF NOT EXISTS shipping_address TEXT,
+  ADD COLUMN IF NOT EXISTS reward_submitted_at TIMESTAMPTZ;
 
 -- 1b. Preserve legitimate existing completers by backfilling required core modules
 --     on historical rows that already had is_completed = true and completed_at IS NOT NULL
@@ -491,18 +496,47 @@ BEGIN
 END;
 $$;
 
--- 3b. Deduplicate any historical duplicate course_reward_claimed events and enforce uniqueness
+-- 3b. Ensure public.commerce_events has both event_name and event_type columns
+--     (handles live databases where commerce_events was originally created with event_type)
+ALTER TABLE public.commerce_events
+  ADD COLUMN IF NOT EXISTS event_name TEXT,
+  ADD COLUMN IF NOT EXISTS event_type TEXT,
+  ADD COLUMN IF NOT EXISTS email TEXT,
+  ADD COLUMN IF NOT EXISTS payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS emitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+UPDATE public.commerce_events
+SET event_name = COALESCE(event_name, event_type),
+    event_type = COALESCE(event_type, event_name)
+WHERE event_name IS NULL OR event_type IS NULL;
+
+CREATE OR REPLACE FUNCTION public.sync_commerce_events_name_and_type()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  NEW.event_name := COALESCE(NEW.event_name, NEW.event_type, 'unknown_event');
+  NEW.event_type := COALESCE(NEW.event_type, NEW.event_name, 'unknown_event');
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trigger_sync_commerce_events_name_and_type ON public.commerce_events;
+CREATE TRIGGER trigger_sync_commerce_events_name_and_type
+  BEFORE INSERT OR UPDATE ON public.commerce_events
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_commerce_events_name_and_type();
+
+-- Deduplicate any historical duplicate course_reward_claimed events and enforce uniqueness
 DELETE FROM public.commerce_events a
 USING public.commerce_events b
-WHERE a.event_name = 'course_reward_claimed'
-  AND b.event_name = 'course_reward_claimed'
+WHERE COALESCE(a.event_name, a.event_type) = 'course_reward_claimed'
+  AND COALESCE(b.event_name, b.event_type) = 'course_reward_claimed'
   AND lower(trim(coalesce(a.email, ''))) = lower(trim(coalesce(b.email, '')))
   AND lower(trim(coalesce(a.email, ''))) <> ''
-  AND a.id <> b.id
-  AND (
-    a.created_at > b.created_at
-    OR (a.created_at = b.created_at AND a.id > b.id)
-  );
+  AND a.ctid > b.ctid;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_commerce_events_unique_reward_claimed_email
   ON public.commerce_events ((lower(trim(email))))
@@ -617,9 +651,11 @@ BEGIN
   -- 2. Insert commerce_events within the exact same transaction
   INSERT INTO public.commerce_events (
     event_name,
+    event_type,
     email,
     payload
   ) VALUES (
+    'course_reward_claimed',
     'course_reward_claimed',
     v_verified_email,
     jsonb_build_object(
