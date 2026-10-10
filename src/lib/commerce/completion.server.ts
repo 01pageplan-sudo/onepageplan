@@ -40,6 +40,63 @@ export function formatPlainDate(dateStr?: string | Date | null): string {
   }
 }
 
+export const REQUIRED_SILVER_CORE_LESSONS = [
+  "core-1",
+  "core-2",
+  "core-3",
+  "core-4",
+] as const;
+
+export interface CourseCompletionRecordShape {
+  id?: string | null;
+  email?: string | null;
+  user_id?: string | null;
+  completed_at?: string | null;
+  is_completed?: boolean | null;
+  completed_lessons?: unknown;
+  reward_submitted_at?: string | null;
+  certificate_name?: string | null;
+  tshirt_size?: string | null;
+  shipping_address?: string | null;
+}
+
+/**
+ * Strictly verifies that a course_completions record represents genuine completion
+ * of all required core modules, not merely an existing row or schema default.
+ */
+export function isCourseCompletionVerified(
+  record: CourseCompletionRecordShape | null | undefined,
+): boolean {
+  if (!record || typeof record.id !== "string" || !record.id.trim()) {
+    return false;
+  }
+
+  // Must strictly have boolean is_completed === true (never !== false)
+  if (record.is_completed !== true) {
+    return false;
+  }
+
+  // Must have a valid non-empty completed_at timestamp
+  if (
+    typeof record.completed_at !== "string" ||
+    !record.completed_at.trim() ||
+    Number.isNaN(new Date(record.completed_at).getTime())
+  ) {
+    return false;
+  }
+
+  // Must have verified completion of all required Silver core modules
+  if (!Array.isArray(record.completed_lessons)) {
+    return false;
+  }
+
+  const completedSet = new Set(
+    record.completed_lessons.filter((item): item is string => typeof item === "string"),
+  );
+
+  return REQUIRED_SILVER_CORE_LESSONS.every((lessonId) => completedSet.has(lessonId));
+}
+
 export interface CompletionPageResult {
   status: "ready" | "polling" | "unauthorized" | "not_found";
   html?: string | undefined;

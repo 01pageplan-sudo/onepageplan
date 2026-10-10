@@ -119,6 +119,120 @@ export const getLessonVideoFn = createServerFn({ method: "POST" })
     });
   });
 
+export const recordLessonCompletionFn = createServerFn({ method: "POST" })
+  .validator((data: { lessonId: string }) => data)
+  .handler(async ({ data }) => {
+    const lessonId = (data.lessonId || "").trim();
+    if (!lessonId) {
+      return { ok: false, error: "invalid_lesson" };
+    }
+
+    const { getAuthenticatedUser } = await import("@/lib/auth/server-auth");
+    const { user, error } = await getAuthenticatedUser();
+    if (error || !user) {
+      return { ok: false, error: "unauthenticated" };
+    }
+
+    const { getMemberEntitledTiers } = await import("@/lib/commerce/video-access.server");
+    const tiers = await getMemberEntitledTiers(user.email, user.id);
+    if (!tiers.canViewSilver && !user.isAdmin) {
+      return { ok: false, error: "forbidden" };
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { REQUIRED_SILVER_CORE_LESSONS } = await import("@/lib/commerce/completion.server");
+
+    // 1. Prefer atomic PostgreSQL RPC
+    const { data: rpcData, error: rpcError } = await (supabaseAdmin.rpc as any)(
+      "record_course_lesson_completion",
+      {
+        p_user_id: user.id,
+        p_email: user.email,
+        p_lesson_id: lessonId,
+      },
+    );
+
+    if (!rpcError && rpcData) {
+      return { ok: true, ...(rpcData as Record<string, unknown>) };
+    }
+
+    // 2. Fallback table persistence if RPC is not yet loaded in schema cache
+    const { data: existing, error: fetchErr } = await supabaseAdmin
+      .from("course_completions" as never)
+      .select("*")
+      .eq("email" as never, user.email as never)
+      .maybeSingle();
+
+    if (fetchErr) {
+      return { ok: false, error: fetchErr.message };
+    }
+
+    const row = existing as {
+      id?: string;
+      user_id?: string | null;
+      completed_lessons?: unknown;
+      is_completed?: boolean | null;
+      completed_at?: string | null;
+    } | null;
+
+    if (row?.user_id && row.user_id !== user.id) {
+      return { ok: false, error: "unauthorized" };
+    }
+
+    const currentLessons = Array.isArray(row?.completed_lessons)
+      ? row!.completed_lessons.filter((x): x is string => typeof x === "string")
+      : [];
+
+    const nextLessons = currentLessons.includes(lessonId)
+      ? currentLessons
+      : [...currentLessons, lessonId];
+
+    const allCoreDone = REQUIRED_SILVER_CORE_LESSONS.every((reqId) =>
+      nextLessons.includes(reqId),
+    );
+    const isCompleted = Boolean(row?.is_completed === true || allCoreDone);
+    const completedAt = isCompleted
+      ? row?.completed_at || new Date().toISOString()
+      : null;
+
+    if (row?.id) {
+      const { error: updateErr } = await supabaseAdmin
+        .from("course_completions" as never)
+        .update({
+          user_id: user.id,
+          completed_lessons: nextLessons,
+          is_completed: isCompleted,
+          completed_at: completedAt,
+        } as never)
+        .eq("id" as never, row.id as never);
+
+      if (updateErr) {
+        return { ok: false, error: updateErr.message };
+      }
+    } else {
+      const { error: insertErr } = await supabaseAdmin
+        .from("course_completions" as never)
+        .insert({
+          email: user.email,
+          user_id: user.id,
+          completed_lessons: nextLessons,
+          is_completed: isCompleted,
+          completed_at: completedAt,
+        } as never);
+
+      if (insertErr) {
+        return { ok: false, error: insertErr.message };
+      }
+    }
+
+    return {
+      ok: true,
+      completed_lessons: nextLessons,
+      is_completed: isCompleted,
+      completed_at: completedAt,
+    };
+  });
+
 export type CourseMaterial = {
   title: string;
   type: "pdf" | "excel" | "template" | "link";
@@ -746,6 +860,9 @@ function CoursePortalPage() {
           /* ignore */
         }
       }
+      void recordLessonCompletionFn({ data: { lessonId } }).catch(() => {
+        /* non-blocking server sync */
+      });
     }
   };
 

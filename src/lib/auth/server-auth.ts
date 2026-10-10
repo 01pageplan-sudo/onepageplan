@@ -49,6 +49,10 @@ export async function getAuthenticatedUser(customRequest?: Request): Promise<{
       return { user: null, error: error?.message || "invalid_token" };
     }
 
+    if (!data.user.email_confirmed_at) {
+      return { user: null, error: "email_not_verified" };
+    }
+
     const verifiedEmail = (data.user.email || "").trim().toLowerCase();
     if (!verifiedEmail) {
       return { user: null, error: "no_email_in_user" };
@@ -113,12 +117,17 @@ async function fallbackDirectSync(
   userId: string,
   email: string,
 ): Promise<void> {
-  // Authoritatively verify userId owns email in auth.users before any direct update
+  // Authoritatively verify userId owns email AND email is confirmed in auth.users before any direct update
   const { data: userLookup, error: lookupError } = await adminClient.auth.admin.getUserById(userId);
   const verifiedEmail = (userLookup?.user?.email || "").trim().toLowerCase();
 
-  if (lookupError || !verifiedEmail || verifiedEmail !== email) {
-    throw new Error("Unauthorized: userId and email do not match in Supabase Auth");
+  if (
+    lookupError ||
+    !verifiedEmail ||
+    verifiedEmail !== email ||
+    !userLookup?.user?.email_confirmed_at
+  ) {
+    throw new Error("Unauthorized: userId and verified email do not match in Supabase Auth");
   }
 
   await Promise.allSettled([

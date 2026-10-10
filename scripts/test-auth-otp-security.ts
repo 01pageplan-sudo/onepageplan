@@ -55,19 +55,33 @@ function createMockSupabaseAdmin(opts: MockDbOptions) {
             };
           },
           update(payload: Record<string, unknown>) {
-            return {
+            const chain = {
+              is(_col: string, _val: unknown) {
+                return chain;
+              },
               eq(_col: string, val: string) {
-                return {
+                const eqChain = {
+                  is(_isCol: string, _isVal: unknown) {
+                    return eqChain;
+                  },
                   async select() {
-                    operations.push(`update:course_completions:${val}:${String(payload["user_id"])}`);
+                    if (payload["reward_submitted_at"] === null) {
+                      operations.push(`rollback:course_completions:${val}`);
+                    } else {
+                      operations.push(
+                        `update:course_completions:${val}:${String(payload["user_id"])}`,
+                      );
+                    }
                     return {
                       data: opts.updatedRows !== undefined ? opts.updatedRows : [{ id: val }],
                       error: opts.updateError ?? null,
                     };
                   },
                 };
+                return eqChain;
               },
             };
+            return chain;
           },
           async insert() {
             operations.push("insert:course_completions");
@@ -146,18 +160,30 @@ async function runSecurityTests() {
     process.cwd(),
     "supabase/migrations/20261010100000_auth_user_link_and_security.sql",
   );
+  const v2CorrectiveMigrationPath = path.resolve(
+    process.cwd(),
+    "supabase/migrations/20261010160000_fix_completion_verification_and_reward_idempotency.sql",
+  );
 
-  await test("Corrective security migration file exists and is non-empty", () => {
-    assert.equal(fs.existsSync(correctiveMigrationPath), true, "Corrective migration must exist");
-    const sql = fs.readFileSync(correctiveMigrationPath, "utf8");
-    assert(sql.length > 1000, "Corrective migration should contain full SQL definitions");
+  await test("Corrective security migration files exist and are non-empty", () => {
+    assert.equal(fs.existsSync(correctiveMigrationPath), true, "20261010150000 migration must exist");
+    assert.equal(
+      fs.existsSync(v2CorrectiveMigrationPath),
+      true,
+      "20261010160000 corrective migration must exist",
+    );
+    const sql = fs.readFileSync(v2CorrectiveMigrationPath, "utf8");
+    assert(sql.length > 2000, "20261010160000 migration should contain full SQL definitions");
   });
 
   await test("Critical Fix 1: link_user_entitlements revokes PUBLIC/anon/authenticated and validates auth.users ownership", () => {
-    for (const filePath of [correctiveMigrationPath, originalMigrationPath]) {
+    for (const filePath of [
+      correctiveMigrationPath,
+      originalMigrationPath,
+      v2CorrectiveMigrationPath,
+    ]) {
       const sql = fs.readFileSync(filePath, "utf8");
 
-      // Must revoke execute from PUBLIC, anon, authenticated
       assert(
         sql.includes(
           "REVOKE ALL ON FUNCTION public.link_user_entitlements(UUID, TEXT) FROM PUBLIC, anon, authenticated;",
@@ -170,14 +196,10 @@ async function runSecurityTests() {
         ),
         `${path.basename(filePath)} must grant EXECUTE on link_user_entitlements only to service_role`,
       );
-
-      // Must NOT grant link_user_entitlements to authenticated or anon
       assert(
         !sql.includes("GRANT EXECUTE ON FUNCTION public.link_user_entitlements(UUID, TEXT) TO authenticated"),
         `${path.basename(filePath)} must not grant link_user_entitlements to authenticated`,
       );
-
-      // Must cross-verify p_user_id and p_email against auth.users inside the function body
       assert(
         sql.includes("FROM auth.users") && sql.includes("WHERE id = v_target_user_id"),
         `${path.basename(filePath)} must verify v_target_user_id against auth.users`,
@@ -226,6 +248,65 @@ async function runSecurityTests() {
     }
   });
 
+  await test("Email Verification Fix: auth.users trigger, auto_link_user_on_grant, and RPCs require email_confirmed_at IS NOT NULL", () => {
+    const sql = fs.readFileSync(v2CorrectiveMigrationPath, "utf8");
+
+    // 1. Trigger on auth.users must check NEW.email_confirmed_at IS NOT NULL
+    assert(
+      sql.includes("IF NEW.id IS NOT NULL AND v_clean_email <> '' AND NEW.email_confirmed_at IS NOT NULL THEN"),
+      "handle_auth_user_entitlement_link must require NEW.email_confirmed_at IS NOT NULL before linking purchases",
+    );
+
+    // 2. Grant/Order trigger must check email_confirmed_at IS NOT NULL
+    assert(
+      sql.includes("WHERE lower(trim(email)) = lower(trim(v_target_email))\n      AND email_confirmed_at IS NOT NULL"),
+      "auto_link_user_on_grant must only match verified auth.users records",
+    );
+
+    // 3. link_user_entitlements & has_active_access_for_user must check email_confirmed_at IS NOT NULL
+    assert(
+      sql.includes("WHERE id = v_target_user_id\n    AND email_confirmed_at IS NOT NULL"),
+      "link_user_entitlements must require email_confirmed_at IS NOT NULL",
+    );
+
+    // 4. server-auth.ts must check email_confirmed_at
+    const serverAuthCode = fs.readFileSync(
+      path.resolve(process.cwd(), "src/lib/auth/server-auth.ts"),
+      "utf8",
+    );
+    assert(
+      serverAuthCode.includes("if (!data.user.email_confirmed_at)"),
+      "getAuthenticatedUser must reject unconfirmed email users",
+    );
+    assert(
+      serverAuthCode.includes("!userLookup?.user?.email_confirmed_at"),
+      "fallbackDirectSync must reject unconfirmed email users",
+    );
+  });
+
+  await test("Course Completion Schema Fix: Drops permissive defaults and enforces chk_course_completions_verified_state", () => {
+    const sql = fs.readFileSync(v2CorrectiveMigrationPath, "utf8");
+
+    assert(
+      sql.includes("ALTER COLUMN is_completed SET DEFAULT false;"),
+      "Migration must set is_completed DEFAULT false",
+    );
+    assert(
+      sql.includes("ALTER COLUMN completed_at DROP NOT NULL") &&
+        sql.includes("ALTER COLUMN completed_at DROP DEFAULT;"),
+      "Migration must drop NOT NULL and DEFAULT now() from completed_at",
+    );
+    assert(
+      sql.includes("ADD CONSTRAINT chk_course_completions_verified_state") &&
+        sql.includes("completed_lessons ?& ARRAY['core-1', 'core-2', 'core-3', 'core-4']"),
+      "Migration must enforce CHECK constraint requiring core-1..core-4 before is_completed = true",
+    );
+    assert(
+      sql.includes("CREATE UNIQUE INDEX IF NOT EXISTS idx_commerce_events_unique_reward_claimed_email"),
+      "Migration must enforce unique partial index on course_reward_claimed events per email",
+    );
+  });
+
   // ---------------------------------------------------------------------------
   // 2. Server Auth Helper Tests
   // ---------------------------------------------------------------------------
@@ -250,7 +331,7 @@ async function runSecurityTests() {
   });
 
   // ---------------------------------------------------------------------------
-  // 3. Priority Fix 3 — Reward Eligibility Enforcement Tests
+  // 3. Priority Fix 3 — Reward Eligibility & Genuine Course Completion Tests
   // ---------------------------------------------------------------------------
   await test("Submit Reward: Rejects unauthenticated requests with 401", async () => {
     const req = createRewardRequest({
@@ -336,14 +417,59 @@ async function runSecurityTests() {
     );
   });
 
-  await test("High Fix 3b: Rejects Silver member when course_completions has is_completed = false or completed_at = null", async () => {
-    const mockDbIncomplete = createMockSupabaseAdmin({
+  await test("High Fix 3b: Rejects Silver member when course_completions has is_completed = false, null, or undefined", async () => {
+    for (const badIsCompleted of [false, null, undefined]) {
+      const mockDbIncomplete = createMockSupabaseAdmin({
+        completionRow: {
+          id: "comp-1",
+          email: "silver@example.com",
+          user_id: "user-silver-1",
+          completed_at: "2026-10-10T00:00:00Z",
+          is_completed: badIsCompleted,
+          completed_lessons: ["core-1", "core-2", "core-3", "core-4"],
+        },
+      });
+
+      const req = createRewardRequest(
+        {
+          certificateName: "Asha Patel",
+          tshirtSize: "L",
+          shippingAddress: "12 MG Road, Pune",
+        },
+        "valid-jwt",
+      );
+
+      const response = await handleSubmitRewardRequest(req, {
+        getAuthenticatedUser: async () => ({
+          user: { id: "user-silver-1", email: "silver@example.com", isAdmin: false },
+          error: null,
+        }),
+        getMemberEntitledTiers: async () => ({
+          canViewMrc: true,
+          canViewSilver: true,
+          canViewGold: false,
+          canViewDiamond: false,
+        }),
+        supabaseAdmin: mockDbIncomplete,
+      });
+
+      assert.equal(
+        response.status,
+        403,
+        `Must reject with 403 when is_completed is ${String(badIsCompleted)}`,
+      );
+    }
+  });
+
+  await test("High Fix 3c: Rejects Silver member when row has is_completed = true (e.g. default) but required core modules are not completed", async () => {
+    const mockDbPartialModules = createMockSupabaseAdmin({
       completionRow: {
-        id: "comp-1",
+        id: "comp-partial-1",
         email: "silver@example.com",
         user_id: "user-silver-1",
         completed_at: "2026-10-10T00:00:00Z",
-        is_completed: false,
+        is_completed: true,
+        completed_lessons: ["core-1", "core-2"], // missing core-3 and core-4
       },
     });
 
@@ -367,15 +493,20 @@ async function runSecurityTests() {
         canViewGold: false,
         canViewDiamond: false,
       }),
-      supabaseAdmin: mockDbIncomplete,
+      supabaseAdmin: mockDbPartialModules,
     });
 
-    assert.equal(response.status, 403);
+    assert.equal(
+      response.status,
+      403,
+      "Must reject with 403 when required core lessons (core-1..core-4) are missing",
+    );
     const body = (await response.json()) as { ok: boolean; error: string };
     assert.equal(body.ok, false);
+    assert(!mockDbPartialModules.operations.includes("insert:commerce_events"));
   });
 
-  await test("High Fix 3c: Rejects reward claim if completion record belongs to a different user_id", async () => {
+  await test("High Fix 3d: Rejects reward claim if completion record belongs to a different user_id", async () => {
     const mockDbOtherUser = createMockSupabaseAdmin({
       completionRow: {
         id: "comp-1",
@@ -383,6 +514,7 @@ async function runSecurityTests() {
         user_id: "different-user-uuid",
         completed_at: "2026-10-10T00:00:00Z",
         is_completed: true,
+        completed_lessons: ["core-1", "core-2", "core-3", "core-4"],
       },
     });
 
@@ -416,7 +548,7 @@ async function runSecurityTests() {
   });
 
   // ---------------------------------------------------------------------------
-  // 4. Priority Fix 4 — Database Read & Write Error Handling Tests
+  // 4. Priority Fix 4 & Idempotency / Atomic Consistency Tests
   // ---------------------------------------------------------------------------
   await test("Medium Fix 4a: Returns 500 when querying course_completions fails", async () => {
     const mockDb = createMockSupabaseAdmin({
@@ -459,6 +591,7 @@ async function runSecurityTests() {
         user_id: "user-silver-1",
         completed_at: "2026-10-10T00:00:00Z",
         is_completed: true,
+        completed_lessons: ["core-1", "core-2", "core-3", "core-4"],
       },
       updateError: { message: "disk full / RLS violation" },
     });
@@ -495,7 +628,8 @@ async function runSecurityTests() {
     );
   });
 
-  await test("Medium Fix 4c: Returns 500 when commerce_events insert fails", async () => {
+  await test("Midway Failure Consistency: Rolls back course_completions when commerce_events insert fails and does NOT send notifications", async () => {
+    let goldNotified = false;
     const mockDb = createMockSupabaseAdmin({
       completionRow: {
         id: "comp-verified-1",
@@ -503,6 +637,7 @@ async function runSecurityTests() {
         user_id: "user-silver-1",
         completed_at: "2026-10-10T00:00:00Z",
         is_completed: true,
+        completed_lessons: ["core-1", "core-2", "core-3", "core-4"],
       },
       eventInsertError: { message: "commerce_events insert failed" },
     });
@@ -528,14 +663,85 @@ async function runSecurityTests() {
         canViewDiamond: false,
       }),
       supabaseAdmin: mockDb,
+      handleGoldCompleterEligibleEvent: async () => {
+        goldNotified = true;
+      },
     });
 
     assert.equal(response.status, 500, "Must return 500 when commerce_events insert fails");
     const body = (await response.json()) as { ok: boolean; error: string };
     assert.equal(body.ok, false);
+    assert(
+      mockDb.operations.includes("rollback:course_completions:comp-verified-1"),
+      "Must roll back reward_submitted_at on course_completions when commerce_events insert fails midway",
+    );
+    assert.equal(goldNotified, false, "Must NOT send Gold Completer notification when event insert fails");
   });
 
-  await test("Legitimate Completer: Succeeds (200 OK) when authenticated, entitled to Silver, and completion is verified", async () => {
+  await test("Reward Idempotency: Rejects duplicate reward claims (409 Conflict) and prevents duplicate events & notifications", async () => {
+    let goldNotified = false;
+    const mockDbAlreadyClaimed = createMockSupabaseAdmin({
+      completionRow: {
+        id: "comp-verified-1",
+        email: "silver@example.com",
+        user_id: "user-silver-1",
+        completed_at: "2026-10-10T00:00:00Z",
+        is_completed: true,
+        completed_lessons: ["core-1", "core-2", "core-3", "core-4"],
+        reward_submitted_at: "2026-10-10T01:00:00Z",
+      },
+    });
+
+    const req = createRewardRequest(
+      {
+        certificateName: "Asha Patel",
+        tshirtSize: "L",
+        shippingAddress: "12 MG Road, Pune",
+      },
+      "valid-jwt",
+    );
+
+    const response = await handleSubmitRewardRequest(req, {
+      getAuthenticatedUser: async () => ({
+        user: { id: "user-silver-1", email: "silver@example.com", isAdmin: false },
+        error: null,
+      }),
+      getMemberEntitledTiers: async () => ({
+        canViewMrc: true,
+        canViewSilver: true,
+        canViewGold: false,
+        canViewDiamond: false,
+      }),
+      supabaseAdmin: mockDbAlreadyClaimed,
+      handleGoldCompleterEligibleEvent: async () => {
+        goldNotified = true;
+      },
+    });
+
+    assert.equal(response.status, 409, "Duplicate reward claim must return 409 Conflict");
+    const body = (await response.json()) as {
+      ok: boolean;
+      alreadyClaimed?: boolean;
+      error: string;
+    };
+    assert.equal(body.ok, false);
+    assert.equal(body.alreadyClaimed, true);
+    assert(
+      !mockDbAlreadyClaimed.operations.some((op) => op.startsWith("update:course_completions")),
+      "Must NOT overwrite course_completions on duplicate submission",
+    );
+    assert(
+      !mockDbAlreadyClaimed.operations.includes("insert:commerce_events"),
+      "Must NOT insert duplicate commerce_events on duplicate submission",
+    );
+    assert.equal(
+      goldNotified,
+      false,
+      "Must NOT trigger duplicate Gold Completer notification on duplicate submission",
+    );
+  });
+
+  await test("Legitimate Completer: Succeeds (200 OK) when authenticated, entitled to Silver, and all core modules are verified", async () => {
     let goldNotified = false;
     const mockDb = createMockSupabaseAdmin({
       completionRow: {
@@ -544,6 +750,8 @@ async function runSecurityTests() {
         user_id: null, // historical unlinked completion record for this email
         completed_at: "2026-10-10T00:00:00Z",
         is_completed: true,
+        completed_lessons: ["core-1", "core-2", "core-3", "core-4"],
+        reward_submitted_at: null,
       },
     });
 

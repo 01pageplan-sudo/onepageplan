@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getActiveTemplateHtml } from "@/lib/commerce/templates.server";
 import { renderTemplateWithTokens } from "@/lib/commerce/token-engine.server";
 import { formatRupees } from "@/lib/commerce/pricing.server";
-import { formatPlainDate } from "@/lib/commerce/completion.server";
+import { formatPlainDate, isCourseCompletionVerified } from "@/lib/commerce/completion.server";
 import { CourseRewardForm } from "@/components/commerce/CourseRewardForm";
 import { Wordmark } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
@@ -56,13 +56,9 @@ export const getCompleterDataFn = createServerFn({ method: "POST" }).handler(asy
   const gRow = grant as any;
   const cRow = completion as any;
 
-  // Verify genuine completion record exists and belongs to this user
+  // Verify genuine completion record exists, satisfies all core module requirements, and belongs to this user
   const isCompleter = Boolean(
-    cRow &&
-      cRow.id &&
-      cRow.completed_at &&
-      cRow.is_completed !== false &&
-      (!cRow.user_id || cRow.user_id === user.id),
+    isCourseCompletionVerified(cRow) && (!cRow.user_id || cRow.user_id === user.id),
   );
 
   if (!isCompleter) {
