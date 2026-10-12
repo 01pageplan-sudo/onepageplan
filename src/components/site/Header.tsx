@@ -76,16 +76,6 @@ export function Header() {
           >
             Blog
           </a>
-          <a
-            href="/#register"
-            onClick={(e) => {
-              e.preventDefault();
-              open();
-            }}
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Register for Free
-          </a>
         </nav>
         <div className="flex items-center gap-3">
           <a

@@ -626,27 +626,14 @@ function Faq() {
 function FinalCta() {
   const { open } = useRegistration();
 
-  useEffect(() => {
-    const checkHash = () => {
-      if (window.location.hash === "#register") {
-        window.history.replaceState(null, "", window.location.pathname + window.location.search);
-        open();
-      }
-    };
-    checkHash();
-    window.addEventListener("hashchange", checkHash);
-    return () => window.removeEventListener("hashchange", checkHash);
-  }, [open]);
-
   return (
-    <section id="register" className="scroll-mt-24 bg-primary px-4 py-16 text-[var(--background)]">
+    <section className="bg-primary px-4 py-16 text-[var(--background)]">
       <div className="mx-auto max-w-2xl text-center">
-        <p className="label-caps text-xs tracking-widest opacity-85">Register for Free</p>
-        <h2 className="mt-2 text-2xl font-bold sm:text-3xl">
+        <h2 className="text-2xl font-bold sm:text-3xl">
           Ninety minutes this Saturday. What is your actual number?
         </h2>
         <p className="mt-3 text-sm opacity-90">
-          Join the free live masterclass — complete your registration and leave with it on one page.
+          Free, live, and you leave with it on one page.
         </p>
         <Button
           onClick={open}

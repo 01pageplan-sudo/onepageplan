@@ -17,19 +17,12 @@ export function RegistrationProvider({ children }: { children: ReactNode }) {
     setIsOpen(true);
   }, []);
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    setIsOpen(nextOpen);
-    if (!nextOpen && typeof window !== "undefined" && window.location.hash === "#register") {
-      window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
-  }, []);
-
   const value = useMemo(() => ({ open }), [open]);
 
   return (
     <RegistrationContext.Provider value={value}>
       {children}
-      <RegistrationModal open={isOpen} onOpenChange={handleOpenChange} />
+      <RegistrationModal open={isOpen} onOpenChange={setIsOpen} />
     </RegistrationContext.Provider>
   );
 }
