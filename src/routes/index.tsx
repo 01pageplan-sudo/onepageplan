@@ -488,25 +488,25 @@ function AboutHost() {
 
 const BLOG_POSTS = [
   {
-    tag: "Real Returns",
-    title: "Why doubling your money in ten years can still leave you poorer",
+    tag: "Simplicity",
+    title: "Simplicity Is the Highest Form of Wealth",
     summary:
-      "Doubling over ten years works out to about seven percent a year. Take tax off and set inflation against it, and the real return tells a very different story.",
-    href: "https://milanaire.me/blog",
+      "Why simple financial systems outperform complex portfolios in building long-term wealth.",
+    href: "https://www.milanaire.me/simplicity-wealth",
   },
   {
-    tag: "Family Protection",
-    title: "The one clause in a term policy almost nobody checks",
+    tag: "Behavioral Finance",
+    title: "Why Smart People Make Poor Financial Decisions",
     summary:
-      "How nomination and the Married Women's Property (MWP) Act decide whether a claim payout reaches your spouse or settles what you owe.",
-    href: "https://milanaire.me/blog",
+      "Even experienced investors make mistakes due to overconfidence. Learn why doing less often leads to better financial outcomes.",
+    href: "https://www.milanaire.me/smart-people-financial-mistakes",
   },
   {
-    tag: "One Page Plan",
-    title: "Your income is a variable, not a constant",
+    tag: "Mindset",
+    title: "The Quiet Trap of Status Spending",
     summary:
-      "Why optimising the leftovers only goes so far, and how Indian professionals and practice owners can build a one-page family financial plan.",
-    href: "https://milanaire.me/blog",
+      "Why people hesitate to invest but spend easily, and how status-driven decisions quietly delay wealth creation.",
+    href: "https://www.milanaire.me/status-spending-trap",
   },
 ];
 
@@ -522,7 +522,7 @@ function BlogSection() {
           <p className="mt-2 text-sm text-muted-foreground">
             Essays, arithmetic, and frameworks on building your own plan — published on{" "}
             <a
-              href="https://milanaire.me/blog"
+              href="https://www.milanaire.me/blog"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[var(--brass)] underline underline-offset-4 hover:text-primary"
@@ -533,7 +533,7 @@ function BlogSection() {
           </p>
         </div>
         <a
-          href="https://milanaire.me/blog"
+          href="https://www.milanaire.me/blog"
           target="_blank"
           rel="noopener noreferrer"
           className="shrink-0 text-sm font-semibold text-primary underline underline-offset-4 hover:text-[var(--highlight)]"
@@ -561,7 +561,7 @@ function BlogSection() {
               </p>
             </div>
             <span className="mt-4 inline-flex items-center text-xs font-semibold text-primary group-hover:text-[var(--highlight)]">
-              Read on milanaire.me/blog →
+              Read article →
             </span>
           </a>
         ))}

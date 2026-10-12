@@ -25,6 +25,25 @@ export const Route = createFileRoute("/confirmed")({
       { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex" },
     ],
+    scripts: [
+      {
+        type: "text/javascript",
+        children: `function gtag_report_conversion(url) {
+  var callback = function () {
+    if (typeof(url) != 'undefined') {
+      window.location = url;
+    }
+  };
+  gtag('event', 'conversion', {
+      'send_to': 'AW-18508823802/wH2bCP6fsZodEPr52PlE',
+      'value': 1.0,
+      'currency': 'INR',
+      'event_callback': callback
+  });
+  return false;
+}`,
+      },
+    ],
   }),
   component: ConfirmedPage,
 });
@@ -42,6 +61,25 @@ function useTrackRegistrationOnce(registrationId: string | undefined) {
     }
     track("CompleteRegistration", { content_name: "money_reality_masterclass" });
     track("Lead");
+
+    // Google Ads Submit lead form conversion
+    try {
+      const win = window as unknown as {
+        gtag_report_conversion?: (url?: string) => boolean;
+        gtag?: (...args: unknown[]) => void;
+      };
+      if (typeof win.gtag_report_conversion === "function") {
+        win.gtag_report_conversion();
+      } else if (typeof win.gtag === "function") {
+        win.gtag("event", "conversion", {
+          send_to: "AW-18508823802/wH2bCP6fsZodEPr52PlE",
+          value: 1.0,
+          currency: "INR",
+        });
+      }
+    } catch {
+      /* gtag error tolerated */
+    }
 
     // ChatGPT / OpenAI Ads Browser Pixel
     try {
