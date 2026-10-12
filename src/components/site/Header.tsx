@@ -79,11 +79,8 @@ export function Header() {
           <a
             href="/#register"
             onClick={(e) => {
-              if (window.location.pathname === "/") {
-                e.preventDefault();
-                window.history.replaceState(null, "", "#register");
-                open();
-              }
+              e.preventDefault();
+              open();
             }}
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >

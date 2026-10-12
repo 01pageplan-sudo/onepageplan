@@ -629,6 +629,7 @@ function FinalCta() {
   useEffect(() => {
     const checkHash = () => {
       if (window.location.hash === "#register") {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
         open();
       }
     };
