@@ -51,10 +51,49 @@ export function Header() {
         <Link to="/" className="shrink-0">
           <Wordmark />
         </Link>
-        <div className="flex items-center gap-3 sm:gap-6">
+        <nav aria-label="Main navigation" className="hidden items-center gap-5 lg:flex">
+          <a
+            href="/#what-youll-learn"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            What You&apos;ll Learn
+          </a>
+          <a
+            href="/#session-details"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Session Details
+          </a>
           <a
             href="/#meet-the-presenter"
-            className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground sm:text-sm"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Meet the Presenter
+          </a>
+          <a
+            href="/#blog"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Blog
+          </a>
+          <a
+            href="/#register"
+            onClick={(e) => {
+              if (window.location.pathname === "/") {
+                e.preventDefault();
+                window.history.replaceState(null, "", "#register");
+                open();
+              }
+            }}
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Register for Free
+          </a>
+        </nav>
+        <div className="flex items-center gap-3">
+          <a
+            href="/#meet-the-presenter"
+            className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground lg:hidden"
           >
             Meet the Presenter
           </a>

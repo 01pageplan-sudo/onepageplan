@@ -98,6 +98,8 @@ function LandingPage() {
           <AboutHost />
           <Testimonials />
           <SectionRule />
+          <BlogSection />
+          <SectionRule />
           <Faq />
           <FinalCta />
         </main>
@@ -152,7 +154,13 @@ function Hero() {
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div id="session-details" className="scroll-mt-24 space-y-4">
+          <div className="space-y-1">
+            <p className="label-caps text-[var(--brass)]">Session Details</p>
+            <p className="text-xs text-muted-foreground">
+              Check the next session details — see the date, time and duration.
+            </p>
+          </div>
           <CountdownCard />
           <div className="grid grid-cols-2 gap-3">
             <SpecChip icon={<CalendarGlyph />} label={`This Saturday, ${chipDate}`} />
@@ -212,10 +220,14 @@ const NEW_WAY = [
 
 function OldNew() {
   return (
-    <section className="mx-auto max-w-[900px] px-4 py-14">
-      <h2 className="text-2xl font-bold sm:text-3xl">
+    <section id="what-youll-learn" className="mx-auto max-w-[900px] scroll-mt-24 px-4 py-14">
+      <p className="label-caps text-[var(--brass)]">What You&apos;ll Learn</p>
+      <h2 className="mt-2 text-2xl font-bold sm:text-3xl">
         Two ways to handle money, and only one of them compounds
       </h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Explore the masterclass topics and understand what you own and owe.
+      </p>
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         <div className="rounded-lg border border-border bg-[var(--muted)] p-5">
           <p className="label-caps text-muted-foreground">The old way</p>
@@ -474,6 +486,90 @@ function AboutHost() {
   );
 }
 
+const BLOG_POSTS = [
+  {
+    tag: "Real Returns",
+    title: "Why doubling your money in ten years can still leave you poorer",
+    summary:
+      "Doubling over ten years works out to about seven percent a year. Take tax off and set inflation against it, and the real return tells a very different story.",
+    href: "https://milanaire.me/blog",
+  },
+  {
+    tag: "Family Protection",
+    title: "The one clause in a term policy almost nobody checks",
+    summary:
+      "How nomination and the Married Women's Property (MWP) Act decide whether a claim payout reaches your spouse or settles what you owe.",
+    href: "https://milanaire.me/blog",
+  },
+  {
+    tag: "One Page Plan",
+    title: "Your income is a variable, not a constant",
+    summary:
+      "Why optimising the leftovers only goes so far, and how Indian professionals and practice owners can build a one-page family financial plan.",
+    href: "https://milanaire.me/blog",
+  },
+];
+
+function BlogSection() {
+  return (
+    <section id="blog" className="mx-auto max-w-[900px] scroll-mt-24 px-4 py-14">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="label-caps text-[var(--brass)]">Blog</p>
+          <h2 className="mt-2 text-2xl font-bold sm:text-3xl">
+            Notes on Indian family finance
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Essays, arithmetic, and frameworks on building your own plan — published on{" "}
+            <a
+              href="https://milanaire.me/blog"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[var(--brass)] underline underline-offset-4 hover:text-primary"
+            >
+              milanaire.me/blog
+            </a>
+            .
+          </p>
+        </div>
+        <a
+          href="https://milanaire.me/blog"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-sm font-semibold text-primary underline underline-offset-4 hover:text-[var(--highlight)]"
+        >
+          Explore all articles →
+        </a>
+      </div>
+
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        {BLOG_POSTS.map((post) => (
+          <a
+            key={post.title}
+            href={post.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex flex-col justify-between rounded-lg border border-border bg-card p-5 transition-colors hover:border-[var(--brass)]"
+          >
+            <div>
+              <p className="label-caps text-xs text-[var(--brass)]">{post.tag}</p>
+              <h3 className="mt-2 text-base font-semibold group-hover:text-primary">
+                {post.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {post.summary}
+              </p>
+            </div>
+            <span className="mt-4 inline-flex items-center text-xs font-semibold text-primary group-hover:text-[var(--highlight)]">
+              Read on milanaire.me/blog →
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 const FAQS = [
   {
     q: "Is this actually free?",
@@ -529,14 +625,27 @@ function Faq() {
 
 function FinalCta() {
   const { open } = useRegistration();
+
+  useEffect(() => {
+    const checkHash = () => {
+      if (window.location.hash === "#register") {
+        open();
+      }
+    };
+    checkHash();
+    window.addEventListener("hashchange", checkHash);
+    return () => window.removeEventListener("hashchange", checkHash);
+  }, [open]);
+
   return (
-    <section className="bg-primary px-4 py-16 text-[var(--background)]">
+    <section id="register" className="scroll-mt-24 bg-primary px-4 py-16 text-[var(--background)]">
       <div className="mx-auto max-w-2xl text-center">
-        <h2 className="text-2xl font-bold sm:text-3xl">
+        <p className="label-caps text-xs tracking-widest opacity-85">Register for Free</p>
+        <h2 className="mt-2 text-2xl font-bold sm:text-3xl">
           Ninety minutes this Saturday. What is your actual number?
         </h2>
         <p className="mt-3 text-sm opacity-90">
-          Free, live, and you leave with it on one page.
+          Join the free live masterclass — complete your registration and leave with it on one page.
         </p>
         <Button
           onClick={open}
