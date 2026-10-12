@@ -69,7 +69,7 @@ function TermsPage() {
           <div className="mt-8 space-y-8 text-sm leading-relaxed text-muted-foreground">
             <p>
               These terms apply to this website and to The Money Reality Masterclass, both operated by
-              Mannrs Wellness LLP under the name The One Page Plan by Milanaire. By using the website or
+              Manrrs Wellness LLP under the name The One Page Plan by Milanaire. By using the website or
               attending a session you accept them.
             </p>
 
@@ -102,7 +102,7 @@ function TermsPage() {
           <Block heading="Intellectual property">
             <p>
               The website, the session content, the sheets, the calculators and the checklists belong
-              to Mannrs Wellness LLP. You may use them for your own personal purposes. You may not
+              to Manrrs Wellness LLP. You may use them for your own personal purposes. You may not
               copy, resell, republish, record, redistribute or teach them commercially without our
               written permission.
             </p>
@@ -134,7 +134,7 @@ function TermsPage() {
 
           <Block heading="Limitation of liability">
             <p>
-              To the fullest extent permitted by law, Mannrs Wellness LLP and Milan Dodhia are not
+              To the fullest extent permitted by law, Manrrs Wellness LLP and Milan Dodhia are not
               liable for any loss, damage or cost arising from your use of this website, from
               attending a session, or from any decision you take after either. Nothing in these terms
               limits liability that cannot be limited by law.

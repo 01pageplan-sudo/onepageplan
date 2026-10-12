@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 
 export const DISCLAIMER =
-  "The One Page Plan is a financial education programme by Milanaire, operated by Mannrs Wellness LLP. Everything on this page and in this session is educational content only. It is not investment advice and it is not a recommendation to buy or sell any security, scheme, policy or product. No returns are promised or implied. For anything tax related please consult a Chartered Accountant. For anything legal please consult a lawyer. Please make your own decisions.";
+  "The One Page Plan is a financial education programme by Milanaire, operated by Manrrs Wellness LLP. Everything on this page and in this session is educational content only. It is not investment advice and it is not a recommendation to buy or sell any security, scheme, policy or product. No returns are promised or implied. For anything tax related please consult a Chartered Accountant. For anything legal please consult a lawyer. Please make your own decisions.";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -22,6 +22,9 @@ export function Footer() {
         </div>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+          <a href="/#meet-the-presenter" className="underline">
+            Meet the Presenter
+          </a>
           <Link to="/privacy" className="underline">
             Privacy Policy
           </Link>
@@ -37,7 +40,7 @@ export function Footer() {
           <Link to="/contact" className="underline">
             Contact Us
           </Link>
-          <span>© {year} Mannrs Wellness LLP</span>
+          <span>© {year} Manrrs Wellness LLP</span>
         </div>
       </div>
     </footer>

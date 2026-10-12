@@ -413,7 +413,7 @@ function AboutHost() {
     (import.meta.env["VITE_HOST_IMAGE_URL"] as string | undefined) || milanHeadshot;
 
   return (
-    <section className="mx-auto max-w-[900px] px-4 py-14">
+    <section id="meet-the-presenter" className="mx-auto max-w-[900px] scroll-mt-24 px-4 py-14">
       <div className="grid gap-8 md:grid-cols-[280px_1fr]">
         <div>
           <img
@@ -424,8 +424,19 @@ function AboutHost() {
           />
         </div>
         <div>
-          <h2 className="text-2xl font-bold sm:text-3xl">Milan Dodhia</h2>
-          <p className="label-caps mt-2 text-[var(--brass)]">Financial Educator</p>
+          <p className="label-caps text-[var(--brass)]">Meet the Presenter</p>
+          <h2 className="mt-2 text-2xl font-bold sm:text-3xl">Milan Dodhia</h2>
+          <p className="label-caps mt-2 text-muted-foreground">
+            Financial Educator ·{" "}
+            <a
+              href="https://milanaire.me"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[var(--brass)] underline underline-offset-4 hover:text-primary"
+            >
+              milanaire.me
+            </a>
+          </p>
           <div className="mt-5 space-y-4 text-sm leading-relaxed text-muted-foreground">
             <p>
               Seven and a half years in equity research. Thirteen years as a licensed mutual fund
@@ -445,6 +456,16 @@ function AboutHost() {
               I do not sell products, so I do not earn commissions. I teach the frameworks so you
               decide, and so you can judge whether anyone else's recommendation holds up. Including
               mine.
+            </p>
+            <p className="pt-1">
+              <a
+                href="https://milanaire.me"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-4 hover:text-[var(--highlight)]"
+              >
+                Visit milanaire.me →
+              </a>
             </p>
           </div>
         </div>

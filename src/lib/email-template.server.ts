@@ -33,7 +33,7 @@ Financial Educator, Milanaire
 ---
 ${DISCLAIMER_TEXT}
 
-Mannrs Wellness LLP : connect@onepageplan.in
+Manrrs Wellness LLP : connect@onepageplan.in
 To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remove you.`;
 
   const html = `<!doctype html>
@@ -82,7 +82,7 @@ To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remo
               <td style="border-top:1px solid #E5DFD3;padding-top:16px;font-size:11px;line-height:1.6;color:#6B6A63;">
                 ${DISCLAIMER_TEXT}
                 <br /><br />
-                Mannrs Wellness LLP : connect@onepageplan.in
+                Manrrs Wellness LLP : connect@onepageplan.in
                 <br />
                 To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remove you.
               </td>

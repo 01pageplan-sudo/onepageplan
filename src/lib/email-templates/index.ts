@@ -1,5 +1,5 @@
 export const DISCLAIMER_TEXT =
-  "Milan Dodhia. Financial Educator. Mannrs Wellness LLP. This email is financial education, not financial advice. I do not recommend specific stocks, funds, policies or lenders. I don't sell products, so I don't earn commissions. For tax questions, speak to a Chartered Accountant. For legal questions, speak to a lawyer.";
+  "Milan Dodhia. Financial Educator. Manrrs Wellness LLP. This email is financial education, not financial advice. I do not recommend specific stocks, funds, policies or lenders. I don't sell products, so I don't earn commissions. For tax questions, speak to a Chartered Accountant. For legal questions, speak to a lawyer.";
 
 /**
  * Every email the funnel can send, in one place.
@@ -145,7 +145,7 @@ export function renderEmail(spec: TemplateSpec, ctx: EmailContext) {
     "---",
     DISCLAIMER_TEXT,
     "",
-    "Mannrs Wellness LLP : connect@onepageplan.in",
+    "Manrrs Wellness LLP : connect@onepageplan.in",
     "To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remove you.",
   ]
     .filter((line) => line !== undefined)
@@ -180,7 +180,7 @@ export function renderEmail(spec: TemplateSpec, ctx: EmailContext) {
           <tr><td style="font-size:15px;line-height:1.6;padding:12px 0 20px;">Milan Dodhia<br /><span style="color:#6B6A63;">Financial Educator, Milanaire</span></td></tr>
           <tr><td style="border-top:1px solid #E5DFD3;padding-top:16px;font-size:11px;line-height:1.6;color:#6B6A63;">
             ${escapeHtml(DISCLAIMER_TEXT)}<br /><br />
-            Mannrs Wellness LLP : connect@onepageplan.in<br />
+            Manrrs Wellness LLP : connect@onepageplan.in<br />
             To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remove you.
           </td></tr>
         </table>

@@ -376,7 +376,7 @@ export const getLegalPolicyFn = createServerFn({ method: "POST" })
       .maybeSingle();
 
     const settings = (settingsRow as any) || {
-      registered_business_name: "The One Page Plan LLP",
+      legal_entity_name: "Manrrs Wellness LLP",
       registered_address: "Bandra West, Mumbai 400050, India",
     };
 
@@ -406,10 +406,18 @@ export const getLegalPolicyFn = createServerFn({ method: "POST" })
         break;
     }
 
+    const rawBusinessName = settings.legal_entity_name || settings.registered_business_name;
+    const businessName =
+      !rawBusinessName ||
+      rawBusinessName === "The One Page Plan LLP" ||
+      rawBusinessName.includes("Mannrs")
+        ? "Manrrs Wellness LLP"
+        : rawBusinessName;
+
     return {
       title,
       customMarkdown,
-      businessName: settings.registered_business_name || "The One Page Plan LLP",
+      businessName,
       registeredAddress: settings.registered_address || "Bandra West, Mumbai 400050, India",
       supportEmail: "connect@onepageplan.in",
       gstin: settings.gstin || null,

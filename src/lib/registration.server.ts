@@ -187,7 +187,7 @@ export async function sendOption2WelcomeEmail(
     "Financial Educator, Milanaire",
     "",
     "---",
-    "Milan Dodhia. Financial Educator. Mannrs Wellness LLP.",
+    "Milan Dodhia. Financial Educator. Manrrs Wellness LLP.",
     "This email is financial education, not financial advice. I do not recommend specific stocks, funds, policies or lenders. I don't sell products, so I don't earn commissions. For tax questions, speak to a Chartered Accountant. For legal questions, speak to a lawyer.",
     "To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remove you.",
   ];
@@ -209,7 +209,7 @@ export async function sendOption2WelcomeEmail(
           <tr><td style="font-size:15px;line-height:1.6;padding-bottom:14px;">Next one: why even a correct tip usually fails, and the three things that decide the outcome after the name is chosen.</td></tr>
           <tr><td style="font-size:15px;line-height:1.6;padding:12px 0 20px;">Milan Dodhia<br /><span style="color:#6B6A63;">Financial Educator, Milanaire</span></td></tr>
           <tr><td style="border-top:1px solid #E5DFD3;padding-top:16px;font-size:11px;line-height:1.6;color:#6B6A63;">
-            Milan Dodhia. Financial Educator. Mannrs Wellness LLP.<br />
+            Milan Dodhia. Financial Educator. Manrrs Wellness LLP.<br />
             This email is financial education, not financial advice. I do not recommend specific stocks, funds, policies or lenders. I don't sell products, so I don't earn commissions. For tax questions, speak to a Chartered Accountant. For legal questions, speak to a lawyer.<br /><br />
             To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remove you.
           </td></tr>

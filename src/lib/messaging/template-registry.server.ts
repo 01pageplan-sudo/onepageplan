@@ -15,7 +15,7 @@ export interface TemplateDefinition {
 
 export const EMAIL_COMPLIANCE_FOOTER = `
 <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #E5DFD3; font-size: 11px; line-height: 1.6; color: #6B6A63;">
-  Milan Dodhia. Financial Educator. Mannrs Wellness LLP.<br />
+  Milan Dodhia. Financial Educator. Manrrs Wellness LLP.<br />
   This email is financial education, not financial advice. I do not recommend specific stocks, funds, policies or lenders. I don't sell products, so I don't earn commissions. For tax questions, speak to a Chartered Accountant. For legal questions, speak to a lawyer.<br /><br />
   <a href="{{unsubscribe_url}}" style="color: #6B6A63; text-decoration: underline;">Unsubscribe from marketing emails</a>
 </div>`;

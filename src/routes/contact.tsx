@@ -61,7 +61,7 @@ function ContactPage() {
                     Operating Entity
                   </p>
                   <p className="text-base font-semibold text-foreground mt-0.5">
-                    {data?.businessName || "The One Page Plan by Milanaire (Mannrs Wellness LLP)"}
+                    {data?.businessName || "Manrrs Wellness LLP"}
                   </p>
                 </div>
               </div>

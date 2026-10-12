@@ -51,13 +51,21 @@ export function Header() {
         <Link to="/" className="shrink-0">
           <Wordmark />
         </Link>
-        <Button
-          onClick={open}
-          className="bg-primary text-primary-foreground hover:bg-[var(--highlight)]"
-          size="sm"
-        >
-          Join free masterclass
-        </Button>
+        <div className="flex items-center gap-3 sm:gap-6">
+          <a
+            href="/#meet-the-presenter"
+            className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground sm:text-sm"
+          >
+            Meet the Presenter
+          </a>
+          <Button
+            onClick={open}
+            className="bg-primary text-primary-foreground hover:bg-[var(--highlight)]"
+            size="sm"
+          >
+            Join free masterclass
+          </Button>
+        </div>
       </div>
     </header>
   );
