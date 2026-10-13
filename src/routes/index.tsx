@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Clock, Globe, Timer, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -16,10 +16,7 @@ import { Header } from "@/components/site/Header";
 import { StickyBar } from "@/components/site/StickyBar";
 import { Testimonials } from "@/components/site/Testimonials";
 import { VideoEmbed } from "@/components/site/VideoEmbed";
-import {
-  RegistrationProvider,
-  useRegistration,
-} from "@/components/site/registration-context";
+import { RegistrationProvider, useRegistration } from "@/components/site/registration-context";
 import { track } from "@/lib/analytics";
 import { formatSessionDayMonth } from "@/lib/session";
 
@@ -68,7 +65,14 @@ function SpecChip({ icon, label }: { icon: React.ReactNode; label: string }) {
 
 function CalendarGlyph() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+    >
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M8 3v4M16 3v4M3 11h18" />
     </svg>
@@ -421,8 +425,7 @@ function TakeAways() {
 }
 
 function AboutHost() {
-  const hostImage =
-    (import.meta.env["VITE_HOST_IMAGE_URL"] as string | undefined) || milanHeadshot;
+  const hostImage = (import.meta.env["VITE_HOST_IMAGE_URL"] as string | undefined) || milanHeadshot;
 
   return (
     <section id="meet-the-presenter" className="mx-auto max-w-[900px] scroll-mt-24 px-4 py-14">
@@ -452,10 +455,10 @@ function AboutHost() {
           <div className="mt-5 space-y-4 text-sm leading-relaxed text-muted-foreground">
             <p>
               Seven and a half years in equity research. Thirteen years as a licensed mutual fund
-              distributor, a licence I surrendered in April 2026. Now inside a credit bureau, working
-              across both the bank side and the credit side, which means I know what a lender sees
-              when they look at you. MBA in Finance. Around two hundred families coached, one to one
-              and in groups.
+              distributor, a licence I surrendered in April 2026. Now inside a credit bureau,
+              working across both the bank side and the credit side, which means I know what a
+              lender sees when they look at you. MBA in Finance. Around two hundred families
+              coached, one to one and in groups.
             </p>
             <p>
               My father ran the same shop in Mumbai for thirty five years, from seven in the morning
@@ -488,25 +491,25 @@ function AboutHost() {
 
 const BLOG_POSTS = [
   {
-    tag: "Simplicity",
-    title: "Simplicity Is the Highest Form of Wealth",
+    tag: "Financial Clarity",
+    title: "Your Financial App Shows You Everything. But Does It Tell You What Matters?",
     summary:
-      "Why simple financial systems outperform complex portfolios in building long-term wealth.",
-    href: "https://www.milanaire.me/simplicity-wealth",
+      "India's Account Aggregator makes data tracking effortless. But does having all your numbers in one dashboard mean you have a financial plan?",
+    to: "/blog/financial-apps-vs-financial-planning" as const,
   },
   {
     tag: "Behavioral Finance",
-    title: "Why Smart People Make Poor Financial Decisions",
+    title: "You're Tracking Your Stocks Every Day. But Are You Tracking Your Financial Life?",
     summary:
-      "Even experienced investors make mistakes due to overconfidence. Learn why doing less often leads to better financial outcomes.",
-    href: "https://www.milanaire.me/smart-people-financial-mistakes",
+      "Stop confusing portfolio movement with financial progress. Why building a review habit matters more than daily stock market checking.",
+    to: "/blog/stop-tracking-stocks-every-day" as const,
   },
   {
-    tag: "Mindset",
-    title: "The Quiet Trap of Status Spending",
+    tag: "Financial Planning",
+    title: "You Have Investments, Insurance and Savings. But Do You Have a Financial Plan?",
     summary:
-      "Why people hesitate to invest but spend easily, and how status-driven decisions quietly delay wealth creation.",
-    href: "https://www.milanaire.me/status-spending-trap",
+      "Most families don't lack financial products; they lack a complete picture of how those products fit together. Why managing money in silos fails.",
+    to: "/blog/investments-vs-financial-plan" as const,
   },
 ];
 
@@ -516,39 +519,50 @@ function BlogSection() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="label-caps text-[var(--brass)]">Blog</p>
-          <h2 className="mt-2 text-2xl font-bold sm:text-3xl">
-            Notes on Indian family finance
-          </h2>
+          <h2 className="mt-2 text-2xl font-bold sm:text-3xl">Notes on Indian family finance</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Essays, arithmetic, and frameworks on building your own plan — published on{" "}
-            <a
-              href="https://www.milanaire.me/blog"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--brass)] underline underline-offset-4 hover:text-primary"
-            >
-              milanaire.me/blog
-            </a>
-            .
+            Essays, arithmetic, and frameworks on building your own plan and seeing your
+            family&apos;s financial life as a whole.
           </p>
         </div>
-        <a
-          href="https://www.milanaire.me/blog"
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          to="/blog"
           className="shrink-0 text-sm font-semibold text-primary underline underline-offset-4 hover:text-[var(--highlight)]"
         >
           Explore all articles →
-        </a>
+        </Link>
       </div>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
+      {/* Featured Internal Article */}
+      <Link
+        to="/blog/missed-health-insurance-renewal"
+        className="group mt-8 block rounded-xl border border-[var(--brass)]/60 bg-card p-6 transition-all hover:border-[var(--brass)] hover:shadow-sm"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="label-caps rounded-full border border-[var(--brass)]/60 bg-[var(--brass)]/10 px-2.5 py-0.5 text-xs text-[var(--brass)]">
+            Financial Clarity
+          </span>
+          <span className="text-xs text-muted-foreground">·</span>
+          <span className="text-xs text-muted-foreground">5 min read</span>
+        </div>
+        <h3 className="mt-3 text-lg sm:text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+          Seven Years of Health Insurance. One Missed Renewal. And a Costly Lesson.
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          They had paid their health insurance premiums for seven years. When they needed the policy
+          during a hospitalisation, they discovered it had expired nearly 60 days earlier. A lesson
+          in financial ownership.
+        </p>
+        <span className="mt-4 inline-flex items-center text-xs font-semibold text-primary group-hover:text-[var(--highlight)]">
+          Read full article →
+        </span>
+      </Link>
+
+      <div className="mt-6 grid gap-4 md:grid-cols-3">
         {BLOG_POSTS.map((post) => (
-          <a
+          <Link
             key={post.title}
-            href={post.href}
-            target="_blank"
-            rel="noopener noreferrer"
+            to={post.to}
             className="group flex flex-col justify-between rounded-lg border border-border bg-card p-5 transition-colors hover:border-[var(--brass)]"
           >
             <div>
@@ -556,14 +570,12 @@ function BlogSection() {
               <h3 className="mt-2 text-base font-semibold group-hover:text-primary">
                 {post.title}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {post.summary}
-              </p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{post.summary}</p>
             </div>
             <span className="mt-4 inline-flex items-center text-xs font-semibold text-primary group-hover:text-[var(--highlight)]">
               Read article →
             </span>
-          </a>
+          </Link>
         ))}
       </div>
     </section>
@@ -632,9 +644,7 @@ function FinalCta() {
         <h2 className="text-2xl font-bold sm:text-3xl">
           Ninety minutes this Saturday. What is your actual number?
         </h2>
-        <p className="mt-3 text-sm opacity-90">
-          Free, live, and you leave with it on one page.
-        </p>
+        <p className="mt-3 text-sm opacity-90">Free, live, and you leave with it on one page.</p>
         <Button
           onClick={open}
           className="mt-8 h-auto bg-[var(--background)] px-8 py-4 text-base font-semibold text-primary hover:bg-[var(--highlight)] hover:text-[var(--background)]"

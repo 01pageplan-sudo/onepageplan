@@ -22,6 +22,13 @@ import { Route as ShippingPolicyRouteImport } from './routes/shipping-policy'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiGetWebinarMetricsRouteImport } from './routes/api/get-webinar-metrics'
 import { Route as ApiGetWebinarTokenRouteImport } from './routes/api/get-webinar-token'
+import { Route as BlogIndexRouteImport } from './routes/blog/index'
+import { Route as BlogFinancialAdvisorIncentivesRouteImport } from './routes/blog/financial-advisor-incentives'
+import { Route as BlogFinancialAppsVsFinancialPlanningRouteImport } from './routes/blog/financial-apps-vs-financial-planning'
+import { Route as BlogHealthInsuranceMissedRenewalFinancialPlanningRouteImport } from './routes/blog/health-insurance-missed-renewal-financial-planning'
+import { Route as BlogInvestmentsVsFinancialPlanRouteImport } from './routes/blog/investments-vs-financial-plan'
+import { Route as BlogMissedHealthInsuranceRenewalRouteImport } from './routes/blog/missed-health-insurance-renewal'
+import { Route as BlogStopTrackingStocksEveryDayRouteImport } from './routes/blog/stop-tracking-stocks-every-day'
 import { Route as CheckoutDiamondRouteImport } from './routes/checkout.diamond'
 import { Route as CheckoutGoldRouteImport } from './routes/checkout.gold'
 import { Route as CheckoutMoneyRealityCheckRouteImport } from './routes/checkout.money-reality-check'
@@ -120,6 +127,47 @@ const ApiGetWebinarTokenRoute = ApiGetWebinarTokenRouteImport.update({
   path: '/api/get-webinar-token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogFinancialAdvisorIncentivesRoute =
+  BlogFinancialAdvisorIncentivesRouteImport.update({
+    id: '/blog/financial-advisor-incentives',
+    path: '/blog/financial-advisor-incentives',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogFinancialAppsVsFinancialPlanningRoute =
+  BlogFinancialAppsVsFinancialPlanningRouteImport.update({
+    id: '/blog/financial-apps-vs-financial-planning',
+    path: '/blog/financial-apps-vs-financial-planning',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogHealthInsuranceMissedRenewalFinancialPlanningRoute =
+  BlogHealthInsuranceMissedRenewalFinancialPlanningRouteImport.update({
+    id: '/blog/health-insurance-missed-renewal-financial-planning',
+    path: '/blog/health-insurance-missed-renewal-financial-planning',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogInvestmentsVsFinancialPlanRoute =
+  BlogInvestmentsVsFinancialPlanRouteImport.update({
+    id: '/blog/investments-vs-financial-plan',
+    path: '/blog/investments-vs-financial-plan',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogMissedHealthInsuranceRenewalRoute =
+  BlogMissedHealthInsuranceRenewalRouteImport.update({
+    id: '/blog/missed-health-insurance-renewal',
+    path: '/blog/missed-health-insurance-renewal',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BlogStopTrackingStocksEveryDayRoute =
+  BlogStopTrackingStocksEveryDayRouteImport.update({
+    id: '/blog/stop-tracking-stocks-every-day',
+    path: '/blog/stop-tracking-stocks-every-day',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CheckoutDiamondRoute = CheckoutDiamondRouteImport.update({
   id: '/checkout/diamond',
   path: '/checkout/diamond',
@@ -305,6 +353,12 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
+  '/blog/financial-advisor-incentives': typeof BlogFinancialAdvisorIncentivesRoute
+  '/blog/financial-apps-vs-financial-planning': typeof BlogFinancialAppsVsFinancialPlanningRoute
+  '/blog/health-insurance-missed-renewal-financial-planning': typeof BlogHealthInsuranceMissedRenewalFinancialPlanningRoute
+  '/blog/investments-vs-financial-plan': typeof BlogInvestmentsVsFinancialPlanRoute
+  '/blog/missed-health-insurance-renewal': typeof BlogMissedHealthInsuranceRenewalRoute
+  '/blog/stop-tracking-stocks-every-day': typeof BlogStopTrackingStocksEveryDayRoute
   '/checkout/diamond': typeof CheckoutDiamondRoute
   '/checkout/gold': typeof CheckoutGoldRoute
   '/checkout/money-reality-check': typeof CheckoutMoneyRealityCheckRoute
@@ -319,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/payment/pending': typeof PaymentPendingRoute
   '/upgrade/gold': typeof UpgradeGoldRoute
   '/upgrade/silver': typeof UpgradeSilverRoute
+  '/blog/': typeof BlogIndexRoute
   '/api/commerce/create-order': typeof ApiCommerceCreateOrderRoute
   '/api/commerce/poll-order-status': typeof ApiCommercePollOrderStatusRoute
   '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
@@ -352,6 +407,12 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
+  '/blog/financial-advisor-incentives': typeof BlogFinancialAdvisorIncentivesRoute
+  '/blog/financial-apps-vs-financial-planning': typeof BlogFinancialAppsVsFinancialPlanningRoute
+  '/blog/health-insurance-missed-renewal-financial-planning': typeof BlogHealthInsuranceMissedRenewalFinancialPlanningRoute
+  '/blog/investments-vs-financial-plan': typeof BlogInvestmentsVsFinancialPlanRoute
+  '/blog/missed-health-insurance-renewal': typeof BlogMissedHealthInsuranceRenewalRoute
+  '/blog/stop-tracking-stocks-every-day': typeof BlogStopTrackingStocksEveryDayRoute
   '/checkout/diamond': typeof CheckoutDiamondRoute
   '/checkout/gold': typeof CheckoutGoldRoute
   '/checkout/money-reality-check': typeof CheckoutMoneyRealityCheckRoute
@@ -366,6 +427,7 @@ export interface FileRoutesByTo {
   '/payment/pending': typeof PaymentPendingRoute
   '/upgrade/gold': typeof UpgradeGoldRoute
   '/upgrade/silver': typeof UpgradeSilverRoute
+  '/blog': typeof BlogIndexRoute
   '/api/commerce/create-order': typeof ApiCommerceCreateOrderRoute
   '/api/commerce/poll-order-status': typeof ApiCommercePollOrderStatusRoute
   '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
@@ -400,6 +462,12 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/api/get-webinar-metrics': typeof ApiGetWebinarMetricsRoute
   '/api/get-webinar-token': typeof ApiGetWebinarTokenRoute
+  '/blog/financial-advisor-incentives': typeof BlogFinancialAdvisorIncentivesRoute
+  '/blog/financial-apps-vs-financial-planning': typeof BlogFinancialAppsVsFinancialPlanningRoute
+  '/blog/health-insurance-missed-renewal-financial-planning': typeof BlogHealthInsuranceMissedRenewalFinancialPlanningRoute
+  '/blog/investments-vs-financial-plan': typeof BlogInvestmentsVsFinancialPlanRoute
+  '/blog/missed-health-insurance-renewal': typeof BlogMissedHealthInsuranceRenewalRoute
+  '/blog/stop-tracking-stocks-every-day': typeof BlogStopTrackingStocksEveryDayRoute
   '/checkout/diamond': typeof CheckoutDiamondRoute
   '/checkout/gold': typeof CheckoutGoldRoute
   '/checkout/money-reality-check': typeof CheckoutMoneyRealityCheckRoute
@@ -414,6 +482,7 @@ export interface FileRoutesById {
   '/payment/pending': typeof PaymentPendingRoute
   '/upgrade/gold': typeof UpgradeGoldRoute
   '/upgrade/silver': typeof UpgradeSilverRoute
+  '/blog/': typeof BlogIndexRoute
   '/api/commerce/create-order': typeof ApiCommerceCreateOrderRoute
   '/api/commerce/poll-order-status': typeof ApiCommercePollOrderStatusRoute
   '/api/commerce/reconcile': typeof ApiCommerceReconcileRoute
@@ -449,6 +518,12 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
+    | '/blog/financial-advisor-incentives'
+    | '/blog/financial-apps-vs-financial-planning'
+    | '/blog/health-insurance-missed-renewal-financial-planning'
+    | '/blog/investments-vs-financial-plan'
+    | '/blog/missed-health-insurance-renewal'
+    | '/blog/stop-tracking-stocks-every-day'
     | '/checkout/diamond'
     | '/checkout/gold'
     | '/checkout/money-reality-check'
@@ -463,6 +538,7 @@ export interface FileRouteTypes {
     | '/payment/pending'
     | '/upgrade/gold'
     | '/upgrade/silver'
+    | '/blog/'
     | '/api/commerce/create-order'
     | '/api/commerce/poll-order-status'
     | '/api/commerce/reconcile'
@@ -496,6 +572,12 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
+    | '/blog/financial-advisor-incentives'
+    | '/blog/financial-apps-vs-financial-planning'
+    | '/blog/health-insurance-missed-renewal-financial-planning'
+    | '/blog/investments-vs-financial-plan'
+    | '/blog/missed-health-insurance-renewal'
+    | '/blog/stop-tracking-stocks-every-day'
     | '/checkout/diamond'
     | '/checkout/gold'
     | '/checkout/money-reality-check'
@@ -510,6 +592,7 @@ export interface FileRouteTypes {
     | '/payment/pending'
     | '/upgrade/gold'
     | '/upgrade/silver'
+    | '/blog'
     | '/api/commerce/create-order'
     | '/api/commerce/poll-order-status'
     | '/api/commerce/reconcile'
@@ -543,6 +626,12 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/get-webinar-metrics'
     | '/api/get-webinar-token'
+    | '/blog/financial-advisor-incentives'
+    | '/blog/financial-apps-vs-financial-planning'
+    | '/blog/health-insurance-missed-renewal-financial-planning'
+    | '/blog/investments-vs-financial-plan'
+    | '/blog/missed-health-insurance-renewal'
+    | '/blog/stop-tracking-stocks-every-day'
     | '/checkout/diamond'
     | '/checkout/gold'
     | '/checkout/money-reality-check'
@@ -557,6 +646,7 @@ export interface FileRouteTypes {
     | '/payment/pending'
     | '/upgrade/gold'
     | '/upgrade/silver'
+    | '/blog/'
     | '/api/commerce/create-order'
     | '/api/commerce/poll-order-status'
     | '/api/commerce/reconcile'
@@ -591,6 +681,12 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiGetWebinarMetricsRoute: typeof ApiGetWebinarMetricsRoute
   ApiGetWebinarTokenRoute: typeof ApiGetWebinarTokenRoute
+  BlogFinancialAdvisorIncentivesRoute: typeof BlogFinancialAdvisorIncentivesRoute
+  BlogFinancialAppsVsFinancialPlanningRoute: typeof BlogFinancialAppsVsFinancialPlanningRoute
+  BlogHealthInsuranceMissedRenewalFinancialPlanningRoute: typeof BlogHealthInsuranceMissedRenewalFinancialPlanningRoute
+  BlogInvestmentsVsFinancialPlanRoute: typeof BlogInvestmentsVsFinancialPlanRoute
+  BlogMissedHealthInsuranceRenewalRoute: typeof BlogMissedHealthInsuranceRenewalRoute
+  BlogStopTrackingStocksEveryDayRoute: typeof BlogStopTrackingStocksEveryDayRoute
   CheckoutDiamondRoute: typeof CheckoutDiamondRoute
   CheckoutGoldRoute: typeof CheckoutGoldRoute
   CheckoutMoneyRealityCheckRoute: typeof CheckoutMoneyRealityCheckRoute
@@ -604,6 +700,7 @@ export interface RootRouteChildren {
   PaymentPendingRoute: typeof PaymentPendingRoute
   UpgradeGoldRoute: typeof UpgradeGoldRoute
   UpgradeSilverRoute: typeof UpgradeSilverRoute
+  BlogIndexRoute: typeof BlogIndexRoute
   ApiCommerceCreateOrderRoute: typeof ApiCommerceCreateOrderRoute
   ApiCommercePollOrderStatusRoute: typeof ApiCommercePollOrderStatusRoute
   ApiCommerceReconcileRoute: typeof ApiCommerceReconcileRoute
@@ -715,6 +812,55 @@ declare module '@tanstack/react-router' {
       path: '/api/get-webinar-token'
       fullPath: '/api/get-webinar-token'
       preLoaderRoute: typeof ApiGetWebinarTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/financial-advisor-incentives': {
+      id: '/blog/financial-advisor-incentives'
+      path: '/blog/financial-advisor-incentives'
+      fullPath: '/blog/financial-advisor-incentives'
+      preLoaderRoute: typeof BlogFinancialAdvisorIncentivesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/financial-apps-vs-financial-planning': {
+      id: '/blog/financial-apps-vs-financial-planning'
+      path: '/blog/financial-apps-vs-financial-planning'
+      fullPath: '/blog/financial-apps-vs-financial-planning'
+      preLoaderRoute: typeof BlogFinancialAppsVsFinancialPlanningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/health-insurance-missed-renewal-financial-planning': {
+      id: '/blog/health-insurance-missed-renewal-financial-planning'
+      path: '/blog/health-insurance-missed-renewal-financial-planning'
+      fullPath: '/blog/health-insurance-missed-renewal-financial-planning'
+      preLoaderRoute: typeof BlogHealthInsuranceMissedRenewalFinancialPlanningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/investments-vs-financial-plan': {
+      id: '/blog/investments-vs-financial-plan'
+      path: '/blog/investments-vs-financial-plan'
+      fullPath: '/blog/investments-vs-financial-plan'
+      preLoaderRoute: typeof BlogInvestmentsVsFinancialPlanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/missed-health-insurance-renewal': {
+      id: '/blog/missed-health-insurance-renewal'
+      path: '/blog/missed-health-insurance-renewal'
+      fullPath: '/blog/missed-health-insurance-renewal'
+      preLoaderRoute: typeof BlogMissedHealthInsuranceRenewalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/stop-tracking-stocks-every-day': {
+      id: '/blog/stop-tracking-stocks-every-day'
+      path: '/blog/stop-tracking-stocks-every-day'
+      fullPath: '/blog/stop-tracking-stocks-every-day'
+      preLoaderRoute: typeof BlogStopTrackingStocksEveryDayRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout/diamond': {
@@ -969,6 +1115,14 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiGetWebinarMetricsRoute: ApiGetWebinarMetricsRoute,
   ApiGetWebinarTokenRoute: ApiGetWebinarTokenRoute,
+  BlogFinancialAdvisorIncentivesRoute: BlogFinancialAdvisorIncentivesRoute,
+  BlogFinancialAppsVsFinancialPlanningRoute:
+    BlogFinancialAppsVsFinancialPlanningRoute,
+  BlogHealthInsuranceMissedRenewalFinancialPlanningRoute:
+    BlogHealthInsuranceMissedRenewalFinancialPlanningRoute,
+  BlogInvestmentsVsFinancialPlanRoute: BlogInvestmentsVsFinancialPlanRoute,
+  BlogMissedHealthInsuranceRenewalRoute: BlogMissedHealthInsuranceRenewalRoute,
+  BlogStopTrackingStocksEveryDayRoute: BlogStopTrackingStocksEveryDayRoute,
   CheckoutDiamondRoute: CheckoutDiamondRoute,
   CheckoutGoldRoute: CheckoutGoldRoute,
   CheckoutMoneyRealityCheckRoute: CheckoutMoneyRealityCheckRoute,
@@ -982,6 +1136,7 @@ const rootRouteChildren: RootRouteChildren = {
   PaymentPendingRoute: PaymentPendingRoute,
   UpgradeGoldRoute: UpgradeGoldRoute,
   UpgradeSilverRoute: UpgradeSilverRoute,
+  BlogIndexRoute: BlogIndexRoute,
   ApiCommerceCreateOrderRoute: ApiCommerceCreateOrderRoute,
   ApiCommercePollOrderStatusRoute: ApiCommercePollOrderStatusRoute,
   ApiCommerceReconcileRoute: ApiCommerceReconcileRoute,
