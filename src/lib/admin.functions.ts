@@ -2461,6 +2461,25 @@ export const adminSyncResendDelivery = createServerFn({ method: "POST" })
           } catch {
             // Non-fatal
           }
+
+          // 4. Purge any queued webinar emails for subscribers / newsletter leads
+          try {
+            const { data: subRows } = await client
+              .from("registrations" as never)
+              .select("id")
+              .or("status.eq.subscribed,profile_type.ilike.%Newsletter%");
+            if (subRows && Array.isArray(subRows) && subRows.length > 0) {
+              const subIds = subRows.map((r: any) => r.id);
+              await client
+                .from("email_sends" as never)
+                .delete()
+                .in("registration_id" as never, subIds as never)
+                .eq("status" as never, "queued" as never)
+                .not("template" as never, "like" as never, "s2_%" as never);
+            }
+          } catch {
+            // Non-fatal
+          }
         }
       } catch (e) {
         console.warn("[adminSyncResendDelivery] list fetch warning:", e);

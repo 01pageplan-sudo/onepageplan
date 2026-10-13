@@ -714,6 +714,33 @@ $$;
 REVOKE ALL ON FUNCTION public.queue_emails(text, jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.queue_emails(text, jsonb) TO anon, service_role;
 
+CREATE OR REPLACE FUNCTION public.admin_purge_subscriber_queued_emails(p_password text)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count integer := 0;
+BEGIN
+  PERFORM public.assert_admin(p_password);
+  WITH deleted AS (
+    DELETE FROM public.email_sends e
+    USING public.registrations r
+    WHERE e.registration_id = r.id
+      AND e.status = 'queued'
+      AND (r.status = 'subscribed' OR r.profile_type ILIKE '%Newsletter%')
+      AND e.template NOT LIKE 's2_%'
+    RETURNING 1
+  )
+  SELECT count(*) INTO v_count FROM deleted;
+  RETURN v_count;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.admin_purge_subscriber_queued_emails(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_purge_subscriber_queued_emails(text) TO anon, service_role;
+
+
 CREATE OR REPLACE FUNCTION public.claim_due_emails(p_password text, p_limit integer DEFAULT 25)
 RETURNS TABLE(
   id uuid, registration_id uuid, email text, template text, session_date date,

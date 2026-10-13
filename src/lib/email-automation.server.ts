@@ -100,6 +100,7 @@ type LeadRow = {
   whatsapp_consent?: boolean | null;
   status: string;
   session_date: string | null;
+  profile_type?: string | null;
   tags: string[] | null;
   tag_dates: Record<string, string> | null;
 };
@@ -126,6 +127,9 @@ export function plannedRows(lead: LeadRow, nurtureEnabled: boolean): QueueRow[] 
   const rows: QueueRow[] = [];
   const tags = (lead.tags ?? []).map((tag) => tag.toLowerCase());
   const purchased = tags.includes("purchased");
+  const isNewsletterSubscriber =
+    lead.status === "subscribed" ||
+    Boolean(lead.profile_type && lead.profile_type.toLowerCase().includes("newsletter"));
   const start = sessionStart(lead.session_date);
 
   const push = (template: string, at: Date) => {
@@ -139,7 +143,9 @@ export function plannedRows(lead: LeadRow, nurtureEnabled: boolean): QueueRow[] 
     });
   };
 
-  if (start) {
+  // Only plan webinar lifecycle emails (reminders, live, late entry, missed/post-session, and nurture)
+  // for actual webinar registrants, NEVER for newsletter / Option 2 subscribers.
+  if (start && !isNewsletterSubscriber) {
     push("reminder_24h", new Date(start.getTime() - 24 * HOUR));
     push("reminder_1h", new Date(start.getTime() - HOUR));
     push("live_now", start);
@@ -185,6 +191,35 @@ export async function scheduleSequence(db: PublicServerClient, override?: string
   if (error) throw error;
 
   const leads = (data ?? []) as unknown as LeadRow[];
+
+  // Clean up any previously-queued webinar emails for newsletter / Option 2 subscribers
+  try {
+    await db.rpc("admin_purge_subscriber_queued_emails", { p_password: password });
+  } catch {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const client = supabaseAdmin || db;
+      const subscriberLeadIds = leads
+        .filter(
+          (l) =>
+            l.status === "subscribed" ||
+            Boolean(l.profile_type && l.profile_type.toLowerCase().includes("newsletter")),
+        )
+        .map((l) => l.id);
+
+      if (subscriberLeadIds.length > 0) {
+        await client
+          .from("email_sends" as never)
+          .delete()
+          .in("registration_id" as never, subscriberLeadIds as never)
+          .eq("status" as never, "queued" as never)
+          .not("template" as never, "like" as never, "s2_%" as never);
+      }
+    } catch {
+      /* non-fatal fallback */
+    }
+  }
+
   const graceFloor = Date.now() - 6 * HOUR;
   const rows: QueueRow[] = [];
   for (const lead of leads) {
@@ -230,7 +265,15 @@ export async function dispatchDueWebinarWhatsAppReminders(
     const nowMs = Date.now();
 
     for (const lead of leads) {
-      if (lead.whatsapp_consent === false || !lead.phone_e164 || !lead.session_date) continue;
+      if (
+        lead.whatsapp_consent === false ||
+        !lead.phone_e164 ||
+        !lead.session_date ||
+        lead.status === "subscribed" ||
+        Boolean(lead.profile_type && lead.profile_type.toLowerCase().includes("newsletter"))
+      ) {
+        continue;
+      }
       const start = sessionStart(lead.session_date);
       if (!start) continue;
 
@@ -414,6 +457,8 @@ export async function sendDueEmails(
       matchedLead &&
       matchedLead.whatsapp_consent !== false &&
       matchedLead.phone_e164 &&
+      matchedLead.status !== "subscribed" &&
+      !matchedLead.profile_type?.toLowerCase().includes("newsletter") &&
       process.env["WHATSAPP_ENABLED"] !== "false"
     ) {
       const sDate = row.session_date || matchedLead.session_date;
