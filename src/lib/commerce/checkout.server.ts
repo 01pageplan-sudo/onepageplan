@@ -443,6 +443,7 @@ export const getLegalPolicyFn = createServerFn({ method: "POST" })
       businessName,
       registeredAddress: settings.registered_address || "Bandra West, Mumbai 400050, India",
       supportEmail: "connect@onepageplan.in",
+      supportPhone: "+91 816 966 0060",
       gstin: settings.gstin || null,
     };
   });

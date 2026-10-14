@@ -149,7 +149,17 @@ function TermsPage() {
           </Block>
 
           <Block heading="Contact">
-            <p>Questions about these terms: connect@onepageplan.in.</p>
+            <p>
+              Questions about these terms:{" "}
+              <a className="underline hover:text-foreground" href="mailto:connect@onepageplan.in">
+                connect@onepageplan.in
+              </a>{" "}
+              or{" "}
+              <a className="underline hover:text-foreground" href="tel:+918169660060">
+                +91 816 966 0060
+              </a>
+              .
+            </p>
           </Block>
         </div>
         )}

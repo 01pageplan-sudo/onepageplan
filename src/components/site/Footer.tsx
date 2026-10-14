@@ -21,6 +21,10 @@ export function Footer() {
               Founded by Milan Dodhia ·{" "}
               <a className="underline hover:text-foreground" href="mailto:connect@onepageplan.in">
                 connect@onepageplan.in
+              </a>{" "}
+              ·{" "}
+              <a className="underline hover:text-foreground" href="tel:+918169660060">
+                +91 816 966 0060
               </a>
             </p>
           </div>

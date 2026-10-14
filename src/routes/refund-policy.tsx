@@ -121,7 +121,7 @@ function RefundPolicyPage() {
                   the eligible refund period:
                 </p>
                 <p className="font-mono text-xs text-foreground bg-muted p-2 rounded-md">
-                  Email: connect@onepageplan.in
+                  Email: connect@onepageplan.in · Phone / WhatsApp: +91 816 966 0060
                 </p>
                 <p>
                   Include your registered email address, course name and transaction reference.
