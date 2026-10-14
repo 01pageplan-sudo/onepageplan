@@ -80,11 +80,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "The Money Reality Masterclass | The One Page Plan" },
+      { title: "The Money Reality Masterclass | OnePagePlan" },
       {
         name: "description",
         content:
-          "A free live ninety minute financial education session. Build your own money picture and name the one thing to fix first.",
+          "A free live 90-minute financial education masterclass by Milan Dodhia. Look beyond individual financial products and understand your complete financial picture.",
       },
       { name: "author", content: "Milan Dodhia" },
     ],

@@ -36,6 +36,7 @@ export interface CheckoutPageData {
   bonusLine?: string | null | undefined;
   cohortStartDateFormatted?: string | null | undefined;
   renewalNewEndDateFormatted?: string | null | undefined;
+  isRepurchase?: boolean;
   prefill?: {
     name?: string | undefined;
     email?: string | undefined;
@@ -123,6 +124,27 @@ export const getCheckoutPageDataFn = createServerFn({ method: "POST" })
           memberName = (reg as any).full_name || "";
           memberPhone = (reg as any).phone_e164 || "";
         }
+      }
+    }
+
+    // Check if user previously purchased THIS course (captured or refunded orders, or past grants)
+    let isRepurchase = false;
+    if (cleanEmail) {
+      const { data: pastCourseOrders } = await db
+        .from("orders" as never)
+        .select("id, status, product_id")
+        .eq("buyer_email" as never, cleanEmail as never)
+        .eq("product_id" as never, data.product as never)
+        .in("status" as never, ["captured", "refunded"] as never);
+
+      const { data: pastGrants } = await db
+        .from("member_access_grants" as never)
+        .select("id, status, access_tier")
+        .eq("email" as never, cleanEmail as never)
+        .eq("access_tier" as never, data.product as never);
+
+      if ((pastCourseOrders && pastCourseOrders.length > 0) || (pastGrants && pastGrants.length > 0)) {
+        isRepurchase = true;
       }
     }
 
@@ -353,6 +375,7 @@ export const getCheckoutPageDataFn = createServerFn({ method: "POST" })
       bonusLine,
       cohortStartDateFormatted,
       renewalNewEndDateFormatted,
+      isRepurchase,
       prefill: {
         name: memberName,
         email: cleanEmail,

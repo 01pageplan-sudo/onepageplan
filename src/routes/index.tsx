@@ -1,5 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, Clock, Globe, Timer, X } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Compass,
+  FileText,
+  Globe,
+  HelpCircle,
+  Layers,
+  Scale,
+  Shield,
+  ShieldAlert,
+  Sparkles,
+  Timer,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import milanHeadshot from "@/assets/milan-headshot-transparent.png";
@@ -14,15 +27,14 @@ import { CountdownCard } from "@/components/site/Countdown";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
 import { StickyBar } from "@/components/site/StickyBar";
-import { Testimonials } from "@/components/site/Testimonials";
 import { VideoEmbed } from "@/components/site/VideoEmbed";
 import { RegistrationProvider, useRegistration } from "@/components/site/registration-context";
-import { track } from "@/lib/analytics";
+import { track, trackOutboundCredibilityClick } from "@/lib/analytics";
 import { formatSessionDayMonth } from "@/lib/session";
 
-const TITLE = "The Money Reality Masterclass | The One Page Plan";
+const TITLE = "The Money Reality Masterclass | OnePagePlan";
 const DESCRIPTION =
-  "A free live ninety minute session for Indians aged 30 to 45. Build your own money picture, work out what each holding actually returns, and name the one thing to fix first.";
+  "A free live 90-minute financial education masterclass by Milan Dodhia. Look beyond individual financial products and understand your complete financial picture.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -32,22 +44,35 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://onepageplan.in" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: TITLE },
+      { name: "twitter:description", content: DESCRIPTION },
     ],
+    links: [{ rel: "canonical", href: "https://onepageplan.in" }],
   }),
   component: LandingPage,
 });
 
 function SectionRule() {
-  return <div className="mx-auto h-px max-w-[900px] bg-[var(--brass)]/35" />;
+  return <div className="mx-auto h-px max-w-4xl bg-[var(--brass)]/25" />;
 }
 
-function PrimaryCta({ label, className = "" }: { label: string; className?: string }) {
+function PrimaryCta({
+  label,
+  className = "",
+  size = "lg",
+}: {
+  label: string;
+  className?: string;
+  size?: "default" | "sm" | "lg";
+}) {
   const { open } = useRegistration();
   return (
     <Button
       onClick={open}
-      className={`h-auto w-full bg-primary py-4 text-base font-semibold text-primary-foreground hover:bg-[var(--highlight)] ${className}`}
+      size={size}
+      className={`h-auto bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-sm transition-all hover:bg-[var(--highlight)] active:scale-[0.99] ${className}`}
     >
       {label}
     </Button>
@@ -56,66 +81,76 @@ function PrimaryCta({ label, className = "" }: { label: string; className?: stri
 
 function SpecChip({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-3 text-sm">
-      <span className="text-[var(--brass)]">{icon}</span>
-      <span className="leading-snug">{label}</span>
+    <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm">
+      <span className="text-[var(--brass)] shrink-0">{icon}</span>
+      <span className="font-medium text-foreground">{label}</span>
     </div>
-  );
-}
-
-function CalendarGlyph() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-    >
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M8 3v4M16 3v4M3 11h18" />
-    </svg>
   );
 }
 
 function LandingPage() {
   return (
     <RegistrationProvider>
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="pt-20">
-          <Hero />
-          <CredentialStrip />
-          <OldNew />
-          <SectionRule />
-          <Principles />
-          <SectionRule />
-          <Secrets />
-          <SectionRule />
-          <AfterSection />
-          <SectionRule />
-          <ForWhom />
-          <SectionRule />
-          <TakeAways />
-          <SectionRule />
-          <AboutHost />
-          <Testimonials />
-          <SectionRule />
-          <BlogSection />
-          <SectionRule />
-          <Faq />
-          <FinalCta />
-        </main>
-        <Footer />
-        <StickyBar />
-      </div>
+      <LandingPageContent />
     </RegistrationProvider>
   );
 }
 
+function LandingPageContent() {
+  const { open } = useRegistration();
+
+  // Support #register URL hash for Google Ads sitelinks and direct navigation
+  useEffect(() => {
+    const checkHash = () => {
+      if (window.location.hash === "#register") {
+        open();
+      }
+    };
+    checkHash();
+    window.addEventListener("hashchange", checkHash);
+    return () => window.removeEventListener("hashchange", checkHash);
+  }, [open]);
+
+  return (
+    <div className="min-h-screen bg-background text-foreground selection:bg-[var(--brass)]/20 selection:text-foreground overflow-x-clip">
+      <Header />
+      <main className="pt-20 sm:pt-24 overflow-x-clip">
+        <Hero />
+        <SectionRule />
+        <AudienceRecognition />
+        <SectionRule />
+        <LearningOutcomes />
+        <SectionRule />
+        <WhyThisMatters />
+        <SectionRule />
+        <PresenterSection />
+        <SectionRule />
+        <SessionDetails />
+        <SectionRule />
+        <BlogSection />
+        <SectionRule />
+        <FaqSection />
+        <FinalCta />
+      </main>
+      <Footer />
+      <StickyBar />
+    </div>
+  );
+}
+
+/**
+ * 3. Hero Section
+ *
+ * First screen communicates:
+ * 1. What the masterclass is
+ * 2. Why someone should attend
+ * 3. Who is presenting
+ * 4. That it is free
+ * 5. How to register
+ */
 function Hero() {
-  const [chipDate, setChipDate] = useState("this Saturday");
+  const [chipDate, setChipDate] = useState(() => formatSessionDayMonth());
+  const { open } = useRegistration();
 
   useEffect(() => {
     setChipDate(formatSessionDayMonth());
@@ -128,53 +163,240 @@ function Hero() {
   const vslUrl = import.meta.env["VITE_VSL_URL"] as string | undefined;
 
   return (
-    <section className="mx-auto max-w-6xl px-4 pt-6 pb-14">
+    <section className="mx-auto max-w-5xl px-4 pt-4 sm:pt-6 pb-16 sm:pb-20">
+      {/* Eyebrow */}
       <div className="flex justify-center">
-        <p className="label-caps rounded-full border border-[var(--brass)] px-4 py-2 text-center text-[var(--brass)]">
-          For Indians aged 30 to 45 who earn well and cannot say where it went
-        </p>
+        <span className="label-caps inline-flex items-center gap-1.5 rounded-full border border-[var(--brass)] bg-[var(--brass)]/10 px-3.5 py-1.5 text-center text-[11px] sm:text-xs text-[var(--brass)] font-semibold max-w-full">
+          <Sparkles size={13} className="shrink-0 text-[var(--brass)]" />
+          <span>FREE LIVE MONEY REALITY MASTERCLASS</span>
+        </span>
       </div>
 
-      <h1 className="mx-auto mt-8 max-w-4xl text-center text-[clamp(2.25rem,6vw,4rem)] leading-[1.05] text-balance">
-        Know exactly what you own, <span className="text-primary">what it actually returns</span>,
-        and the one thing to fix first
+      {/* Main Headline */}
+      <h1 className="mx-auto mt-6 max-w-3xl text-center font-display text-[clamp(1.75rem,5.5vw,3.75rem)] font-bold leading-[1.12] tracking-tight text-foreground text-balance">
+        You Have Investments. <br className="hidden sm:inline" />
+        <span className="text-primary">But Do You Have a Financial Plan?</span>
       </h1>
 
-      <div className="mx-auto mt-6 max-w-[60ch] space-y-4 text-center text-muted-foreground">
-        <p>The Money Reality Masterclass. Free, live, ninety minutes, this Saturday evening.</p>
+      {/* Supporting Copy */}
+      <div className="mx-auto mt-6 max-w-2xl space-y-3.5 text-center text-sm sm:text-lg leading-relaxed text-muted-foreground">
         <p>
-          In ninety minutes I will show you how to build your own money picture, how to calculate
-          what each thing you hold is actually returning after tax and after inflation, and how to
-          name the one thing to fix first. You walk out with it on one page. You will be doing
-          arithmetic on your own numbers, not watching mine.
+          Most families have savings, investments, insurance and financial commitments. But very few
+          have brought everything together to understand where they truly stand.
+        </p>
+        <p>
+          Join Milan Dodhia for a free 90-minute masterclass on looking beyond individual financial
+          products and understanding your complete financial picture.
         </p>
       </div>
 
-      <div className="mt-12 grid gap-8 lg:grid-cols-[55fr_45fr]">
-        <div>
-          <VideoEmbed url={vslUrl} title="The Money Reality Masterclass" />
-          <p className="mt-3 text-xs text-muted-foreground">
-            Milan Dodhia · Financial Educator, Milanaire
-          </p>
-        </div>
+      {/* Supporting Metadata & Schedule Badges */}
+      <div className="mx-auto mt-7 flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 sm:px-3 font-medium text-foreground">
+          <Globe size={14} className="text-[var(--brass)]" />
+          Live online
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 sm:px-3 font-medium text-foreground">
+          <Timer size={14} className="text-[var(--brass)]" />
+          90 minutes
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 sm:px-3 font-medium text-foreground">
+          <Globe size={14} className="text-[var(--brass)]" />
+          English
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--brass)]/60 bg-[var(--brass)]/10 px-2.5 py-1.5 sm:px-3 font-semibold text-[var(--brass)]">
+          <Calendar size={14} />
+          Saturday, {chipDate} at 7:00 PM IST
+        </span>
+      </div>
 
-        <div id="session-details" className="scroll-mt-24 space-y-4">
-          <div className="space-y-1">
-            <p className="label-caps text-[var(--brass)]">Session Details</p>
-            <p className="text-xs text-muted-foreground">
-              Check the next session details — see the date, time and duration.
+      {/* Primary CTA */}
+      <div className="mx-auto mt-8 flex flex-col items-center justify-center gap-2 max-w-md">
+        <Button
+          onClick={open}
+          size="lg"
+          className="w-full bg-primary py-4 text-base sm:text-lg font-semibold text-primary-foreground shadow-sm hover:bg-[var(--highlight)] transition-all"
+        >
+          Reserve My Free Seat →
+        </Button>
+        <p className="text-xs text-muted-foreground text-center">
+          100% Free · Live Interactive Masterclass · No Products Sold
+        </p>
+      </div>
+
+      {/* Presenter Video / Overview Preview */}
+      <div className="mx-auto mt-12 max-w-3xl">
+        <VideoEmbed url={vslUrl} title="The Money Reality Masterclass with Milan Dodhia" />
+        <p className="mt-3 text-center text-xs text-muted-foreground">
+          Presented by Milan Dodhia · Founder, OnePagePlan | Financial Educator
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * 4. Audience Recognition — New Section
+ */
+const AUDIENCE_STATEMENTS = [
+  "I invest regularly, but I'm not sure whether I'm actually on track.",
+  "My finances are spread across different accounts, policies and platforms.",
+  "I know what my investments are worth, but I've never looked at my complete financial position.",
+  "I keep making financial decisions, but I don't have one clear picture guiding them.",
+];
+
+function AudienceRecognition() {
+  return (
+    <section className="mx-auto max-w-4xl px-4 py-16 sm:py-20">
+      <div className="text-center">
+        <p className="label-caps text-xs text-[var(--brass)]">Audience Recognition</p>
+        <h2 className="mt-2 font-display text-2xl font-bold sm:text-3xl text-foreground">
+          Does Any of This Sound Familiar?
+        </h2>
+      </div>
+
+      <div className="mt-10 grid gap-4 sm:grid-cols-2">
+        {AUDIENCE_STATEMENTS.map((statement, idx) => (
+          <div
+            key={idx}
+            className="flex items-start gap-4 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs transition-colors hover:border-[var(--brass)]/60"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--brass)]/40 bg-[var(--brass)]/10 font-display text-xs font-bold text-[var(--brass)]">
+              {idx + 1}
+            </span>
+            <p className="text-sm sm:text-base leading-relaxed text-foreground italic">
+              "{statement}"
             </p>
           </div>
-          <CountdownCard />
-          <div className="grid grid-cols-2 gap-3">
-            <SpecChip icon={<CalendarGlyph />} label={`This Saturday, ${chipDate}`} />
-            <SpecChip icon={<Clock size={16} />} label="7:00 PM IST" />
-            <SpecChip icon={<Timer size={16} />} label="90 minutes" />
-            <SpecChip icon={<Globe size={16} />} label="English" />
+        ))}
+      </div>
+
+      <div className="mx-auto mt-8 max-w-2xl rounded-lg border border-[var(--brass)]/30 bg-[var(--brass)]/5 p-4 text-center">
+        <p className="text-sm sm:text-base font-medium text-foreground leading-relaxed">
+          If you've thought about any of these, this masterclass is designed to help you ask better
+          questions about your money.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * 5. Learning Outcomes — Rebuilt Section
+ */
+const LEARNING_CARDS = [
+  {
+    letter: "A",
+    title: "Know What You Actually Have",
+    description:
+      "Understand the importance of looking at assets, liabilities, savings and commitments together.",
+    icon: <Layers className="h-5 w-5 text-[var(--brass)]" />,
+  },
+  {
+    letter: "B",
+    title: "Look Beyond Investment Returns",
+    description:
+      "Explore why portfolio performance alone cannot tell you whether you're financially secure.",
+    icon: <Scale className="h-5 w-5 text-[var(--brass)]" />,
+  },
+  {
+    letter: "C",
+    title: "Recognise Financial Blind Spots",
+    description:
+      "Understand how insurance, debt, emergency reserves and future obligations can affect the overall picture.",
+    icon: <ShieldAlert className="h-5 w-5 text-[var(--brass)]" />,
+  },
+  {
+    letter: "D",
+    title: "Think Before Taking the Next Financial Action",
+    description:
+      "Learn why clarity about your current position should come before another product purchase or investment decision.",
+    icon: <Compass className="h-5 w-5 text-[var(--brass)]" />,
+  },
+];
+
+function LearningOutcomes() {
+  const { open } = useRegistration();
+
+  return (
+    <section id="what-youll-learn" className="mx-auto max-w-4xl scroll-mt-24 px-4 py-16 sm:py-20">
+      <div className="max-w-2xl">
+        <p className="label-caps text-xs text-[var(--brass)]">Learning Outcomes</p>
+        <h2 className="mt-2 font-display text-2xl font-bold sm:text-3xl text-foreground">
+          What You'll Discover in 90 Minutes
+        </h2>
+        <p className="mt-3 text-base text-muted-foreground leading-relaxed">
+          This masterclass is not about finding the next stock, fund or financial product. It's
+          about understanding the bigger picture behind your financial decisions.
+        </p>
+      </div>
+
+      <div className="mt-10 grid gap-5 sm:grid-cols-2">
+        {LEARNING_CARDS.map((card) => (
+          <div
+            key={card.letter}
+            className="flex flex-col justify-between rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-[var(--brass)]/70 hover:shadow-sm"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="label-caps inline-flex items-center rounded-md border border-border bg-[var(--muted)] px-2.5 py-1 text-xs font-bold text-foreground">
+                  Section {card.letter}
+                </span>
+                {card.icon}
+              </div>
+              <h3 className="mt-4 font-display text-lg font-bold text-foreground">{card.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{card.description}</p>
+            </div>
           </div>
-          <PrimaryCta label="Save my seat for this Saturday →" />
-          <p className="text-center text-xs text-muted-foreground">
-            Free. Live. Nothing to download.
+        ))}
+      </div>
+
+      <div className="mt-10 text-center">
+        <Button
+          onClick={open}
+          size="lg"
+          className="bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground hover:bg-[var(--highlight)] transition-colors"
+        >
+          Join the Free Masterclass →
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * 8. Why This Matters — New Section
+ */
+function WhyThisMatters() {
+  return (
+    <section className="mx-auto max-w-3xl px-4 py-16 sm:py-20">
+      <div className="rounded-2xl border border-border bg-card p-6 sm:p-10 shadow-xs">
+        <p className="label-caps text-xs text-[var(--brass)]">The Core Problem</p>
+        <h2 className="mt-2 font-display text-2xl font-bold sm:text-3xl text-foreground">
+          Financial Activity Is Not the Same as Financial Progress
+        </h2>
+
+        <div className="mt-6 space-y-4 text-base sm:text-lg leading-relaxed text-muted-foreground">
+          <p>
+            You might be investing every month, checking your portfolio regularly and purchasing
+            products intended to secure your family's future.
+          </p>
+          <p className="font-medium text-foreground">
+            But are those decisions connected to one clear financial picture?
+          </p>
+          <p>
+            Your financial life includes what you own, what you owe, what you need to protect and
+            what you're working towards.
+          </p>
+          <p>
+            Understanding how these pieces fit together is the starting point for more deliberate
+            financial decisions.
+          </p>
+        </div>
+
+        <div className="mt-8 border-t border-border pt-6">
+          <p className="font-display text-lg sm:text-xl font-bold text-primary">
+            Before doing more with your money, understand what you already have.
           </p>
         </div>
       </div>
@@ -182,314 +404,178 @@ function Hero() {
   );
 }
 
+/**
+ * 6. Presenter Section — Rebuilt
+ */
 const CREDENTIALS = [
-  { value: "7.5 years", label: "Equity research" },
-  { value: "13 years", label: "Licensed mutual fund distributor, surrendered April 2026" },
-  { value: "~200 families", label: "Coached, one to one and in groups" },
-  { value: "MBA Finance", label: "And NISM certified" },
+  { value: "7.5 Years", label: "Equity Research Experience" },
+  {
+    value: "13 Years",
+    label: "Licensed Mutual Fund Distributor (Surrendered April 2026 to ensure independence)",
+  },
+  { value: "Credit Bureau", label: "Insights on lender risk & credit assessment" },
+  { value: "~200 Families", label: "Coached individually and in group workshops" },
 ];
 
-function CredentialStrip() {
+function PresenterSection() {
   return (
-    <section className="border-y border-[var(--brass)]/50 bg-background py-8">
-      <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-4 md:grid-cols-4">
-        {CREDENTIALS.map((item) => (
-          <div key={item.value}>
-            <p className="font-display text-lg font-bold text-primary sm:text-xl">{item.value}</p>
-            <p className="label-caps mt-2 text-muted-foreground">{item.label}</p>
+    <section id="meet-the-presenter" className="mx-auto max-w-4xl scroll-mt-24 px-4 py-16 sm:py-20">
+      <div className="grid gap-10 md:grid-cols-[280px_1fr] md:items-start">
+        {/* Presenter Portrait */}
+        <div className="flex flex-col items-center text-center">
+          <div className="overflow-hidden rounded-2xl border border-border bg-[var(--muted)] shadow-xs w-60 sm:w-full max-w-[280px]">
+            <img
+              src={milanHeadshot}
+              alt="Milan Dodhia, Founder of OnePagePlan & Financial Educator"
+              className="w-full object-cover"
+              loading="lazy"
+            />
           </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-const OLD_WAY = [
-  "Work more hours, because raising your rate was never presented as an option",
-  "Buy what someone recommended, then never go back and check it",
-  "Judge a holding by whether the number went up",
-  "Keep the whole picture in your head, in fragments, across eleven apps",
-  "Decide nothing, because every answer has a confident opposite",
-  "Never talk about it at home",
-];
-
-const NEW_WAY = [
-  "Treat your income as a variable you are accountable for",
-  "Evaluate anything before you hold it, including whatever anyone else recommends",
-  "Judge a holding post tax and post inflation, using the right measure for it",
-  "Hold the whole picture on one page, in your own file",
-  "Decide, because you have a method for testing a claim",
-  "Run it as a conversation your family is part of",
-];
-
-function OldNew() {
-  return (
-    <section id="what-youll-learn" className="mx-auto max-w-[900px] scroll-mt-24 px-4 py-14">
-      <p className="label-caps text-[var(--brass)]">What You&apos;ll Learn</p>
-      <h2 className="mt-2 text-2xl font-bold sm:text-3xl">
-        Two ways to handle money, and only one of them compounds
-      </h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Explore the masterclass topics and understand what you own and owe.
-      </p>
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-border bg-[var(--muted)] p-5">
-          <p className="label-caps text-muted-foreground">The old way</p>
-          <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-            {OLD_WAY.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+          <p className="mt-3 text-xs text-muted-foreground">Milan Dodhia</p>
         </div>
-        <div className="rounded-lg border border-border border-l-4 border-l-primary bg-card p-5">
-          <p className="label-caps text-[var(--brass)]">The new way</p>
-          <ul className="mt-4 space-y-3 text-sm">
-            {NEW_WAY.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
-}
 
-const PRINCIPLES = [
-  {
-    title: "Effort is not a strategy.",
-    body: "Your income is a variable, not a constant. It is the one lever entirely inside your control and almost nobody is told that.",
-  },
-  {
-    title: "Long term means thirty years, not five.",
-    body: "Every decade you can add is compounding you get for free. Almost everything in India is sold as long term at a three to five year horizon.",
-  },
-  {
-    title: "Check whether the vehicle can produce the result before you pour years into it.",
-    body: "Executing correctly inside the wrong structure still gets you nothing.",
-  },
-];
-
-function Principles() {
-  return (
-    <section className="mx-auto max-w-[900px] px-4 py-14">
-      <h2 className="text-2xl font-bold sm:text-3xl">Three things that change the arithmetic</h2>
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
-        {PRINCIPLES.map((item, index) => (
-          <div key={item.title} className="rounded-lg border border-border bg-card p-5">
-            <p className="font-display text-2xl font-bold text-[var(--brass)]">{index + 1}</p>
-            <h3 className="mt-3 text-base font-semibold">{item.title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-const SECRETS = [
-  {
-    title: "Your money doubled and you got poorer.",
-    body: "Doubling over ten years works out to about seven percent a year. Take tax off it, then set six percent inflation against it, and what is left can be less than nothing. The statement looked good the whole time. We will do this arithmetic live, on your numbers.",
-  },
-  {
-    title: "You own things you never chose.",
-    body: "A policy from a relative. Something a colleague recommended. Another flat because money had piled up. There is also a clause in most term policies, chosen at the start or never, that decides whether the payout reaches your spouse or settles what you owe. Almost nobody is told about it.",
-  },
-  {
-    title: "Your income is not a constant.",
-    body: "Everyone optimises the leftovers. Almost nobody questions the number at the top.",
-  },
-];
-
-function Secrets() {
-  return (
-    <section className="mx-auto max-w-[900px] px-4 py-14">
-      <h2 className="text-2xl font-bold sm:text-3xl">Three things almost nobody checks</h2>
-      <div className="mt-8 space-y-6">
-        {SECRETS.map((item, index) => (
-          <div key={item.title} className="border-l-2 border-[var(--brass)] pl-5">
-            <h3 className="text-lg font-semibold">
-              {index + 1}. {item.title}
-            </h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-const AFTER = [
-  "Open one page and see everything you own, in your own file",
-  "Say your number out loud without having to go and check",
-  "Calculate what any holding is actually returning, post tax and post inflation",
-  "Explain every product you own in one sentence each",
-  "Know whether your family is covered, on paper, rather than as a feeling",
-  "Name the one thing to fix first, and know why it is that one",
-];
-
-function AfterSection() {
-  return (
-    <section className="mx-auto max-w-[900px] px-4 py-14">
-      <h2 className="text-2xl font-bold sm:text-3xl">What you can do by Sunday morning</h2>
-      <ul className="mt-8 space-y-3">
-        {AFTER.map((item) => (
-          <li key={item} className="flex gap-3 text-sm">
-            <Check size={18} className="mt-0.5 shrink-0 text-[var(--brass)]" />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-const FOR_YOU = [
-  "You are between thirty and forty-five, salaried or professional, and earning well",
-  "You are carrying a home loan or another EMI",
-  "Your parents are ageing behind you and your children's costs are ahead of you",
-  "You own financial products you were sold rather than ones you chose",
-  "Every answer has a confident opposite, so you have decided nothing in years",
-  "There is nobody you can ask who is not also selling you something",
-];
-
-const NOT_FOR_YOU = [
-  "You want stock tips or fund recommendations. I will never give one",
-  "You want a guaranteed return. Nobody honest can promise you one",
-  "You want somebody else to manage it for you. This teaches you to do it",
-  "You are looking for a get rich scheme. This is arithmetic and it is slow",
-  "You are not willing to look at your own numbers honestly for ninety minutes",
-];
-
-function ForWhom() {
-  return (
-    <section className="mx-auto max-w-[900px] px-4 py-14">
-      <h2 className="text-2xl font-bold sm:text-3xl">Read this before you register</h2>
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-border bg-card p-5">
-          <p className="label-caps text-[var(--brass)]">This is for you if</p>
-          <ul className="mt-4 space-y-3 text-sm">
-            {FOR_YOU.map((item) => (
-              <li key={item} className="flex gap-3">
-                <Check size={18} className="mt-0.5 shrink-0 text-[var(--brass)]" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="rounded-lg border border-border bg-[var(--muted)] p-5">
-          <p className="label-caps text-muted-foreground">This is not for you if</p>
-          <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-            {NOT_FOR_YOU.map((item) => (
-              <li key={item} className="flex gap-3">
-                <X size={18} className="mt-0.5 shrink-0" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-const TAKEAWAYS = [
-  {
-    title: "The Money Audit sheet.",
-    body: "Build your own consolidated picture, in your own file, so the data stays yours and nobody can sell to you off the back of it.",
-  },
-  {
-    title: "The Real Return calculator.",
-    body: "Check anything you already hold, post tax and post inflation, using the right measure for it.",
-  },
-  {
-    title: "The Nomination and MWP checklist.",
-    body: "Every account and policy, and the one clause most people have never heard of.",
-  },
-];
-
-function TakeAways() {
-  return (
-    <section className="mx-auto max-w-[900px] px-4 py-14">
-      <h2 className="text-2xl font-bold sm:text-3xl">Three things you keep</h2>
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
-        {TAKEAWAYS.map((item) => (
-          <div key={item.title} className="rounded-lg border border-border bg-card p-5">
-            <h3 className="text-base font-semibold">{item.title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function AboutHost() {
-  const hostImage = (import.meta.env["VITE_HOST_IMAGE_URL"] as string | undefined) || milanHeadshot;
-
-  return (
-    <section id="meet-the-presenter" className="mx-auto max-w-[900px] scroll-mt-24 px-4 py-14">
-      <div className="grid gap-8 md:grid-cols-[280px_1fr]">
+        {/* Presenter Bio */}
         <div>
-          <img
-            src={hostImage}
-            alt="Milan Dodhia, Financial Educator"
-            className="w-full object-cover"
-            loading="lazy"
-          />
-        </div>
-        <div>
-          <p className="label-caps text-[var(--brass)]">Meet the Presenter</p>
-          <h2 className="mt-2 text-2xl font-bold sm:text-3xl">Milan Dodhia</h2>
-          <p className="label-caps mt-2 text-muted-foreground">
-            Financial Educator ·{" "}
+          <p className="label-caps text-xs text-[var(--brass)]">Meet Your Presenter</p>
+          <h2 className="mt-2 font-display text-2xl font-bold sm:text-3xl text-foreground">
+            Milan Dodhia
+          </h2>
+          <p className="label-caps mt-1 text-sm text-primary font-semibold">
+            Founder, OnePagePlan | Financial Educator
+          </p>
+
+          <div className="mt-6 space-y-4 text-base leading-relaxed text-muted-foreground">
+            <p>
+              Milan Dodhia believes that financial education should begin with understanding your
+              current position, not with purchasing another financial product.
+            </p>
+            <p>
+              Through OnePagePlan, his aim is to help individuals and families look at their money
+              more holistically, ask better questions and approach financial decisions with greater
+              clarity.
+            </p>
+            <p>
+              Having spent over seven years in equity research and thirteen years as a licensed mutual
+              fund distributor (a license surrendered in April 2026 to focus exclusively on unbiased
+              education), he brings deep industry insight without any product sales or commission
+              motives.
+            </p>
+            <p>
+              Milan is also the person behind Milanaire, his personal and advisory brand. Through his
+              professional work and writing, he encourages individuals and families to approach money
+              with greater understanding and clarity.
+            </p>
+          </div>
+
+          {/* Understated Credibility Links */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
             <a
               href="https://milanaire.me"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[var(--brass)] underline underline-offset-4 hover:text-primary"
+              aria-label="Explore Milanaire (opens in a new tab)"
+              onClick={() => trackOutboundCredibilityClick("milanaire", "presenter")}
+              className="inline-flex items-center text-xs sm:text-sm font-medium text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              milanaire.me
+              Explore Milanaire →
             </a>
-          </p>
-          <div className="mt-5 space-y-4 text-sm leading-relaxed text-muted-foreground">
-            <p>
-              Seven and a half years in equity research. Thirteen years as a licensed mutual fund
-              distributor, a licence I surrendered in April 2026. Now inside a credit bureau,
-              working across both the bank side and the credit side, which means I know what a
-              lender sees when they look at you. MBA in Finance. Around two hundred families
-              coached, one to one and in groups.
-            </p>
-            <p>
-              My father ran the same shop in Mumbai for thirty five years, from seven in the morning
-              to one at night. Real income, earned through sheer hard work, with no financial
-              education behind it. The hours were the strategy and there was never a second one.
-              Years later I was able to tell him he could stop, and he did. Our family dinner moved
-              from half past ten at night to half past eight.
-            </p>
-            <p>
-              I do not sell products, so I do not earn commissions. I teach the frameworks so you
-              decide, and so you can judge whether anyone else's recommendation holds up. Including
-              mine.
-            </p>
-            <p className="pt-1">
-              <a
-                href="https://milanaire.me"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-4 hover:text-[var(--highlight)]"
-              >
-                Visit milanaire.me →
-              </a>
-            </p>
+            <a
+              href="https://www.linkedin.com/in/milanaire-me"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Connect with Milan Dodhia on LinkedIn (opens in a new tab)"
+              onClick={() => trackOutboundCredibilityClick("linkedin", "presenter")}
+              className="inline-flex items-center text-xs sm:text-sm font-medium text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              Connect on LinkedIn →
+            </a>
           </div>
+
+          {/* Credentials Strip */}
+          <div className="mt-8 grid grid-cols-2 gap-4 border-t border-border pt-6">
+            {CREDENTIALS.map((item) => (
+              <div key={item.label} className="rounded-lg border border-border bg-card p-3.5">
+                <p className="font-display text-base font-bold text-foreground">{item.value}</p>
+                <p className="mt-1 text-xs leading-snug text-muted-foreground">{item.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-4 text-xs text-muted-foreground">
+            Educational credentials: MBA in Finance and NISM certified. OnePagePlan provides
+            financial education and does not offer personalised investment advisory services.
+          </p>
         </div>
       </div>
     </section>
   );
 }
 
-const BLOG_POSTS = [
+/**
+ * 7. Session Details — Rebuilt
+ */
+function SessionDetails() {
+  const [chipDate, setChipDate] = useState(() => formatSessionDayMonth());
+  const { open } = useRegistration();
+
+  useEffect(() => {
+    setChipDate(formatSessionDayMonth());
+  }, []);
+
+  return (
+    <section id="session-details" className="mx-auto max-w-4xl scroll-mt-24 px-4 py-16 sm:py-20">
+      <div className="text-center">
+        <p className="label-caps text-xs text-[var(--brass)]">Session Details</p>
+        <h2 className="mt-2 font-display text-2xl font-bold sm:text-3xl text-foreground">
+          Join the Next Live Session
+        </h2>
+        <p className="mx-auto mt-2 max-w-xl text-base text-muted-foreground leading-relaxed">
+          Set aside 90 minutes to look at your finances from a different perspective.
+        </p>
+      </div>
+
+      <div className="mx-auto mt-10 max-w-2xl space-y-6">
+        {/* Countdown */}
+        <CountdownCard />
+
+        {/* Specifications Grid */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <SpecChip icon={<Calendar size={16} />} label={`Saturday, ${chipDate}`} />
+          <SpecChip icon={<Clock size={16} />} label="7:00 PM IST" />
+          <SpecChip icon={<Timer size={16} />} label="90 Minutes" />
+          <SpecChip icon={<Globe size={16} />} label="English" />
+        </div>
+
+        <div className="rounded-xl border border-[var(--brass)]/40 bg-[var(--brass)]/5 p-4 text-center">
+          <p className="text-sm font-semibold text-foreground">
+            Free live online educational session · No recordings · Live interactive Q&amp;A
+          </p>
+        </div>
+
+        <div className="text-center pt-2">
+          <Button
+            onClick={open}
+            size="lg"
+            className="w-full sm:w-auto bg-primary px-10 py-4 text-base sm:text-lg font-semibold text-primary-foreground hover:bg-[var(--highlight)] transition-colors"
+          >
+            Save My Free Seat →
+          </Button>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Immediate confirmation · Joining link sent directly to your registered email and
+            WhatsApp
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Blog / Editorial Section
+ *
+ * Keeps all internal blog articles connected, crawlable and compatible with Google Ads sitelinks.
+ */
+const BLOG_ARTICLES = [
   {
     tag: "Financial Clarity",
     title: "Your Financial App Shows You Everything. But Does It Tell You What Matters?",
@@ -515,14 +601,16 @@ const BLOG_POSTS = [
 
 function BlogSection() {
   return (
-    <section id="blog" className="mx-auto max-w-[900px] scroll-mt-24 px-4 py-14">
+    <section id="blog" className="mx-auto max-w-4xl scroll-mt-24 px-4 py-16 sm:py-20">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="label-caps text-[var(--brass)]">Blog</p>
-          <h2 className="mt-2 text-2xl font-bold sm:text-3xl">Notes on Indian family finance</h2>
+          <p className="label-caps text-xs text-[var(--brass)]">Blog</p>
+          <h2 className="mt-2 font-display text-2xl font-bold sm:text-3xl text-foreground">
+            Notes on Indian Family Finance
+          </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Essays, arithmetic, and frameworks on building your own plan and seeing your
-            family&apos;s financial life as a whole.
+            Essays, arithmetic, and frameworks on building your own plan and seeing your family's
+            financial life as a whole.
           </p>
         </div>
         <Link
@@ -536,7 +624,7 @@ function BlogSection() {
       {/* Featured Internal Article */}
       <Link
         to="/blog/missed-health-insurance-renewal"
-        className="group mt-8 block rounded-xl border border-[var(--brass)]/60 bg-card p-6 transition-all hover:border-[var(--brass)] hover:shadow-sm"
+        className="group mt-8 block rounded-xl border border-[var(--brass)]/50 bg-card p-6 transition-all hover:border-[var(--brass)] hover:shadow-sm"
       >
         <div className="flex flex-wrap items-center gap-2">
           <span className="label-caps rounded-full border border-[var(--brass)]/60 bg-[var(--brass)]/10 px-2.5 py-0.5 text-xs text-[var(--brass)]">
@@ -545,7 +633,7 @@ function BlogSection() {
           <span className="text-xs text-muted-foreground">·</span>
           <span className="text-xs text-muted-foreground">5 min read</span>
         </div>
-        <h3 className="mt-3 text-lg sm:text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+        <h3 className="mt-3 font-display text-lg sm:text-xl font-bold text-foreground group-hover:text-primary transition-colors">
           Seven Years of Health Insurance. One Missed Renewal. And a Costly Lesson.
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -559,7 +647,7 @@ function BlogSection() {
       </Link>
 
       <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {BLOG_POSTS.map((post) => (
+        {BLOG_ARTICLES.map((post) => (
           <Link
             key={post.title}
             to={post.to}
@@ -567,7 +655,7 @@ function BlogSection() {
           >
             <div>
               <p className="label-caps text-xs text-[var(--brass)]">{post.tag}</p>
-              <h3 className="mt-2 text-base font-semibold group-hover:text-primary">
+              <h3 className="mt-2 font-display text-base font-semibold group-hover:text-primary text-foreground transition-colors">
                 {post.title}
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{post.summary}</p>
@@ -582,50 +670,57 @@ function BlogSection() {
   );
 }
 
-const FAQS = [
+/**
+ * 9. FAQ — New Section
+ */
+const FAQ_ITEMS = [
   {
-    q: "Is this actually free?",
-    a: "Yes. It is a live ninety minute session and there is nothing to pay to attend.",
+    q: "Is the masterclass free?",
+    a: "Yes. Registration for this live educational masterclass is free.",
   },
   {
-    q: "Will there be a recording?",
-    a: "No. The session is live and not recorded.",
+    q: "Who should attend?",
+    a: "Indian working professionals and families who want to understand their finances more holistically, whether they are beginning their financial journey or already saving and investing.",
   },
   {
-    q: "Do I need to prepare anything?",
-    a: "Sit somewhere quiet with a pen. You will be doing arithmetic on your own numbers.",
+    q: "Do I need investment knowledge?",
+    a: "No. The session is intended to make important financial concepts easier to understand.",
   },
   {
-    q: "Will you tell me what to invest in?",
-    a: "No. I teach how to evaluate anything, so you decide for yourself and can check anyone else's recommendation too.",
+    q: "Will you recommend stocks or mutual funds?",
+    a: "The masterclass focuses on financial understanding and decision-making principles, not specific stock or fund recommendations.",
   },
   {
-    q: "Is this suitable if I already invest regularly?",
-    a: "Most people who attend already do. The question is whether anyone has ever gone back and checked what it is actually returning.",
+    q: "Is this personalised financial advice?",
+    a: "No. It is an educational session. Individual financial circumstances may require separate professional advice.",
   },
   {
-    q: "I am not good with numbers. Will I keep up?",
-    a: "Yes. It is addition, subtraction and one division. If you can read a bank statement you can do this.",
+    q: "How long is the session?",
+    a: "Approximately 90 minutes.",
   },
   {
-    q: "Is this a sales pitch?",
-    a: "I teach for the first hour and a half and then I tell you what else I do. You are free to take the frameworks and never buy anything.",
-  },
-  {
-    q: "What happens after I register?",
-    a: "You will get an email and a WhatsApp message with the joining link, and a reminder before the session starts.",
+    q: "When will I receive joining details?",
+    a: "Upon completing your free registration, you will immediately see your confirmation details with an option to add the session to your calendar. We also send your private webinar access link and schedule reminders directly to your registered email address and WhatsApp number prior to the live masterclass.",
   },
 ];
 
-function Faq() {
+function FaqSection() {
   return (
-    <section className="mx-auto max-w-[900px] px-4 py-14">
-      <h2 className="text-2xl font-bold sm:text-3xl">Questions people ask</h2>
-      <Accordion type="single" collapsible className="mt-6">
-        {FAQS.map((item) => (
-          <AccordionItem key={item.q} value={item.q}>
-            <AccordionTrigger className="text-left text-base">{item.q}</AccordionTrigger>
-            <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
+    <section id="faq" className="mx-auto max-w-3xl scroll-mt-24 px-4 py-16 sm:py-20">
+      <div className="text-center">
+        <p className="label-caps text-xs text-[var(--brass)]">Answers</p>
+        <h2 className="mt-2 font-display text-2xl font-bold sm:text-3xl text-foreground">
+          Frequently Asked Questions
+        </h2>
+      </div>
+
+      <Accordion type="single" collapsible className="mt-10">
+        {FAQ_ITEMS.map((item, idx) => (
+          <AccordionItem key={idx} value={`item-${idx}`} className="border-border">
+            <AccordionTrigger className="text-left font-display text-base font-semibold text-foreground hover:text-primary">
+              {item.q}
+            </AccordionTrigger>
+            <AccordionContent className="text-sm leading-relaxed text-muted-foreground pb-4">
               {item.a}
             </AccordionContent>
           </AccordionItem>
@@ -635,22 +730,50 @@ function Faq() {
   );
 }
 
+/**
+ * 10. Final CTA
+ */
 function FinalCta() {
+  const [chipDate, setChipDate] = useState(() => formatSessionDayMonth());
   const { open } = useRegistration();
 
+  useEffect(() => {
+    setChipDate(formatSessionDayMonth());
+  }, []);
+
   return (
-    <section className="bg-primary px-4 py-16 text-[var(--background)]">
+    <section
+      id="register"
+      className="scroll-mt-24 bg-primary px-4 py-16 sm:py-20 text-primary-foreground"
+    >
       <div className="mx-auto max-w-2xl text-center">
-        <h2 className="text-2xl font-bold sm:text-3xl">
-          Ninety minutes this Saturday. What is your actual number?
+        <span className="label-caps inline-block rounded-full border border-primary-foreground/30 bg-primary-foreground/10 px-3.5 py-1 text-xs text-primary-foreground">
+          Reserve Your Free Seat
+        </span>
+        <h2 className="mt-4 font-display text-2xl font-bold sm:text-3xl text-balance">
+          Before You Make Another Financial Decision, Understand Your Complete Financial Picture.
         </h2>
-        <p className="mt-3 text-sm opacity-90">Free, live, and you leave with it on one page.</p>
-        <Button
-          onClick={open}
-          className="mt-8 h-auto bg-[var(--background)] px-8 py-4 text-base font-semibold text-primary hover:bg-[var(--highlight)] hover:text-[var(--background)]"
-        >
-          Save my seat for this Saturday →
-        </Button>
+        <p className="mt-4 text-base opacity-90 leading-relaxed max-w-xl mx-auto">
+          Join The Money Reality Masterclass and explore a clearer way to look at your money.
+        </p>
+
+        <div className="mt-6 inline-flex items-center gap-2 rounded-lg border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-2 text-xs sm:text-sm">
+          <Calendar size={15} />
+          <span>Next Live Session: Saturday, {chipDate} at 7:00 PM IST</span>
+        </div>
+
+        <div className="mt-8">
+          <Button
+            onClick={open}
+            size="lg"
+            className="h-auto bg-[var(--background)] px-10 py-4 text-base font-semibold text-primary hover:bg-[var(--highlight)] hover:text-white transition-all shadow-md"
+          >
+            Reserve My Free Seat →
+          </Button>
+        </div>
+        <p className="mt-3 text-xs opacity-75">
+          100% Free · 90-minute live online educational masterclass
+        </p>
       </div>
     </section>
   );

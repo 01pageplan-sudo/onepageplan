@@ -69,7 +69,7 @@ function TermsPage() {
           <div className="mt-8 space-y-8 text-sm leading-relaxed text-muted-foreground">
             <p>
               These terms apply to this website and to The Money Reality Masterclass, both operated by
-              Manrrs Wellness LLP under the name The One Page Plan by Milanaire. By using the website or
+              Manrrs Wellness LLP for OnePagePlan (founded by Milan Dodhia). By using the website or
               attending a session you accept them.
             </p>
 

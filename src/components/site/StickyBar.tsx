@@ -31,9 +31,9 @@ export function StickyBar() {
         </div>
         <Button
           onClick={open}
-          className="flex-1 bg-primary text-primary-foreground hover:bg-[var(--highlight)] sm:flex-none"
+          className="flex-1 bg-primary text-primary-foreground hover:bg-[var(--highlight)] sm:flex-none font-semibold text-sm"
         >
-          Save my seat →
+          Reserve My Free Seat →
         </Button>
         <button
           type="button"

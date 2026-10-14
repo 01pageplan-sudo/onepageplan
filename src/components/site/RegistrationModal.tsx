@@ -180,10 +180,10 @@ export function RegistrationModal({
             return;
           }
 
-          // Otherwise show already registered notification and redirect to milanaire.me blog
+          // Otherwise show already registered notification and redirect to blog
           setAlreadyRegisteredNotice(true);
           setTimeout(() => {
-            window.location.href = "https://milanaire.me/blog";
+            window.location.href = "/blog";
           }, 3000);
           return;
         }
@@ -231,7 +231,7 @@ export function RegistrationModal({
               </p>
               <div className="mt-5">
                 <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-[var(--highlight)]">
-                  <a href="https://milanaire.me/blog">Go to blog now →</a>
+                  <a href="/blog">Go to blog now →</a>
                 </Button>
               </div>
             </div>

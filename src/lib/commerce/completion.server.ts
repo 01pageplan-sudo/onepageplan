@@ -1,4 +1,3 @@
-import { createHmac } from "crypto";
 import { createPublicServerClient } from "@/lib/supabase-public.server";
 import { formatRupees, type ProductId } from "@/lib/commerce/pricing.server";
 import { getActiveTemplateHtml } from "@/lib/commerce/templates.server";
@@ -10,7 +9,19 @@ const SECRET_SALT = process.env["COMMERCE_SIGNING_SECRET"] || "onepageplan_compl
  * Creates an HMAC signature for an order ID to allow tamper-proof completion page access.
  */
 export function signOrderId(orderId: string): string {
-  return createHmac("sha256", SECRET_SALT).update(orderId).digest("hex");
+  if (typeof window !== "undefined") return "";
+  try {
+    const cryptoModule =
+      typeof process !== "undefined" && process.versions?.node
+        ? (globalThis as any).require?.("node:crypto") || (globalThis as any).require?.("crypto")
+        : null;
+    if (cryptoModule?.createHmac) {
+      return cryptoModule.createHmac("sha256", SECRET_SALT).update(orderId).digest("hex");
+    }
+  } catch {
+    /* ignore on non-node */
+  }
+  return "";
 }
 
 /**

@@ -1,18 +1,22 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import bmzIcon from "@/assets/bmz-icon.png";
+import oppLogo from "@/assets/opp-logo.png";
 import { Button } from "@/components/ui/button";
 import { useRegistration } from "./registration-context";
 
 export function Wordmark({ withByline = true }: { withByline?: boolean }) {
   return (
     <span className="flex items-center gap-2">
-      <img src={bmzIcon} alt="" className="h-8 w-8 object-contain" />
+      <img src={oppLogo} alt="OnePagePlan" className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 object-contain" />
       <span className="flex flex-col leading-none">
-        <span className="font-display text-base font-semibold">The One Page Plan</span>
+        <span className="font-display text-sm sm:text-base font-semibold tracking-tight text-foreground">
+          OnePagePlan
+        </span>
         {withByline ? (
-          <span className="label-caps mt-1 text-muted-foreground">By Milanaire</span>
+          <span className="label-caps mt-0.5 text-[9px] sm:text-[10px] tracking-wider text-muted-foreground whitespace-nowrap">
+            Founded by Milan Dodhia
+          </span>
         ) : null}
       </span>
     </span>
@@ -43,53 +47,24 @@ export function Header() {
 
   return (
     <header
-      className={`fixed top-0 right-0 left-0 z-40 transition-colors ${
-        scrolled ? "border-b border-border bg-background" : "border-b border-transparent"
+      className={`fixed top-0 right-0 left-0 z-40 transition-colors duration-200 ${
+        scrolled
+          ? "border-b border-border bg-background/95 backdrop-blur-sm"
+          : "border-b border-transparent bg-background/80 backdrop-blur-sm"
       }`}
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-        <Link to="/" className="shrink-0">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3.5">
+        <Link to="/" className="shrink-0" aria-label="OnePagePlan Home">
           <Wordmark />
         </Link>
-        <nav aria-label="Main navigation" className="hidden items-center gap-5 lg:flex">
-          <a
-            href="/#what-youll-learn"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            What You&apos;ll Learn
-          </a>
-          <a
-            href="/#session-details"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Session Details
-          </a>
-          <a
-            href="/#meet-the-presenter"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Meet the Presenter
-          </a>
-          <a
-            href="/#blog"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Blog
-          </a>
-        </nav>
-        <div className="flex items-center gap-3">
-          <a
-            href="/#meet-the-presenter"
-            className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground lg:hidden"
-          >
-            Meet the Presenter
-          </a>
+        <div className="flex items-center shrink-0">
           <Button
             onClick={open}
-            className="bg-primary text-primary-foreground hover:bg-[var(--highlight)]"
+            className="bg-primary text-primary-foreground hover:bg-[var(--highlight)] text-xs sm:text-sm font-semibold px-2.5 py-1.5 sm:px-4 sm:py-2 h-auto"
             size="sm"
           >
-            Join free masterclass
+            <span className="sm:hidden">Join Free</span>
+            <span className="hidden sm:inline">Join Free Masterclass</span>
           </Button>
         </div>
       </div>

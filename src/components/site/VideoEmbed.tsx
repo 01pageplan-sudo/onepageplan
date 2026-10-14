@@ -1,4 +1,5 @@
-import { Wordmark } from "./Header";
+import { Play } from "lucide-react";
+import oppLogo from "@/assets/opp-logo.png";
 
 function getEmbedUrl(rawUrl?: string): string | undefined {
   if (!rawUrl) return undefined;
@@ -53,8 +54,20 @@ export function VideoEmbed({ url, title }: { url?: string | undefined; title: st
 
   if (!embedUrl) {
     return (
-      <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-border bg-[var(--muted)] shadow-sm">
-        <Wordmark withByline={false} />
+      <div className="relative flex aspect-video w-full flex-col items-center justify-center overflow-hidden rounded-xl border border-border bg-gradient-to-b from-card to-[var(--muted)] p-6 text-center shadow-sm">
+        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full border border-[var(--brass)]/30 bg-background/80 shadow-xs">
+          <img src={oppLogo} alt="" className="h-9 w-9 object-contain" />
+        </div>
+        <p className="font-display text-base sm:text-lg font-bold text-foreground">
+          {title}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Free Live Masterclass · Presented by Milan Dodhia
+        </p>
+        <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[var(--brass)]/40 bg-[var(--brass)]/10 px-3 py-1 text-xs font-medium text-foreground">
+          <Play size={12} className="fill-current text-primary" />
+          <span>Interactive Live Session • 90 Minutes</span>
+        </div>
       </div>
     );
   }

@@ -256,7 +256,7 @@ function BlogIndexPage() {
             {/* External Thought Pieces */}
             <div className="py-8 border-t border-border">
               <h2 className="label-caps text-xs text-[var(--brass)] mb-6">
-                More Essays &amp; Perspectives from Milanaire
+                More Essays &amp; Perspectives by Milan Dodhia
               </h2>
               <div className="grid gap-6 md:grid-cols-3">
                 {EXTERNAL_ESSAYS.map((post) => (

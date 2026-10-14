@@ -184,7 +184,7 @@ export async function sendOption2WelcomeEmail(
     "Next one: why even a correct tip usually fails, and the three things that decide the outcome after the name is chosen.",
     "",
     "Milan Dodhia",
-    "Financial Educator, Milanaire",
+    "Founder, OnePagePlan | Financial Educator",
     "",
     "---",
     "Milan Dodhia. Financial Educator. Manrrs Wellness LLP.",
@@ -199,7 +199,7 @@ export async function sendOption2WelcomeEmail(
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAF7F0;padding:24px 12px;">
       <tr><td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#FFFFFF;border:1px solid #E5DFD3;border-radius:10px;padding:28px;font-family:Helvetica,Arial,sans-serif;color:#2B2B28;">
-          <tr><td style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#B8873B;padding-bottom:12px;">The One Page Plan by Milanaire</td></tr>
+          <tr><td style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#B8873B;padding-bottom:12px;">OnePagePlan · Founded by Milan Dodhia</td></tr>
           <tr><td style="font-size:22px;font-weight:700;color:#4A5A3A;padding-bottom:16px;line-height:1.25;">I said no. Here is what I am saying instead.</td></tr>
           <tr><td style="font-size:15px;line-height:1.6;padding-bottom:14px;">Hello ${escapeHtml(firstName)},</td></tr>
           <tr><td style="font-size:15px;line-height:1.6;padding-bottom:14px;">You wanted someone to tell you what to buy, and I said no, so let me explain rather than leaving it as a closed door.</td></tr>
@@ -207,7 +207,7 @@ export async function sendOption2WelcomeEmail(
           <tr><td style="font-size:15px;line-height:1.6;padding-bottom:14px;">It is because a name on its own has never been the useful part. I spent seven and a half years in equity research and thirteen years licensed to sell financial products. In all of that time I never saw a correct recommendation rescue somebody who did not know how much to buy, how long to hold it, or what they would do when it fell. I have watched plenty of correct recommendations lose people money for exactly those reasons.</td></tr>
           <tr><td style="font-size:15px;line-height:1.6;padding-bottom:14px;">These emails are the other half. Short, one idea each, roughly twice a week for three weeks.</td></tr>
           <tr><td style="font-size:15px;line-height:1.6;padding-bottom:14px;">Next one: why even a correct tip usually fails, and the three things that decide the outcome after the name is chosen.</td></tr>
-          <tr><td style="font-size:15px;line-height:1.6;padding:12px 0 20px;">Milan Dodhia<br /><span style="color:#6B6A63;">Financial Educator, Milanaire</span></td></tr>
+          <tr><td style="font-size:15px;line-height:1.6;padding:12px 0 20px;">Milan Dodhia<br /><span style="color:#6B6A63;">Founder, OnePagePlan | Financial Educator</span></td></tr>
           <tr><td style="border-top:1px solid #E5DFD3;padding-top:16px;font-size:11px;line-height:1.6;color:#6B6A63;">
             Milan Dodhia. Financial Educator. Manrrs Wellness LLP.<br />
             This email is financial education, not financial advice. I do not recommend specific stocks, funds, policies or lenders. I don't sell products, so I don't earn commissions. For tax questions, speak to a Chartered Accountant. For legal questions, speak to a lawyer.<br /><br />

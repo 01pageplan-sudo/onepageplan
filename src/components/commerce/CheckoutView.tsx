@@ -50,7 +50,7 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 const TERMS_CONSENT_TEXT =
-  "I have read the terms and refund policy, and I understand this is education, not investment advice.";
+  "I have read and agree to the Terms & Conditions and Refund & Cancellation Policy, and I understand this is education, not investment advice.";
 const WHATSAPP_CONSENT_TEXT =
   "Send me my access details and course reminders on WhatsApp.";
 
@@ -813,8 +813,39 @@ export function CheckoutView({ product, isUpgrade = false, pagePath }: CheckoutV
               )}
             </div>
 
+            {/* REFUND CONDITION DISCLOSURE */}
+            <div className="rounded-lg border border-border bg-muted/40 p-3.5 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                  Refund Policy Terms
+                </span>
+                <Link
+                  to="/refund-policy"
+                  target="_blank"
+                  className="text-[11px] font-medium text-primary underline underline-offset-2 hover:text-[var(--highlight)]"
+                >
+                  Full policy →
+                </Link>
+              </div>
+
+              <p className="text-xs font-medium text-foreground leading-snug">
+                {data?.isRepurchase ? (
+                  "Repurchases of a previously purchased course are not eligible for the standard 14-day refund policy."
+                ) : appliedDiscount || data?.pricing?.discountCodeApplied ? (
+                  "Coupon purchases are not eligible for the standard 14-day refund policy."
+                ) : (
+                  "14-day refund available, even if you complete the course."
+                )}
+              </p>
+
+              <p className="text-[10px] text-muted-foreground leading-normal">
+                Subject to statutory consumer rights under applicable Indian law.
+              </p>
+            </div>
+
             {/* CONSENTS */}
-            <div className="pt-2 space-y-3">
+            <div className="pt-1 space-y-3">
               {/* Required Terms Checkbox */}
               <div className="flex items-start gap-2.5">
                 <Checkbox
@@ -827,13 +858,13 @@ export function CheckoutView({ product, isUpgrade = false, pagePath }: CheckoutV
                   htmlFor="termsConsent"
                   className="text-[11px] leading-relaxed text-foreground cursor-pointer font-normal"
                 >
-                  I have read the{" "}
+                  I have read and agree to the{" "}
                   <Link to="/terms" target="_blank" className="underline font-medium">
-                    terms
+                    Terms &amp; Conditions
                   </Link>{" "}
                   and{" "}
                   <Link to="/refund-policy" target="_blank" className="underline font-medium">
-                    refund policy
+                    Refund &amp; Cancellation Policy
                   </Link>
                   , and I understand this is education, not investment advice.{" "}
                   <span className="text-destructive">*</span>

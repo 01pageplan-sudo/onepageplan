@@ -14,7 +14,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { track } from "@/lib/analytics";
+import milanHeadshot from "@/assets/milan-headshot-transparent.png";
+import { track, trackOutboundCredibilityClick } from "@/lib/analytics";
 
 export interface BlogArticleViewProps {
   title: string;
@@ -121,6 +122,55 @@ export function BlogArticleView({
               </div>
 
               {children}
+
+              {/* Author Attribution & More Insights from Milan Dodhia */}
+              <div className="mt-12 rounded-xl border border-border bg-card p-6 shadow-xs">
+                <div className="flex items-center gap-3.5">
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                    <img
+                      src={milanHeadshot}
+                      alt="Milan Dodhia"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <p className="font-display text-base font-bold text-foreground">{author}</p>
+                    <p className="text-xs text-muted-foreground">Founder, OnePagePlan | Financial Educator</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 border-t border-border/60 pt-4">
+                  <h4 className="font-display text-base font-bold text-foreground">
+                    More insights from Milan Dodhia
+                  </h4>
+                  <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                    Explore more perspectives on financial clarity, family wealth and informed financial decisions.
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                    <a
+                      href="https://substack.com/@themilanaireletter"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Read The Milanaire Letter on Substack (opens in a new tab)"
+                      onClick={() => trackOutboundCredibilityClick("substack", "article_footer")}
+                      className="inline-flex items-center font-medium text-primary underline underline-offset-4 transition-colors hover:text-[var(--highlight)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    >
+                      Read The Milanaire Letter →
+                    </a>
+                    <a
+                      href="https://www.linkedin.com/in/milanaire-me"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Follow Milan on LinkedIn (opens in a new tab)"
+                      onClick={() => trackOutboundCredibilityClick("linkedin", "article_footer")}
+                      className="inline-flex items-center font-medium text-primary underline underline-offset-4 transition-colors hover:text-[var(--highlight)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    >
+                      Follow Milan on LinkedIn →
+                    </a>
+                  </div>
+                </div>
+              </div>
 
               {/* Primary One Page Plan CTA Box */}
               <ArticleCtaBox />

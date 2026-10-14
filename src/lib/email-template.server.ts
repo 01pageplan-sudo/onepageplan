@@ -28,7 +28,7 @@ Session details: this Saturday, 7:00 PM to 8:30 PM IST, ninety minutes, online.
 See you there.
 
 Milan Dodhia
-Financial Educator, Milanaire
+Founder, OnePagePlan | Financial Educator
 
 ---
 ${DISCLAIMER_TEXT}
@@ -44,7 +44,7 @@ To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remo
         <td align="center">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#FFFFFF;border:1px solid #E5DFD3;border-radius:10px;padding:28px;font-family:Helvetica,Arial,sans-serif;color:#2B2B28;">
             <tr>
-              <td style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#B8873B;padding-bottom:12px;">The One Page Plan by Milanaire</td>
+              <td style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#B8873B;padding-bottom:12px;">OnePagePlan · Founded by Milan Dodhia</td>
             </tr>
             <tr>
               <td style="font-size:22px;font-weight:700;color:#4A5A3A;padding-bottom:16px;line-height:1.25;">Your seat is saved. Here is what to bring.</td>
@@ -76,7 +76,7 @@ To stop receiving these emails, reply with the word UNSUBSCRIBE and we will remo
               <td style="font-size:15px;line-height:1.6;padding-bottom:6px;">See you there.</td>
             </tr>
             <tr>
-              <td style="font-size:15px;line-height:1.6;padding-bottom:20px;">Milan Dodhia<br /><span style="color:#6B6A63;">Financial Educator, Milanaire</span></td>
+              <td style="font-size:15px;line-height:1.6;padding-bottom:20px;">Milan Dodhia<br /><span style="color:#6B6A63;">Founder, OnePagePlan | Financial Educator</span></td>
             </tr>
             <tr>
               <td style="border-top:1px solid #E5DFD3;padding-top:16px;font-size:11px;line-height:1.6;color:#6B6A63;">

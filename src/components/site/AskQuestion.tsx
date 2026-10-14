@@ -142,7 +142,7 @@ export function AskQuestion() {
       )}
 
       <p className="mt-6 text-xs leading-relaxed text-muted-foreground border-t border-border pt-4">
-        Milanaire is financial education only. Milan Dodhia is a Financial Educator and does not
+        OnePagePlan is financial education only. Milan Dodhia is a Financial Educator and does not
         provide investment advice or recommend products. Nothing here is a recommendation. For tax
         questions speak to a Chartered Accountant, and for legal questions speak to a lawyer.
       </p>

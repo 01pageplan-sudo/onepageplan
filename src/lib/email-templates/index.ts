@@ -140,7 +140,7 @@ export function renderEmail(spec: TemplateSpec, ctx: EmailContext) {
     ...offers.map((offer) => `${offer.label}: ${offer.href}`),
     "",
     "Milan Dodhia",
-    "Financial Educator, Milanaire",
+    "Founder, OnePagePlan | Financial Educator",
     "",
     "---",
     DISCLAIMER_TEXT,
@@ -157,7 +157,7 @@ export function renderEmail(spec: TemplateSpec, ctx: EmailContext) {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAF7F0;padding:24px 12px;">
       <tr><td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#FFFFFF;border:1px solid #E5DFD3;border-radius:10px;padding:28px;font-family:Helvetica,Arial,sans-serif;color:#2B2B28;">
-          <tr><td style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:${BRASS};padding-bottom:12px;">The One Page Plan by Milanaire</td></tr>
+          <tr><td style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:${BRASS};padding-bottom:12px;">OnePagePlan · Founded by Milan Dodhia</td></tr>
           <tr><td style="font-size:22px;font-weight:700;color:${SAGE};padding-bottom:16px;line-height:1.25;">${escapeHtml(heading)}</td></tr>
           <tr><td style="font-size:15px;line-height:1.6;padding-bottom:14px;">Hello ${escapeHtml(ctx.firstName)},</td></tr>
           ${paragraphs
@@ -177,7 +177,7 @@ export function renderEmail(spec: TemplateSpec, ctx: EmailContext) {
                 `<tr><td align="center" style="padding-bottom:10px;"><a href="${offer.href}" style="display:inline-block;border:1px solid ${SAGE};color:${SAGE};text-decoration:none;font-size:14px;font-weight:600;padding:11px 22px;border-radius:8px;">${escapeHtml(offer.label)}</a></td></tr>`,
             )
             .join("\n          ")}
-          <tr><td style="font-size:15px;line-height:1.6;padding:12px 0 20px;">Milan Dodhia<br /><span style="color:#6B6A63;">Financial Educator, Milanaire</span></td></tr>
+          <tr><td style="font-size:15px;line-height:1.6;padding:12px 0 20px;">Milan Dodhia<br /><span style="color:#6B6A63;">Founder, OnePagePlan | Financial Educator</span></td></tr>
           <tr><td style="border-top:1px solid #E5DFD3;padding-top:16px;font-size:11px;line-height:1.6;color:#6B6A63;">
             ${escapeHtml(DISCLAIMER_TEXT)}<br /><br />
             Manrrs Wellness LLP : connect@onepageplan.in<br />

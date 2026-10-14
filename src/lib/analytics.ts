@@ -45,3 +45,49 @@ export function track(eventName: string, params?: Record<string, string | number
     /* analytics must never break the page */
   }
 }
+
+export type CredibilityDestination =
+  | "milanaire"
+  | "linkedin"
+  | "substack"
+  | "milan_instagram"
+  | "onepageplan_instagram";
+
+export type CredibilityPlacement = "presenter" | "article_footer" | "site_footer";
+
+/**
+ * Tracks outbound clicks to Milan's professional, publishing and social profiles
+ * as secondary engagement events (not conversion events).
+ */
+export function trackOutboundCredibilityClick(
+  destination: CredibilityDestination,
+  placement: CredibilityPlacement,
+) {
+  if (typeof window === "undefined") return;
+  try {
+    const payload = { destination, placement };
+
+    // 1. Google Tag Manager / dataLayer
+    const win = window as unknown as {
+      dataLayer?: Array<Record<string, unknown>>;
+      gtag?: (...args: unknown[]) => void;
+    };
+    if (Array.isArray(win.dataLayer)) {
+      win.dataLayer.push({
+        event: "outbound_credibility_click",
+        ...payload,
+      });
+    }
+
+    // 2. Google Analytics (gtag custom event)
+    if (typeof win.gtag === "function") {
+      win.gtag("event", "outbound_credibility_click", payload);
+    }
+
+    // 3. Meta Pixel (custom event)
+    track("outbound_credibility_click", payload);
+  } catch {
+    /* analytics must never break the page */
+  }
+}
+

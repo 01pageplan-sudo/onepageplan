@@ -78,9 +78,9 @@ function PrivacyPage() {
   return (
     <LegalShell title="Privacy Policy">
       <p>
-        This policy explains how Manrrs Wellness LLP, which operates The One Page Plan by Milanaire,
-        handles the information you share with us. If you have a question about anything here, write
-        to connect@onepageplan.in.
+        This policy explains how Manrrs Wellness LLP, which operates OnePagePlan (founded by Milan
+        Dodhia), handles the information you share with us. If you have a question about anything
+        here, write to connect@onepageplan.in.
       </p>
 
       <Block heading="What we collect">
