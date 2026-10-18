@@ -10,7 +10,13 @@ export const Route = createFileRoute("/contact")({
     meta: [
       { title: "Contact Us | The One Page Plan" },
       { name: "description", content: "Contact information and registered office details for The One Page Plan." },
+      { property: "og:title", content: "Contact Us | The One Page Plan" },
+      { property: "og:description", content: "Contact information and registered office details for The One Page Plan." },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://www.onepageplan.in/contact" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: "https://www.onepageplan.in/contact" }],
   }),
   component: ContactPage,
 });

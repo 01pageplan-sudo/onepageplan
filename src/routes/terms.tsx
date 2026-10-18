@@ -18,8 +18,10 @@ export const Route = createFileRoute("/terms")({
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "article" },
+      { property: "og:url", content: "https://www.onepageplan.in/terms" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: "https://www.onepageplan.in/terms" }],
   }),
   component: TermsPage,
 });

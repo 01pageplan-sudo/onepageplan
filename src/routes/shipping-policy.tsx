@@ -9,7 +9,13 @@ export const Route = createFileRoute("/shipping-policy")({
     meta: [
       { title: "Shipping & Delivery Policy | The One Page Plan" },
       { name: "description", content: "Digital access delivery and physical shipment terms for course completers." },
+      { property: "og:title", content: "Shipping & Delivery Policy | The One Page Plan" },
+      { property: "og:description", content: "Digital access delivery and physical shipment terms for course completers." },
+      { property: "og:type", content: "article" },
+      { property: "og:url", content: "https://www.onepageplan.in/shipping-policy" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: "https://www.onepageplan.in/shipping-policy" }],
   }),
   component: ShippingPolicyPage,
 });
