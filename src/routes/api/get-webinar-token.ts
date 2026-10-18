@@ -76,11 +76,12 @@ export const Route = createFileRoute("/api/get-webinar-token")({
           "true";
 
         if (!testMode) {
-          const { sessionDateISO } = await import("@/lib/session");
+          const { getActiveOrRecentSessionDateISO } = await import("@/lib/session");
           const { createPublicServerClient } = await import("@/lib/supabase-public.server");
+          const sessionDate = getActiveOrRecentSessionDateISO();
           const { data: details, error: lookupError } = await createPublicServerClient().rpc(
             "lookup_registration_details_for_room" as never,
-            { p_email: email, p_session_date: sessionDateISO() } as never,
+            { p_email: email, p_session_date: sessionDate } as never,
           );
           if (lookupError) {
             console.error("get-webinar-token lookup error:", lookupError.message);
@@ -137,9 +138,9 @@ export const Route = createFileRoute("/api/get-webinar-token")({
 
         try {
           const { createPublicServerClient } = await import("@/lib/supabase-public.server");
-          const { sessionDateISO } = await import("@/lib/session");
+          const { getActiveOrRecentSessionDateISO } = await import("@/lib/session");
           const db = createPublicServerClient();
-          const sessionDate = sessionDateISO();
+          const sessionDate = getActiveOrRecentSessionDateISO();
 
           await db.from("webinar_event_logs" as never).insert({
             webinar_id: webinarId,

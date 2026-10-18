@@ -92,8 +92,8 @@ export const Route = createFileRoute("/api/get-webinar-metrics")({
         let dbAvgWatchMinutes: number | null = null;
 
         try {
-          const { sessionDateISO } = await import("@/lib/session");
-          const sessionDate = sessionDateISO();
+          const { getActiveOrRecentSessionDateISO } = await import("@/lib/session");
+          const sessionDate = getActiveOrRecentSessionDateISO();
           const { data: evRows } = await db
             .from("webinar_event_logs" as never)
             .select("email, event_type, duration_seconds, created_at")

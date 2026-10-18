@@ -105,13 +105,10 @@ type LeadRow = {
   tag_dates: Record<string, string> | null;
 };
 
-const EMAIL_TO_WHATSAPP_KEY: Record<string, string> = {
-  confirmation: "confirmation",
-  reminder_24h: "reminder-2h",
-  reminder_1h: "reminder-15m",
-  live_now: "live",
-  missed_session: "no-show",
-};
+// Companion WhatsApp dispatch should NOT piggyback on email templates with different offsets
+// (e.g. reminder_24h was triggering reminder-2h 24h early on Friday night, and reminder_1h was triggering reminder-15m 45m early).
+// All WhatsApp lifecycle reminders are handled on their dedicated schedule via dispatchDueWebinarWhatsAppReminders().
+const EMAIL_TO_WHATSAPP_KEY: Record<string, string> = {};
 
 type QueueRow = {
   registration_id: string;
@@ -152,13 +149,17 @@ export function plannedRows(lead: LeadRow, nurtureEnabled: boolean): QueueRow[] 
     push("late_entry", new Date(start.getTime() + 20 * 60 * 1000));
 
     // Sunday 09:00 IST is fourteen hours after a 19:00 IST start.
+    // Only queue post_session or missed_session once the session has started so attendance is known
     const morningAfter = new Date(start.getTime() + 14 * HOUR);
-    const attended = lead.status === "attended" || lead.status === "dropped_off";
-    push(attended ? "post_session" : "missed_session", morningAfter);
+    const nowMs = Date.now();
+    if (nowMs >= start.getTime()) {
+      const attended = lead.status === "attended" || lead.status === "dropped_off";
+      push(attended ? "post_session" : "missed_session", morningAfter);
 
-    if (nurtureEnabled && !purchased) {
-      for (let day = 1; day <= 11; day += 1) {
-        push(`nurture_${day}`, new Date(morningAfter.getTime() + day * 24 * HOUR));
+      if (nurtureEnabled && !purchased) {
+        for (let day = 1; day <= 11; day += 1) {
+          push(`nurture_${day}`, new Date(morningAfter.getTime() + day * 24 * HOUR));
+        }
       }
     }
   }
@@ -289,8 +290,8 @@ export async function dispatchDueWebinarWhatsAppReminders(
       if (nowMs >= startMs - 2 * HOUR - 5 * 60 * 1000 && nowMs <= startMs - 2 * HOUR + 20 * 60 * 1000) {
         dueKeys.push({ key: "reminder-2h", url: roomUrl });
       }
-      // 2. 15-Minute Reminder (strict window around 6:45 PM IST: 6:40 PM to 6:58 PM IST)
-      if (nowMs >= startMs - 20 * 60 * 1000 && nowMs < startMs - 2 * 60 * 1000) {
+      // 2. 15-Minute Reminder (strict window around 6:45 PM IST: 6:44 PM to 6:58 PM IST)
+      if (nowMs >= startMs - 16 * 60 * 1000 && nowMs < startMs - 2 * 60 * 1000) {
         dueKeys.push({ key: "reminder-15m", url: roomUrl });
       }
       // 3. Live Now Alert (strict window around 7:00 PM IST: 6:58 PM to 7:12 PM IST — never late)
@@ -392,9 +393,9 @@ export async function sendDueEmails(
     full_name: string;
   }[];
 
-  // Build email -> lead lookup so companion WhatsApp reminders can be triggered alongside emails
+  // Build email -> lead lookup so attendance and live status are always accurately verified
   const leadByEmail = new Map<string, LeadRow>();
-  if (due.some((r) => Boolean(EMAIL_TO_WHATSAPP_KEY[r.template]))) {
+  if (due.length > 0) {
     try {
       const from = new Date(Date.now() - 45 * 24 * HOUR).toISOString();
       const { data: leadsData } = await db.rpc("admin_leads", { p_password: password, p_from: from });
@@ -410,18 +411,29 @@ export async function sendDueEmails(
   let failed = 0;
 
   for (const row of due) {
-    const base = TEMPLATE_MAP[row.template];
+    let templateName = row.template;
+    const currentLead = leadByEmail.get(row.email.trim().toLowerCase());
+    if (currentLead) {
+      const attended = currentLead.status === "attended" || currentLead.status === "dropped_off";
+      if (templateName === "missed_session" && attended) {
+        templateName = "post_session";
+      } else if (templateName === "post_session" && !attended) {
+        templateName = "missed_session";
+      }
+    }
+
+    const base = TEMPLATE_MAP[templateName];
     if (!base) {
       await db.rpc("mark_email_send", {
         p_password: password,
         p_id: row.id,
         p_status: "failed",
-        p_error: `Unknown template ${row.template}`,
+        p_error: `Unknown template ${templateName}`,
       });
       failed += 1;
       continue;
     }
-    const spec = applyOverride(base, overrides[row.template]);
+    const spec = applyOverride(base, overrides[templateName]);
     const resolvedLinks = resolveLinks(settings, row.session_date, row.email);
     try {
       const { subject, html, text } = renderEmail(spec, {

@@ -64,19 +64,26 @@ export async function handleWebinarWebhookRequest(request: Request): Promise<Res
 
     let status: string | null = null;
     let eventType = "activity";
-    if (event === "webinar.started") {
+    if (event === "webinar.started" || event === "room_started" || event === "room.started") {
       eventType = "room_started";
-    } else if (event === "webinar.ended" || event === "webinar.slot.ended") {
+    } else if (
+      event === "webinar.ended" ||
+      event === "webinar.slot.ended" ||
+      event === "room_ended" ||
+      event === "room.ended"
+    ) {
       eventType = "room_ended";
     } else if (event === "completed") {
       status = "attended";
       eventType = "leave";
-    } else if (/join|attend|present|live/.test(event)) {
-      status = "attended";
-      eventType = "join";
     } else if (/drop|left|leave|early|exit|kick/.test(event)) {
+      // Must check drop/leave BEFORE join/attend so events like "attendee.left" or "attendee_dropped_off"
+      // are not wrongly matched by the "attend" substring.
       status = durationSeconds >= 45 * 60 ? "attended" : "dropped_off";
       eventType = "leave";
+    } else if (/join|enter|present|live|\battend/.test(event)) {
+      status = "attended";
+      eventType = "join";
     } else if (/chat|message/.test(event)) {
       eventType = "chat";
     } else if (/poll/.test(event)) {
@@ -84,9 +91,10 @@ export async function handleWebinarWebhookRequest(request: Request): Promise<Res
     }
 
     const { createPublicServerClient } = await import("@/lib/supabase-public.server");
-    const { sessionDateISO } = await import("@/lib/session");
+    const { getActiveOrRecentSessionDateISO } = await import("@/lib/session");
     const db = createPublicServerClient();
-    const sessionDate = sessionDateISO();
+    const explicitDate = pick(flat, ["session_date", "sessionDate"]);
+    const sessionDate = explicitDate || getActiveOrRecentSessionDateISO();
 
     // If this is a client beacon, verify the email belongs to a registered attendee before recording
     if (isRoomClientBeacon) {
@@ -97,7 +105,20 @@ export async function handleWebinarWebhookRequest(request: Request): Promise<Res
         "lookup_registration_details_for_room" as never,
         { p_email: email.toLowerCase(), p_session_date: sessionDate } as never,
       );
-      const record = (details ?? null) as { full_name?: string } | null;
+      let record = (details ?? null) as { full_name?: string } | null;
+      if (!record?.full_name) {
+        // Fallback: Check if registered under recent registration for this email
+        const { data: anyReg } = await db
+          .from("registrations" as never)
+          .select("id, full_name")
+          .eq("email" as never, email.toLowerCase())
+          .order("created_at" as never, { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if ((anyReg as any)?.full_name) {
+          record = anyReg as { full_name?: string };
+        }
+      }
       if (!record?.full_name) {
         return new Response("ok");
       }

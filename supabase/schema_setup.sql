@@ -339,11 +339,21 @@ AS $$
 DECLARE
   v_id uuid;
 BEGIN
+  -- 1. Try exact match on email and session_date
   SELECT id INTO v_id
   FROM public.registrations
   WHERE email = lower(trim(coalesce(p_email, '')))
     AND session_date = p_session_date
   LIMIT 1;
+
+  -- 2. Fallback: If no exact date match, match the most recent registration for this email
+  IF v_id IS NULL THEN
+    SELECT id INTO v_id
+    FROM public.registrations
+    WHERE email = lower(trim(coalesce(p_email, '')))
+    ORDER BY created_at DESC
+    LIMIT 1;
+  END IF;
 
   IF v_id IS NULL THEN
     RETURN false;
@@ -1309,8 +1319,10 @@ CREATE INDEX IF NOT EXISTS idx_webinar_event_logs_webinar_id ON public.webinar_e
 ALTER TABLE public.webinar_event_logs ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Service role full access on webinar_event_logs" ON public.webinar_event_logs;
-CREATE POLICY "Service role full access on webinar_event_logs" ON public.webinar_event_logs FOR ALL TO service_role
+DROP POLICY IF EXISTS "allow all on webinar_event_logs" ON public.webinar_event_logs;
+CREATE POLICY "allow all on webinar_event_logs" ON public.webinar_event_logs FOR ALL TO anon, authenticated, service_role
   USING (true) WITH CHECK (true);
+GRANT ALL ON public.webinar_event_logs TO anon, authenticated, service_role;
 
 CREATE TABLE IF NOT EXISTS public.webinar_session_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1327,8 +1339,10 @@ CREATE TABLE IF NOT EXISTS public.webinar_session_history (
 ALTER TABLE public.webinar_session_history ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Service role full access on webinar_session_history" ON public.webinar_session_history;
-CREATE POLICY "Service role full access on webinar_session_history" ON public.webinar_session_history FOR ALL TO service_role
+DROP POLICY IF EXISTS "allow all on webinar_session_history" ON public.webinar_session_history;
+CREATE POLICY "allow all on webinar_session_history" ON public.webinar_session_history FOR ALL TO anon, authenticated, service_role
   USING (true) WITH CHECK (true);
+GRANT ALL ON public.webinar_session_history TO anon, authenticated, service_role;
 
 -- ==============================================================================
 -- 5. RPC FUNCTIONS

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, X, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getActiveOrRecentSessionDateISO } from "@/lib/session";
 
 const WEBINAR_ORIGIN = "https://webinar.gg";
 const DEFAULT_WEBINAR_ID = "cmthk6y4001kos60ybxfkbc67";
@@ -98,6 +99,7 @@ export function WebinarEmbed({
         source: "room_client",
         event: reason === "ended" ? "completed" : "dropped_off",
         email,
+        session_date: getActiveOrRecentSessionDateISO(),
         name: name || undefined,
         webinar_id: webinarId,
         duration_seconds: durationSeconds,

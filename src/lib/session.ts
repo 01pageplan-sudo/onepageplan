@@ -42,7 +42,8 @@ export function getNextSessionIST(from: Date = new Date()): Date {
   const minutesNow = ist.getUTCHours() * 60 + ist.getUTCMinutes();
 
   let daysAhead = (6 - weekday + 7) % 7;
-  if (daysAhead === 0 && minutesNow >= 19 * 60) {
+  // Saturday masterclass runs 19:00 - 21:00 IST. Do not flip registration to next week until after the live masterclass concludes at 21:00 IST (1260 mins).
+  if (daysAhead === 0 && minutesNow >= 21 * 60) {
     daysAhead = 7;
   }
 
@@ -65,6 +66,35 @@ export function sessionDateISO(target: Date = getNextSessionIST()): string {
   const m = String(ist.getUTCMonth() + 1).padStart(2, "0");
   const d = String(ist.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+/**
+ * Resolves the active or most recent session date in IST.
+ * - On Saturday: returns today's Saturday session date.
+ * - On Sunday (before 2:00 PM IST): returns yesterday's Saturday session date so webhooks, leave beacons, and post-session processing attribute to the session that just took place.
+ * - Otherwise: returns the next upcoming Saturday session date.
+ */
+export function getActiveOrRecentSessionDateISO(from: Date = new Date()): string {
+  const ist = new Date(from.getTime() + IST_OFFSET_MS);
+  const weekday = ist.getUTCDay(); // 0 = Sunday, 6 = Saturday
+  const minutesNow = ist.getUTCHours() * 60 + ist.getUTCMinutes();
+
+  if (weekday === 6) {
+    const y = ist.getUTCFullYear();
+    const m = String(ist.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(ist.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  if (weekday === 0 && minutesNow < 14 * 60) {
+    const sat = new Date(ist.getTime() - 24 * 60 * 60 * 1000);
+    const y = sat.getUTCFullYear();
+    const m = String(sat.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(sat.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  return sessionDateISO(getNextSessionIST(from));
 }
 
 const MONTHS = [

@@ -158,11 +158,12 @@ export const getJoinToken = createServerFn({ method: "POST" })
           return { ok: false as const, reason: "not_registered" as const };
         }
 
-        const { sessionDateISO } = await import("./session");
+        const { getActiveOrRecentSessionDateISO } = await import("./session");
         const { createPublicServerClient } = await import("./supabase-public.server");
+        const sessionDate = getActiveOrRecentSessionDateISO();
         const { data: details, error } = await createPublicServerClient().rpc(
           "lookup_registration_details_for_room" as never,
-          { p_email: email, p_session_date: sessionDateISO() } as never,
+          { p_email: email, p_session_date: sessionDate } as never,
         );
         if (error) {
           console.error("getJoinToken lookup failed:", error.message);
@@ -173,7 +174,7 @@ export const getJoinToken = createServerFn({ method: "POST" })
         if (!record?.full_name) {
           await preflightLog(
             "not_registered",
-            `No registration found for this email on ${sessionDateISO()}.`,
+            `No registration found for this email on ${sessionDate}.`,
           );
           return { ok: false as const, reason: "not_registered" as const };
         }
@@ -253,9 +254,9 @@ export const getJoinToken = createServerFn({ method: "POST" })
       // Record live join event in webinar_event_logs and mark attendee status as attended
       try {
         const { createPublicServerClient } = await import("./supabase-public.server");
-        const { sessionDateISO } = await import("./session");
+        const { getActiveOrRecentSessionDateISO } = await import("./session");
         const db = createPublicServerClient();
-        const sessionDate = sessionDateISO();
+        const sessionDate = getActiveOrRecentSessionDateISO();
 
         await db.from("webinar_event_logs" as never).insert({
           webinar_id: webinarId,
