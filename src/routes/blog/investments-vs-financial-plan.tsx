@@ -4,7 +4,7 @@ import { BlogArticleView } from "@/components/site/BlogArticleView";
 const PAGE_TITLE = "Investments vs Financial Plan | One Page Plan";
 const PAGE_DESCRIPTION =
   "Most families don't lack financial products; they lack a complete picture of how those products fit together. Why a collection of products is not a plan.";
-const CANONICAL_URL = "https://onepageplan.in/blog/investments-vs-financial-plan";
+const CANONICAL_URL = "https://www.onepageplan.in/blog/investments-vs-financial-plan";
 
 export const Route = createFileRoute("/blog/investments-vs-financial-plan")({
   head: () => ({
@@ -45,15 +45,15 @@ export const Route = createFileRoute("/blog/investments-vs-financial-plan")({
           author: {
             "@type": "Person",
             name: "Milan Dodhia",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
           },
           publisher: {
             "@type": "Organization",
             name: "One Page Plan",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
             logo: {
               "@type": "ImageObject",
-              url: "https://onepageplan.in/favicon.png",
+              url: "https://www.onepageplan.in/favicon.png",
             },
           },
           mainEntityOfPage: {

@@ -44,12 +44,12 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://onepageplan.in" },
+      { property: "og:url", content: "https://www.onepageplan.in/" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: TITLE },
       { name: "twitter:description", content: DESCRIPTION },
     ],
-    links: [{ rel: "canonical", href: "https://onepageplan.in" }],
+    links: [{ rel: "canonical", href: "https://www.onepageplan.in/" }],
   }),
   component: LandingPage,
 });
@@ -97,20 +97,6 @@ function LandingPage() {
 }
 
 function LandingPageContent() {
-  const { open } = useRegistration();
-
-  // Support #register URL hash for Google Ads sitelinks and direct navigation
-  useEffect(() => {
-    const checkHash = () => {
-      if (window.location.hash === "#register") {
-        open();
-      }
-    };
-    checkHash();
-    window.addEventListener("hashchange", checkHash);
-    return () => window.removeEventListener("hashchange", checkHash);
-  }, [open]);
-
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-[var(--brass)]/20 selection:text-foreground overflow-x-clip">
       <Header />

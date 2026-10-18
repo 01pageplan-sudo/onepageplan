@@ -78,7 +78,7 @@ export async function sendChatGPTConversionEvents(
     return { ok: false, error: "No events provided." };
   }
 
-  const siteUrl = (process.env["VITE_SITE_URL"] || "https://onepageplan.in").replace(/\/+$/, "");
+  const siteUrl = (process.env["VITE_SITE_URL"] || "https://www.onepageplan.in").replace(/\/+$/, "");
 
   const formattedEvents = items.map((item) => {
     const eventId =

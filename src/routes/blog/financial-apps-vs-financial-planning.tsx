@@ -4,7 +4,7 @@ import { BlogArticleView } from "@/components/site/BlogArticleView";
 const PAGE_TITLE = "Financial Apps vs Financial Planning | One Page Plan";
 const PAGE_DESCRIPTION =
   "Having all your financial information in one app doesn't mean you have a plan. Learn why financial clarity requires more than account aggregation.";
-const CANONICAL_URL = "https://onepageplan.in/blog/financial-apps-vs-financial-planning";
+const CANONICAL_URL = "https://www.onepageplan.in/blog/financial-apps-vs-financial-planning";
 
 export const Route = createFileRoute("/blog/financial-apps-vs-financial-planning")({
   head: () => ({
@@ -44,15 +44,15 @@ export const Route = createFileRoute("/blog/financial-apps-vs-financial-planning
           author: {
             "@type": "Person",
             name: "Milan Dodhia",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
           },
           publisher: {
             "@type": "Organization",
             name: "One Page Plan",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
             logo: {
               "@type": "ImageObject",
-              url: "https://onepageplan.in/favicon.png",
+              url: "https://www.onepageplan.in/favicon.png",
             },
           },
           mainEntityOfPage: {

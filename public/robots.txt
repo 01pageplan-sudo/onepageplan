@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://onepageplan.in/sitemap.xml
+Sitemap: https://www.onepageplan.in/sitemap.xml

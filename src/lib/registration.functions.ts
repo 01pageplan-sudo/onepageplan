@@ -69,7 +69,7 @@ export const registerAttendee = createServerFn({ method: "POST" })
       if (!saved) return { ok: false as const, error: "Could not save your seat." };
 
       // Delivery must never fail or delay the registration.
-      const siteUrl = (process.env["VITE_SITE_URL"] || "https://onepageplan.in").replace(/\/+$/, "");
+      const siteUrl = (process.env["VITE_SITE_URL"] || "https://www.onepageplan.in").replace(/\/+$/, "");
       const sourceUrl = `${siteUrl}${row.landing_path && row.landing_path.startsWith("/") ? row.landing_path : "/confirmed"}`;
       const { sendChatGPTRegistrationEvent } = await import("./chatgpt-conversion.server");
 

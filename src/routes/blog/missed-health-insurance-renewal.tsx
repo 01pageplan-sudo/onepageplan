@@ -5,7 +5,7 @@ import { ExternalLink } from "lucide-react";
 const PAGE_TITLE = "Seven Years of Health Insurance. One Missed Renewal. | One Page Plan";
 const PAGE_DESCRIPTION =
   "For seven years, they paid health insurance premiums. When they finally needed the policy, they discovered it had expired. A lesson in financial continuity.";
-const CANONICAL_URL = "https://onepageplan.in/blog/missed-health-insurance-renewal";
+const CANONICAL_URL = "https://www.onepageplan.in/blog/missed-health-insurance-renewal";
 
 export const Route = createFileRoute("/blog/missed-health-insurance-renewal")({
   head: () => ({
@@ -45,15 +45,15 @@ export const Route = createFileRoute("/blog/missed-health-insurance-renewal")({
           author: {
             "@type": "Person",
             name: "Milan Dodhia",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
           },
           publisher: {
             "@type": "Organization",
             name: "One Page Plan",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
             logo: {
               "@type": "ImageObject",
-              url: "https://onepageplan.in/favicon.png",
+              url: "https://www.onepageplan.in/favicon.png",
             },
           },
           mainEntityOfPage: {

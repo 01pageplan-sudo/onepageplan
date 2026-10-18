@@ -4,7 +4,7 @@ import { BlogArticleView } from "@/components/site/BlogArticleView";
 const PAGE_TITLE = "Stop Tracking Stocks Every Day | One Page Plan";
 const PAGE_DESCRIPTION =
   "Stop confusing portfolio movement with financial progress. Learn why building a review habit matters more than daily stock market checking.";
-const CANONICAL_URL = "https://onepageplan.in/blog/stop-tracking-stocks-every-day";
+const CANONICAL_URL = "https://www.onepageplan.in/blog/stop-tracking-stocks-every-day";
 
 export const Route = createFileRoute("/blog/stop-tracking-stocks-every-day")({
   head: () => ({
@@ -45,15 +45,15 @@ export const Route = createFileRoute("/blog/stop-tracking-stocks-every-day")({
           author: {
             "@type": "Person",
             name: "Milan Dodhia",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
           },
           publisher: {
             "@type": "Organization",
             name: "One Page Plan",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
             logo: {
               "@type": "ImageObject",
-              url: "https://onepageplan.in/favicon.png",
+              url: "https://www.onepageplan.in/favicon.png",
             },
           },
           mainEntityOfPage: {

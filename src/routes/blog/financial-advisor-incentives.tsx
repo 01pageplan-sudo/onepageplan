@@ -4,7 +4,7 @@ import { BlogArticleView } from "@/components/site/BlogArticleView";
 const PAGE_TITLE = "Understanding Financial Advisor Incentives | One Page Plan";
 const PAGE_DESCRIPTION =
   "Before accepting a financial recommendation, understand how the advisor gets paid. Learn how commissions and fees shape financial advice in India.";
-const CANONICAL_URL = "https://onepageplan.in/blog/financial-advisor-incentives";
+const CANONICAL_URL = "https://www.onepageplan.in/blog/financial-advisor-incentives";
 
 export const Route = createFileRoute("/blog/financial-advisor-incentives")({
   head: () => ({
@@ -44,15 +44,15 @@ export const Route = createFileRoute("/blog/financial-advisor-incentives")({
           author: {
             "@type": "Person",
             name: "Milan Dodhia",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
           },
           publisher: {
             "@type": "Organization",
             name: "One Page Plan",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
             logo: {
               "@type": "ImageObject",
-              url: "https://onepageplan.in/favicon.png",
+              url: "https://www.onepageplan.in/favicon.png",
             },
           },
           mainEntityOfPage: {

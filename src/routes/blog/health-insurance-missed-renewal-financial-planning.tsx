@@ -20,7 +20,7 @@ const PAGE_TITLE = "Missed Health Insurance Renewal: A Family's Lesson | One Pag
 const PAGE_DESCRIPTION =
   "A family paid health insurance premiums for seven years, then discovered a missed renewal during hospitalisation. Learn why financial ownership matters.";
 const CANONICAL_URL =
-  "https://onepageplan.in/blog/health-insurance-missed-renewal-financial-planning";
+  "https://www.onepageplan.in/blog/health-insurance-missed-renewal-financial-planning";
 
 export const Route = createFileRoute("/blog/health-insurance-missed-renewal-financial-planning")({
   head: () => ({
@@ -60,15 +60,15 @@ export const Route = createFileRoute("/blog/health-insurance-missed-renewal-fina
           author: {
             "@type": "Person",
             name: "Milan Dodhia",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
           },
           publisher: {
             "@type": "Organization",
             name: "One Page Plan",
-            url: "https://onepageplan.in",
+            url: "https://www.onepageplan.in",
             logo: {
               "@type": "ImageObject",
-              url: "https://onepageplan.in/favicon.png",
+              url: "https://www.onepageplan.in/favicon.png",
             },
           },
           mainEntityOfPage: {

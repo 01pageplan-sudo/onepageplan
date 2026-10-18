@@ -18,7 +18,7 @@ import { track } from "@/lib/analytics";
 const PAGE_TITLE = "Blog: Financial Clarity & Family Finance Notes | One Page Plan";
 const PAGE_DESCRIPTION =
   "Practical essays, checklists, and frameworks on Indian family finance, protection continuity, and building clarity on one page.";
-const CANONICAL_URL = "https://onepageplan.in/blog";
+const CANONICAL_URL = "https://www.onepageplan.in/blog";
 
 export const Route = createFileRoute("/blog/")({
   head: () => ({
