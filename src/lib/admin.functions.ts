@@ -1538,6 +1538,7 @@ export type AdminReconciliationFlag = {
 export const adminGetCommerceDashboard = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string }) => data)
   .handler(async ({ data }) => {
+    await syncAdminPasswordIfMatched(data.password);
     const { createPublicServerClient } = await import("./supabase-public.server");
     const db = createPublicServerClient();
 
@@ -1570,7 +1571,7 @@ export const adminGetCommerceDashboard = createServerFn({ method: "POST" })
         partnersRes,
         conversionsRes,
         templatesRes,
-        milestoneInfo,
+        milestoneInfoRes,
       ] = await Promise.all([
         safeQuery(db.from("commerce_settings" as never).select("*").eq("id" as never, 1 as never).maybeSingle()),
         safeQuery(db.from("cohorts" as never).select("*").order("cohort_number" as never, { ascending: true } as never)),
@@ -1589,7 +1590,9 @@ export const adminGetCommerceDashboard = createServerFn({ method: "POST" })
         })),
       ]);
 
-      const orders = (ordersRes.data ?? []) as unknown as AdminCommerceOrder[];
+      const orders = Array.isArray(ordersRes.data)
+        ? (ordersRes.data as unknown as AdminCommerceOrder[])
+        : [];
 
       // Calculate current Indian Financial Year total revenue (April 1 to now)
       const now = new Date();
@@ -1598,31 +1601,40 @@ export const adminGetCommerceDashboard = createServerFn({ method: "POST" })
       const fyStartDate = new Date(fyStartYear, 3, 1, 0, 0, 0); // April 1 00:00:00
 
       const fyCapturedTotal = orders
-        .filter((o) => o.status === "captured" && new Date(o.created_at) >= fyStartDate)
+        .filter((o) => o && o.status === "captured" && o.created_at && new Date(o.created_at) >= fyStartDate)
         .reduce((sum, o) => sum + (Number(o.amount_charged) || 0), 0);
 
       const allTimeTotal = orders
-        .filter((o) => o.status === "captured")
+        .filter((o) => o && o.status === "captured")
         .reduce((sum, o) => sum + (Number(o.amount_charged) || 0), 0);
 
-      const completionTemplates = (templatesRes.data ?? []) as unknown as AdminCompletionTemplate[];
+      const completionTemplates = Array.isArray(templatesRes.data)
+        ? (templatesRes.data as unknown as AdminCompletionTemplate[])
+        : [];
+
+      const milestoneInfo = {
+        activeCount: Number(milestoneInfoRes?.activeCount) || 0,
+        currentPrice: Number(milestoneInfoRes?.currentPrice) || 6001,
+        nextThreshold: milestoneInfoRes?.nextThreshold != null ? Number(milestoneInfoRes.nextThreshold) : null,
+        nextPrice: milestoneInfoRes?.nextPrice != null ? Number(milestoneInfoRes.nextPrice) : null,
+      };
 
       return {
         ok: true as const,
         data: {
           mode: getRazorpayMode(),
           settings: (settingsRes.data as any) || {},
-          cohorts: (cohortsRes.data ?? []) as any[],
+          cohorts: Array.isArray(cohortsRes.data) ? cohortsRes.data : [],
           orders,
-          manualGrants: (manualGrantsRes.data ?? []) as unknown as AdminManualGrant[],
-          reconciliationFlags: (reconciliationRes.data ?? []) as unknown as AdminReconciliationFlag[],
-          discountCodes: (discountsRes.data ?? []) as unknown as AdminDiscountCode[],
-          referralPartners: (partnersRes.data ?? []) as unknown as AdminReferralPartner[],
-          referralConversions: (conversionsRes.data ?? []) as unknown as AdminReferralConversion[],
+          manualGrants: Array.isArray(manualGrantsRes.data) ? (manualGrantsRes.data as unknown as AdminManualGrant[]) : [],
+          reconciliationFlags: Array.isArray(reconciliationRes.data) ? (reconciliationRes.data as unknown as AdminReconciliationFlag[]) : [],
+          discountCodes: Array.isArray(discountsRes.data) ? (discountsRes.data as unknown as AdminDiscountCode[]) : [],
+          referralPartners: Array.isArray(partnersRes.data) ? (partnersRes.data as unknown as AdminReferralPartner[]) : [],
+          referralConversions: Array.isArray(conversionsRes.data) ? (conversionsRes.data as unknown as AdminReferralConversion[]) : [],
           completionTemplates,
           milestoneInfo,
-          fyCapturedTotal,
-          allTimeTotal,
+          fyCapturedTotal: Number(fyCapturedTotal) || 0,
+          allTimeTotal: Number(allTimeTotal) || 0,
           currentFy: `${fyStartYear}-${String((fyStartYear + 1) % 100).padStart(2, "0")}`,
         },
       };

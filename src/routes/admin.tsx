@@ -37,6 +37,7 @@ import { TemplateEditor } from "@/components/site/TemplateEditor";
 import { WebinarAnalytics } from "@/components/site/WebinarAnalytics";
 import { CommunicationsPanel } from "@/components/site/CommunicationsPanel";
 import { CommercePanel } from "@/components/site/CommercePanel";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -1350,27 +1351,66 @@ function AdminPage() {
 
           {/* ----------------------------- COMMERCE ------------------------------ */}
           <TabsContent value="commerce" className="pt-5">
-            {commerceLoading && !commerceData ? (
-              <div className="rounded-lg border border-border bg-card p-12 text-center space-y-3">
-                <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary" />
-                <p className="text-sm text-muted-foreground">Loading Commerce Console...</p>
-              </div>
-            ) : commerceData ? (
-              <CommercePanel
-                password={password}
-                data={commerceData}
-                onRefresh={() => void loadCommerce(undefined, true)}
-              />
-            ) : (
-              <div className="rounded-lg border border-border bg-card p-8 text-center space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  {commerceError || "Commerce data not loaded yet."}
-                </p>
-                <Button onClick={() => void loadCommerce()} disabled={commerceLoading || loading}>
-                  {commerceError ? "Retry Loading Commerce" : "Load Commerce Console"}
-                </Button>
-              </div>
-            )}
+            <ErrorBoundary
+              title="Commerce Console encountered an unexpected error"
+              fallback={(err, reset) => (
+                <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center space-y-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-destructive">
+                      Unable to render Commerce Console
+                    </p>
+                    <p className="text-xs text-muted-foreground font-mono max-w-lg mx-auto">
+                      {err.message}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        reset();
+                        setCommerceData(null);
+                        void loadCommerce();
+                      }}
+                      className="text-xs"
+                    >
+                      Retry Loading Commerce
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        handleTabChange("analytics");
+                      }}
+                      className="text-xs"
+                    >
+                      Switch to Analytics
+                    </Button>
+                  </div>
+                </div>
+              )}
+            >
+              {commerceLoading && !commerceData ? (
+                <div className="rounded-lg border border-border bg-card p-12 text-center space-y-3">
+                  <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading Commerce Console...</p>
+                </div>
+              ) : commerceData ? (
+                <CommercePanel
+                  password={password}
+                  data={commerceData}
+                  onRefresh={() => void loadCommerce(undefined, true)}
+                />
+              ) : (
+                <div className="rounded-lg border border-border bg-card p-8 text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {commerceError || "Commerce data not loaded yet."}
+                  </p>
+                  <Button onClick={() => void loadCommerce()} disabled={commerceLoading || loading}>
+                    {commerceError ? "Retry Loading Commerce" : "Load Commerce Console"}
+                  </Button>
+                </div>
+              )}
+            </ErrorBoundary>
           </TabsContent>
 
           {/* --------------------------- COMMUNICATIONS -------------------------- */}

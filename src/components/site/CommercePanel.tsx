@@ -95,12 +95,38 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
     }
   };
 
-  const [localDiscounts, setLocalDiscounts] = useState<AdminDiscountCode[]>(data.discountCodes || []);
+  const ordersList = useMemo(() => (Array.isArray(data?.orders) ? data.orders : []), [data?.orders]);
+  const manualGrantsList = useMemo(
+    () => (Array.isArray(data?.manualGrants) ? data.manualGrants : []),
+    [data?.manualGrants]
+  );
+  const referralPartnersList = useMemo(
+    () => (Array.isArray(data?.referralPartners) ? data.referralPartners : []),
+    [data?.referralPartners]
+  );
+  const referralConversionsList = useMemo(
+    () => (Array.isArray(data?.referralConversions) ? data.referralConversions : []),
+    [data?.referralConversions]
+  );
+  const completionTemplatesList = useMemo(
+    () => (Array.isArray(data?.completionTemplates) ? data.completionTemplates : []),
+    [data?.completionTemplates]
+  );
+  const reconciliationFlagsList = useMemo(
+    () => (Array.isArray(data?.reconciliationFlags) ? data.reconciliationFlags : []),
+    [data?.reconciliationFlags]
+  );
+  const discountCodesList = useMemo(
+    () => (Array.isArray(data?.discountCodes) ? data.discountCodes : []),
+    [data?.discountCodes]
+  );
+
+  const [localDiscounts, setLocalDiscounts] = useState<AdminDiscountCode[]>(discountCodesList);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
 
   useEffect(() => {
-    setLocalDiscounts(data.discountCodes || []);
-  }, [data.discountCodes]);
+    setLocalDiscounts(discountCodesList);
+  }, [discountCodesList]);
 
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -187,7 +213,8 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
 
   // Filtered orders
   const filteredOrders = useMemo(() => {
-    return data.orders.filter((o) => {
+    return ordersList.filter((o) => {
+      if (!o) return false;
       if (filterProduct !== "all" && o.product_id !== filterProduct) return false;
       if (filterStatus !== "all" && o.status !== filterStatus) return false;
       if (searchQuery.trim()) {
@@ -199,7 +226,7 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
       }
       return true;
     });
-  }, [data.orders, filterProduct, filterStatus, searchQuery]);
+  }, [ordersList, filterProduct, filterStatus, searchQuery]);
 
   // Handle Save Settings
   const handleSaveSettings = async () => {
@@ -535,6 +562,25 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
     }
   };
 
+  // Handle Run Reconciliation
+  const handleRunReconciliation = async () => {
+    setLoading(true);
+    try {
+      const res = await adminRunReconciliation({ data: { password } });
+      if (res.ok) {
+        const flagged = (res as any).flaggedCount ?? (res as any).reconciled?.flags?.length ?? 0;
+        const clean = (res as any).cleanCount ?? (res as any).reconciled?.clean?.length ?? 0;
+        showNotice(`Reconciliation complete. Flagged: ${flagged}, Confirmed clean: ${clean}.`, "success");
+        onRefresh();
+      } else {
+        showNotice(res.error || "Failed running reconciliation.", "error");
+      }
+    } catch (err: any) {
+      showNotice(err?.message || "Error running reconciliation.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // CSV Exporters
   const exportOrdersCsv = () => {
@@ -554,17 +600,17 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
       "Status",
     ];
     const rows = filteredOrders.map((o) => [
-      new Date(o.created_at).toISOString(),
+      o.created_at ? new Date(o.created_at).toISOString() : "",
       o.razorpay_order_id || o.id,
       o.razorpay_payment_id || "",
       o.product_id,
       o.pricing_rule_applied,
-      o.base_price,
-      o.credit_applied,
-      o.discount_amount,
-      o.amount_charged,
+      Number(o.base_price) || 0,
+      Number(o.credit_applied) || 0,
+      Number(o.discount_amount) || 0,
+      Number(o.amount_charged) || 0,
       `"${(o.buyer_name || "").replace(/"/g, '""')}"`,
-      o.buyer_email,
+      o.buyer_email || "",
       o.buyer_phone || "",
       o.status,
     ]);
@@ -575,18 +621,19 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
     link.href = url;
     link.setAttribute("download", `orders_${Date.now()}.csv`);
     link.click();
+    URL.revokeObjectURL(url);
   };
 
   const exportGrantsCsv = () => {
     const headers = ["Date", "Email", "Name", "Phone", "Product", "Reason Note", "Granted By"];
-    const rows = data.manualGrants.map((g) => [
-      new Date(g.created_at).toISOString(),
-      g.email,
+    const rows = manualGrantsList.map((g) => [
+      g.created_at ? new Date(g.created_at).toISOString() : "",
+      g.email || "",
       `"${(g.name || "").replace(/"/g, '""')}"`,
       g.phone || "",
       g.product_id,
       `"${(g.reason_note || "").replace(/"/g, '""')}"`,
-      g.granted_by,
+      g.granted_by || "",
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -595,6 +642,7 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
     link.href = url;
     link.setAttribute("download", `manual_grants_${Date.now()}.csv`);
     link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -628,13 +676,13 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
         {/* Current Financial Year Revenue */}
         <div className="rounded-xl border border-border bg-card p-4 space-y-1">
           <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
-            FY {data.currentFy} Revenue
+            FY {data?.currentFy || "Current"} Revenue
           </span>
           <div className="text-2xl font-bold text-primary font-mono">
-            ₹{data.fyCapturedTotal.toLocaleString("en-IN")}
+            ₹{(Number(data?.fyCapturedTotal) || 0).toLocaleString("en-IN")}
           </div>
           <p className="text-[11px] text-muted-foreground">
-            From captured orders since 1 April {data.currentFy.split("-")[0]}
+            From captured orders since 1 April {(data?.currentFy || "").split("-")[0] || ""}
           </p>
         </div>
 
@@ -644,7 +692,7 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
             All-Time Revenue
           </span>
           <div className="text-2xl font-bold text-foreground font-mono">
-            ₹{data.allTimeTotal.toLocaleString("en-IN")}
+            ₹{(Number(data?.allTimeTotal) || 0).toLocaleString("en-IN")}
           </div>
           <p className="text-[11px] text-muted-foreground">Total captured transactions</p>
         </div>
@@ -656,15 +704,15 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
               Silver Members
             </span>
             <span className="text-xs font-mono font-bold text-[var(--brass)]">
-              {data.milestoneInfo.activeCount} Paid
+              {Number(data?.milestoneInfo?.activeCount) || 0} Paid
             </span>
           </div>
           <div className="text-lg font-bold text-foreground">
-            Current: ₹{data.milestoneInfo.currentPrice.toLocaleString("en-IN")}
+            Current: ₹{(Number(data?.milestoneInfo?.currentPrice) || 6001).toLocaleString("en-IN")}
           </div>
           <p className="text-[11px] text-muted-foreground">
-            {data.milestoneInfo.nextThreshold
-              ? `Rises to ₹${data.milestoneInfo.nextPrice?.toLocaleString("en-IN")} at ${data.milestoneInfo.nextThreshold} members`
+            {data?.milestoneInfo?.nextThreshold
+              ? `Rises to ₹${(Number(data?.milestoneInfo?.nextPrice) || 7001).toLocaleString("en-IN")} at ${data.milestoneInfo.nextThreshold} members`
               : "Base pricing in effect"}
           </p>
         </div>
@@ -689,14 +737,14 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
       {/* SUB-TABS NAVIGATION */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
         {[
-          { id: "orders", label: `Orders (${data.orders.length})` },
+          { id: "orders", label: `Orders (${ordersList.length})` },
           { id: "settings", label: "Commerce Settings" },
-          { id: "manual", label: `Manual Grants (${data.manualGrants.length})` },
+          { id: "manual", label: `Manual Grants (${manualGrantsList.length})` },
           { id: "upload", label: "Upload Existing Users" },
           { id: "discounts", label: `Discount Codes (${localDiscounts.length})` },
-          { id: "referrals", label: `Referral Tracking (${data.referralPartners.length})` },
-          { id: "templates", label: `Completion Templates (${data.completionTemplates?.length || 0})` },
-          { id: "reconciliation", label: `Reconciliation (${data.reconciliationFlags.length})` },
+          { id: "referrals", label: `Referral Tracking (${referralPartnersList.length})` },
+          { id: "templates", label: `Completion Templates (${completionTemplatesList.length})` },
+          { id: "reconciliation", label: `Reconciliation (${reconciliationFlagsList.length})` },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -778,16 +826,18 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                   filteredOrders.map((o) => (
                     <tr key={o.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-3 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
-                        {new Date(o.created_at).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {o.created_at
+                          ? new Date(o.created_at).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "-"}
                       </td>
                       <td className="p-3">
                         <div className="font-semibold text-foreground">{o.buyer_name || "Member"}</div>
-                        <div className="text-muted-foreground font-mono text-[11px]">{o.buyer_email}</div>
+                        <div className="text-muted-foreground font-mono text-[11px]">{o.buyer_email || "-"}</div>
                         {o.buyer_phone ? (
                           <div className="text-[10px] text-muted-foreground">{o.buyer_phone}</div>
                         ) : null}
@@ -803,12 +853,12 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                       </td>
                       <td className="p-3 text-[11px]">
                         <span className="text-muted-foreground">{o.pricing_rule_applied}</span>
-                        {o.credit_applied > 0 ? (
-                          <div className="text-emerald-600 font-medium">-₹{o.credit_applied} MRC credit</div>
+                        {(Number(o.credit_applied) || 0) > 0 ? (
+                          <div className="text-emerald-600 font-medium">-₹{Number(o.credit_applied) || 0} MRC credit</div>
                         ) : null}
                       </td>
                       <td className="p-3 font-bold text-foreground font-mono whitespace-nowrap">
-                        ₹{o.amount_charged.toLocaleString("en-IN")}
+                        ₹{(Number(o.amount_charged) || 0).toLocaleString("en-IN")}
                       </td>
                       <td className="p-3 whitespace-nowrap">
                         <span
@@ -831,7 +881,7 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                             size="sm"
                             variant="destructive"
                             disabled={loading}
-                            onClick={() => handleRefund(o.id, o.amount_charged)}
+                            onClick={() => handleRefund(o.id, Number(o.amount_charged) || 0)}
                             className="h-7 text-[11px] px-2.5"
                           >
                             Full Refund
@@ -1301,7 +1351,7 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
           </div>
 
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-foreground">Recorded Manual Grants ({data.manualGrants.length})</h3>
+            <h3 className="text-sm font-bold text-foreground">Recorded Manual Grants ({manualGrantsList.length})</h3>
             <Button size="sm" variant="outline" onClick={exportGrantsCsv} className="h-8 text-xs">
               <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
             </Button>
@@ -1319,22 +1369,22 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {data.manualGrants.length === 0 ? (
+                {manualGrantsList.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-6 text-center text-muted-foreground">
                       No manual offline grants recorded yet.
                     </td>
                   </tr>
                 ) : (
-                  data.manualGrants.map((g) => (
+                  manualGrantsList.map((g) => (
                     <tr key={g.id}>
                       <td className="p-3 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
-                        {new Date(g.created_at).toLocaleDateString("en-IN")}
+                        {g.created_at ? new Date(g.created_at).toLocaleDateString("en-IN") : "-"}
                       </td>
-                      <td className="p-3 font-mono text-foreground">{g.email}</td>
-                      <td className="p-3 font-bold">{g.product_id}</td>
-                      <td className="p-3 text-muted-foreground">{g.reason_note}</td>
-                      <td className="p-3 text-[11px] font-mono">{g.granted_by}</td>
+                      <td className="p-3 font-mono text-foreground">{g.email || "-"}</td>
+                      <td className="p-3 font-bold">{g.product_id || "-"}</td>
+                      <td className="p-3 text-muted-foreground">{g.reason_note || "-"}</td>
+                      <td className="p-3 text-[11px] font-mono">{g.granted_by || "-"}</td>
                     </tr>
                   ))
                 )}
@@ -1507,7 +1557,7 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                           {d.discount_type === "fixed" ? `₹${d.discount_value}` : `${d.discount_value}%`}
                         </td>
                         <td className="p-3">
-                          {d.applies_to_products?.includes("all") || !d.applies_to_products?.length ? (
+                          {!Array.isArray(d.applies_to_products) || d.applies_to_products.includes("all") || d.applies_to_products.length === 0 ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400">
                               All Products
                             </span>
@@ -1692,15 +1742,15 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-            <h4 className="text-xs font-bold text-foreground">Active Referral Partners ({data.referralPartners.length})</h4>
+            <h4 className="text-xs font-bold text-foreground">Active Referral Partners ({referralPartnersList.length})</h4>
             <div className="space-y-1.5 text-xs">
-              {data.referralPartners.map((p) => (
+              {referralPartnersList.map((p) => (
                 <div key={p.id} className="flex items-center justify-between p-2 rounded-lg border border-border bg-background">
                   <div>
                     <span className="font-bold font-mono text-primary">?ref={p.code}</span>
-                    <span className="text-muted-foreground ml-2">({p.partner_name} · {p.partner_email})</span>
+                    <span className="text-muted-foreground ml-2">({p.partner_name || "Partner"} · {p.partner_email || "-"})</span>
                   </div>
-                  <span className="font-semibold text-emerald-600">{p.reward_value}% reward</span>
+                  <span className="font-semibold text-emerald-600">{Number(p.reward_value) || 0}% reward</span>
                 </div>
               ))}
             </div>
@@ -1719,22 +1769,22 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {data.referralConversions.length === 0 ? (
+                {referralConversionsList.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-6 text-center text-muted-foreground">
                       No referral conversions recorded yet.
                     </td>
                   </tr>
                 ) : (
-                  data.referralConversions.map((rc) => (
+                  referralConversionsList.map((rc) => (
                     <tr key={rc.id}>
                       <td className="p-3 font-mono text-[11px] text-muted-foreground">
-                        {new Date(rc.created_at).toLocaleDateString("en-IN")}
+                        {rc.created_at ? new Date(rc.created_at).toLocaleDateString("en-IN") : "-"}
                       </td>
                       <td className="p-3 font-mono font-bold text-primary">{rc.referral_code}</td>
-                      <td className="p-3 font-mono">{rc.buyer_email}</td>
-                      <td className="p-3 font-mono">₹{rc.order_amount.toLocaleString("en-IN")}</td>
-                      <td className="p-3 font-mono font-bold text-emerald-600">₹{rc.reward_amount.toLocaleString("en-IN")}</td>
+                      <td className="p-3 font-mono">{rc.buyer_email || "-"}</td>
+                      <td className="p-3 font-mono">₹{(Number(rc.order_amount) || 0).toLocaleString("en-IN")}</td>
+                      <td className="p-3 font-mono font-bold text-emerald-600">₹{(Number(rc.reward_amount) || 0).toLocaleString("en-IN")}</td>
                       <td className="p-3">
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-500/15 text-amber-700">
                           {rc.status}
@@ -1830,14 +1880,14 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {(!data.completionTemplates || data.completionTemplates.length === 0) ? (
+                {completionTemplatesList.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-6 text-center text-muted-foreground">
                       No custom templates uploaded yet. Clean built-in fallback layouts are serving all completion slugs.
                     </td>
                   </tr>
                 ) : (
-                  data.completionTemplates.map((tpl) => (
+                  completionTemplatesList.map((tpl) => (
                     <tr key={tpl.id} className={tpl.is_active ? "bg-primary/5" : ""}>
                       <td className="p-3 font-mono font-bold text-primary">/complete/{tpl.slug}</td>
                       <td className="p-3 font-mono">v{tpl.version}</td>
@@ -1854,13 +1904,15 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                       </td>
                       <td className="p-3 text-muted-foreground">{tpl.notes || "-"}</td>
                       <td className="p-3 font-mono text-[11px] text-muted-foreground">
-                        {new Date(tpl.created_at).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {tpl.created_at
+                          ? new Date(tpl.created_at).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "-"}
                       </td>
                       <td className="p-3 text-right">
                         {!tpl.is_active ? (
@@ -1914,25 +1966,25 @@ export function CommercePanel({ password, data, onRefresh }: CommercePanelProps)
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {data.reconciliationFlags.length === 0 ? (
+                {reconciliationFlagsList.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-6 text-center text-emerald-600 font-medium">
                       ✓ Zero reconciliation flags. All captured payments match granted access.
                     </td>
                   </tr>
                 ) : (
-                  data.reconciliationFlags.map((rf) => (
+                  reconciliationFlagsList.map((rf) => (
                     <tr key={rf.id}>
                       <td className="p-3 font-mono text-[11px] text-muted-foreground">
-                        {new Date(rf.flagged_at).toLocaleDateString("en-IN")}
+                        {rf.flagged_at ? new Date(rf.flagged_at).toLocaleDateString("en-IN") : "-"}
                       </td>
                       <td className="p-3 font-mono text-[11px]">
                         <div>{rf.razorpay_payment_id || "-"}</div>
                         <div className="text-muted-foreground">{rf.razorpay_order_id || "-"}</div>
                       </td>
                       <td className="p-3 font-mono">{rf.email || "-"}</td>
-                      <td className="p-3 font-mono font-bold">₹{rf.amount || 0}</td>
-                      <td className="p-3 text-destructive font-medium">{rf.issue_type}</td>
+                      <td className="p-3 font-mono font-bold">₹{Number(rf.amount) || 0}</td>
+                      <td className="p-3 text-destructive font-medium">{rf.issue_type || "-"}</td>
                     </tr>
                   ))
                 )}
